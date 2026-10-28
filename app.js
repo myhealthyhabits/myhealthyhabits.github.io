@@ -193,7 +193,7 @@ function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,
  ${statGrid()}
  ${doneCard()}
  ${visMeals().map(m=>{const es=L[m.id]||[],s=sumEntries(es),chips=top.filter(x=>x.meal===m.id).slice(0,3);return`<div class="card meal"><h3><span>${esc(m.name)}</span><span><span class="mut">${r0(s.kcal)} cal</span> <button class="x" data-menu="${m.id}" aria-label="Meal options">⋯</button></span></h3>
- ${es.map(e=>`<div class="item" data-edit="${m.id}|${e.id}"><div>${esc(e.food.name)}<small>${r1(e.qty)} × ${esc(e.food.units[e.ui]?.label||'serving')}${e.food.brand?' · '+esc(e.food.brand):''}</small></div><b class="kc">${r0(e.kcal)}</b></div>`).join('')}
+ ${es.map(e=>`<div class="item" data-edit="${m.id}|${e.id}"><div>${esc(e.food.name)}<small>${esc(amtLbl(e))}${e.food.brand?' · '+esc(e.food.brand):''}</small></div><b class="kc">${r0(e.kcal)}</b></div>`).join('')}
  ${!es.length&&chips.length?`<div class="chips">${chips.map(c=>`<button data-chip="${m.id}|${esc(fkey(c.food))}">+ ${esc(c.food.name)}</button>`).join('')}</div>`:''}
  <div class="row"><button class="add" data-add="${m.id}">+ Add food</button><button class="add qa" data-qa="${m.id}" aria-label="Quick calories">⚡ ${eU()==='kJ'?'kJ':'Cal'}</button><button class="add qa" data-scan="${m.id}" aria-label="Scan barcode">📷</button></div></div>`}).join('')}
  <div class="card"><h3 class="ch"><span>Nutrition</span><span class="mut tap" id="budTap">Budget ${fE(b)} ✎</span></h3><div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'var(--fb)']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
@@ -390,26 +390,65 @@ if($('#s_q')?.value.trim()!==q)return;
  const seen=new Set(),all=[...loc,...list].filter(f=>{const k=fkey(f);if(seen.has(k))return false;seen.add(k);return true});
  R.innerHTML=all.map(f=>resRow(f)).join('')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a minute.':'No results.'}</p>`;
  bindRes(all,mid,f=>pick(f,mid))}
-function servingSheet(f,ui,qty,mid,onSave,onDel){sheet(`<h2>${esc(f.name)}</h2>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
- <div class="card" style="margin-top:10px;text-align:center"><b id="v_k" style="font-size:30px"></b> <span class="mut">cal</span><div class="mut" id="v_m"></div></div><button class="btn alt sm" id="v_fav" style="width:100%">${D.fav.includes(fkey(f))?'★ Favorite':'☆ Add to favorites'}</button>
- <div class="row"><div><label>Amount</label><input id="v_q" type="number" inputmode="decimal" step="0.25" value="${qty}"></div>
- <div style="flex:2"><label>Serving size</label><select id="v_u">${f.units.map((u,i)=>`<option value="${i}">${esc(u.label)}</option>`).join('')}</select></div></div>
- <label>Meal</label><select id="v_meal">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
- <button class="btn" id="v_go">${onDel?'Save':'Add'}</button>${onDel?'<button class="btn alt" id="v_del" style="color:var(--bad)">Remove</button>':''}<button class="btn alt" onclick="close()">Cancel</button>`);
- $('#v_u').value=ui;$('#v_meal').value=mid;$('#v_fav').onclick=()=>{const k=fkey(f),i=D.fav.indexOf(k);if(i<0){D.fav.push(k);if(!D.stats[k])D.stats[k]={food:f,count:0,last:Date.now(),ui:0,qty:1}}else D.fav.splice(i,1);save();$('#v_fav').textContent=D.fav.includes(k)?'★ Favorite':'☆ Add to favorites'};
- const upd=()=>{const e=entryFrom(f,+$('#v_u').value,+$('#v_q').value||0);$('#v_k').textContent=r0(e.kcal);$('#v_m').textContent=`Protein ${r1(e.p)}g · Carbs ${r1(e.c)}g · Fiber ${r1(e.fb)}g · Fat ${r1(e.f)}g`};
- $('#v_q').oninput=upd;$('#v_u').onchange=upd;upd();
- $('#v_go').onclick=()=>{const q=+$('#v_q').value;if(!(q>0))return toast('Enter an amount');close();onSave(entryFrom(f,+$('#v_u').value,q),$('#v_meal').value)};
+/* ---------- amounts: units + parsing ---------- */
+const parseAmt=s=>{s=String(s||'').trim().replace(',','.').replace(/[½¼¾⅓⅔]/g,c=>({'½':' 1/2','¼':' 1/4','¾':' 3/4','⅓':' 1/3','⅔':' 2/3'})[c]).trim();if(!s)return 0;
+ let m=s.match(/^(\d+)\s+(\d+)\/(\d+)$/);if(m)return +m[1]+m[2]/m[3];m=s.match(/^(\d*\.?\d+)\/(\d+)$/);if(m)return m[1]/m[2];return /^\d*\.?\d+$/.test(s)?+s:NaN};
+const fmtAmt=q=>{const w=Math.floor(q),r=q-w,F=[[.5,'½'],[.25,'¼'],[.75,'¾']].find(([v])=>Math.abs(r-v)<.001);return F?(w?w+F[1]:F[1]):String(+q.toFixed(2))};
+const sing=w=>/(ch|sh|x)es$/.test(w)?w.slice(0,-2):/(rr|tt|tr)ies$/.test(w)?w.slice(0,-3)+'y':/[^s]s$/.test(w)&&w.length>3?w.slice(0,-1):w;
+const amtLbl=e=>{const u=(e.food.units[e.ui]||{}).label||'serving',q=e.qty;if(OLDGEN.test(u)||!/^[a-z][a-z .-]*$/i.test(u))return r1(q)+' × '+u;if(u==='g'||u==='oz'||u==='ml')return r1(q)+' '+u;return fmtAmt(q)+' '+(q>1&&!/s$/.test(u)&&!/^(tbsp|tsp|oz|serving size)$/.test(u)?(/(ch|sh|x)$/.test(u)?u+'es':u+'s'):u)};
+const OLDGEN=/^(100 g|1 oz|1 g)$/;
+function unitsFor(f){const gk=f.src==='custom'?(f.gpS?f.gpS:0):(f.src==='quick'?0:100),out=[],add=u=>{if(u.label&&!out.some(x=>x.label===u.label))out.push(u)};
+ (f.units||[]).forEach((u,i)=>{if(OLDGEN.test(u.label)||['g','oz','ml'].includes(u.label))return;let L=u.label.trim();
+  if(u.kind){add(u);return}
+  const m=L.match(/^(\d+(?:\.\d+)?|\d+\/\d+)\s+([a-zA-Z][a-zA-Z .-]*?)(?:\s*\((.*)\))?$/);
+  if(f.src==='custom'&&i===0){const nm=L.replace(/^1\s+/,'');add({label:nm||'serving',mult:u.mult,kind:'n'});if(nm!=='serving')add({label:'serving',mult:u.mult,kind:'s'});return}
+  if(i===0){add({label:'serving',mult:u.mult,kind:'s',note:L})}
+  if(m){const n=parseAmt(m[1])||1,w=m[2].trim().toLowerCase();if(!/^(g|grams?|oz|ml|serving)$/.test(w))add({label:n>1?sing(w):w,mult:u.mult/n,kind:'n'})}
+  else if(i>0)add({label:L,mult:u.mult,kind:'n'})});
+ if(!out.length)add({label:"serving",mult:1,kind:"s",note:gk===100?"100 g":""});
+ const gw=gk||(f.units||[]).find(u=>u.label==='g')&&1/(f.units.find(u=>u.label==='g').mult);
+ if(gw){add({label:'g',mult:1/gw,kind:'w'});add({label:'oz',mult:28.3495/gw,kind:'w'});if(/ml|drink|juice|milk|soda|water|beverage/i.test((f.units||[]).map(u=>u.label).join(' ')+' '+f.name))add({label:'ml',mult:1/gw,kind:'w'})}
+ return out}
+function servingSheet(f,ui,qty,mid,onSave,onDel){const L=unitsFor(f);let lbl=(f.units[ui]||f.units[0]||{}).label;
+ if(!onDel){const st=D.stats[fkey(f)];if(st&&st.food.units[st.ui]){lbl=st.food.units[st.ui].label;qty=st.qty}}
+ if(OLDGEN.test(lbl||''))lbl={'100 g':'g','1 oz':'oz','1 g':'g'}[lbl],qty=lbl==='g'&&(f.units[ui]||{}).label==='100 g'?qty*100:qty;
+ if(!L.some(u=>u.label===lbl))lbl=L[0].label==='serving'?'serving':L[0].label;
+ const sv=L.find(u=>u.kind==='s');
+ sheet(`<h2>${esc(f.name)}</h2>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
+ <div class="amtbox"><input id="v_q" class="amtin" inputmode="decimal" autocomplete="off" value="${fmtAmt(qty).replace('½',' 1/2').replace('¼',' 1/4').replace('¾',' 3/4').trim()}" aria-label="Amount"><div class="uchips" id="v_u">${L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('')}</div></div>
+ <div class="qchips">${[['1/2','½'],['1','1'],['1.5','1½'],['2','2']].map(([v,t])=>`<button data-q="${v}">${t}</button>`).join('')}</div>
+ ${sv&&sv.note?`<div class="mut" style="font-size:13px;margin:2px 2px 0">1 serving = ${esc(sv.note)}</div>`:''}
+ <div class="nutbox"><div><b id="v_k">0</b><span>cal</span></div><div><b id="v_p">0</b><span>protein</span></div><div><b id="v_c">0</b><span>carbs</span></div><div><b id="v_fb">0</b><span>fiber</span></div><div><b id="v_f">0</b><span>fat</span></div></div>
+ <div class="row"><div style="flex:1"><label>Meal</label><select id="v_meal">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div>
+ <button class="btn" id="v_go">${onDel?'Save':'Add'}</button>${onDel?'<button class="btn alt" id="v_del" style="color:var(--bad)">Remove</button>':''}
+ <button class="btn alt sm" id="v_fav" style="width:100%">${D.fav.includes(fkey(f))?'★ Favorite':'☆ Add to favorites'}</button><button class="btn alt" id="v_x">Cancel</button>`);
+ $('#v_x').onclick=close;$('#v_meal').value=mid;
+ $('#v_fav').onclick=()=>{const k=fkey(f),i=D.fav.indexOf(k);if(i<0){D.fav.push(k);if(!D.stats[k])D.stats[k]={food:{...f,units:L},count:0,last:Date.now(),ui:0,qty:1}}else D.fav.splice(i,1);save();$('#v_fav').textContent=D.fav.includes(k)?'★ Favorite':'☆ Add to favorites'};
+ const f2={...f,units:L},ix=()=>Math.max(0,L.findIndex(u=>u.label===lbl)),q=()=>parseAmt($('#v_q').value);
+ const upd=()=>{$('#v_u').querySelectorAll('.uchip').forEach(b=>b.classList.toggle('on',b.dataset.l===lbl));const a=q(),e=entryFrom(f2,ix(),a>0?a:0);
+  const k=$('#v_k');delete k.dataset.kj;k.textContent=r0(e.kcal).toLocaleString();$('#v_k').nextSibling.textContent=eU()==='kJ'?'kJ':'cal';if(eU()==='kJ'){k.textContent=Math.round(e.kcal*4.184).toLocaleString();k.dataset.kj=1}
+  $('#v_p').textContent=r1(e.p)+'g';$('#v_c').textContent=r1(e.c)+'g';$('#v_fb').textContent=r1(e.fb)+'g';$('#v_f').textContent=r1(e.f)+'g';$('#v_q').classList.toggle('bad',!(a>0)&&$('#v_q').value.trim()!=='')};
+ $('#v_q').oninput=upd;$('#v_u').onclick=e=>{const b=e.target.closest('.uchip');if(!b)return;
+  const old=L[ix()],nu=L.find(u=>u.label===b.dataset.l),a=q();lbl=nu.label;
+  if(a>0&&(old.kind==='w'||nu.kind==='w')&&old!==nu){const v=a*old.mult/nu.mult;$('#v_q').value=nu.kind==='w'?String(Math.round(v)):String(+v.toFixed(2))}upd()};
+ document.querySelectorAll('.qchips [data-q]').forEach(b=>b.onclick=()=>{$('#v_q').value=b.dataset.q;upd()});
+ $('#v_q').onkeydown=e=>{if(e.key==='Enter')$('#v_go').click()};
+ $('#v_q').onfocus=e=>e.target.select();upd();
+ $('#v_go').onclick=()=>{const a=q();if(!(a>0))return toast('Enter an amount, like 1, 1.5 or 1 1/2');close();onSave(entryFrom(f2,ix(),a),$('#v_meal').value)};
  if(onDel)$('#v_del').onclick=onDel}
-function customFood(mid,edit,pre={}){const f=edit||{barcode:pre.barcode,name:pre.name||'',brand:pre.brand||'',n:{kcal:'',p:'',c:'',f:''},units:[{label:'1 serving',mult:1}]};
- sheet(`<h2>${edit?'Edit':'New'} custom food</h2><label>Name</label><input id="c_n" value="${esc(f.name)}"><label>Brand (optional)</label><input id="c_b" value="${esc(f.brand)}">
- <label>Serving size</label><input id="c_s" value="${esc(f.units[0].label)}"><label>Calories per serving</label><input id="c_k" type="number" value="${f.n.kcal}">
+function customFood(mid,edit,pre={}){const f=edit||{barcode:pre.barcode,name:pre.name||'',brand:pre.brand||'',n:{kcal:'',p:'',c:'',f:''},units:[{label:'serving',mult:1}]};
+ const un=(f.units[0].label||'serving').replace(/^1\s+/,'');
+ sheet(`<h2>${edit?'Edit':'New'} custom food</h2><label>Name</label><input id="c_n" value="${esc(f.name)}" placeholder="e.g. Flour tortilla"><label>Brand (optional)</label><input id="c_b" value="${esc(f.brand)}">
+ <label>Unit</label><div class="cunit">1 <input id="c_s" value="${esc(un)}" placeholder="serving, tortilla, cookie…"> = <input id="c_g" type="number" inputmode="decimal" value="${f.gpS||''}" placeholder="g"> g <span class="mut">(optional)</span></div>
+ <label id="c_kl">Calories per 1 ${esc(un)}</label><input id="c_k" type="number" inputmode="decimal" value="${f.n.kcal}">
  <div class="row"><div><label>Protein g</label><input id="c_p" type="number" value="${f.n.p}"></div><div><label>Carbs g</label><input id="c_c" type="number" value="${f.n.c}"></div><div><label>Fat g</label><input id="c_f" type="number" value="${f.n.f}"></div><div><label>Fiber g</label><input id="c_fb" type="number" value="${f.n.fb??''}"></div></div>
  ${f.barcode?`<p class="mut" style="font-size:13px">UPC ${esc(f.barcode)} — saved on this device so the next scan finds it instantly.</p><label class="tog"><input type="checkbox" id="c_share" ${D.shareOFF?'checked':''}> Also share to Open Food Facts so it helps everyone</label>`:''}
- <button class="btn" id="c_go">Save</button>${edit?'<button class="btn alt" id="c_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" onclick="close()">Cancel</button>`);
+ <button class="btn" id="c_go">Save</button>${edit?'<button class="btn alt" id="c_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" id="c_x">Cancel</button>`);
+ $('#c_x').onclick=close;$('#c_s').oninput=()=>{$('#c_kl').textContent='Calories per 1 '+($('#c_s').value.trim()||'serving')};
  $('#c_go').onclick=()=>{const n=$('#c_n').value.trim();if(!n||$('#c_k').value==='')return toast('Name and calories are required');
-  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0},units:[{label:$('#c_s').value||'1 serving',mult:1}]};
-  if(f.barcode&&$('#c_share')?.checked){D.shareOFF=true;shareOFF(nf)}else if($('#c_share'))D.shareOFF=false;
+  const u=$('#c_s').value.trim().replace(/^1\s+/,'')||'serving',g=+$('#c_g').value||0;
+  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0},units:[{label:u,mult:1}],...(g?{gpS:g}:{})};
+  if(f.barcode&&$('#c_share')?.checked){D.shareOFF=true;shareOFF({...nf,units:[{label:'1 '+u+(g?` (${g} g)`:''),mult:1}]})}else if($('#c_share'))D.shareOFF=false;
   if(edit)D.custom[D.custom.indexOf(edit)]=nf;else D.custom.push(nf);save();
   if(mid)pick(nf,mid);else{close();render()}};
  if(edit)$('#c_del').onclick=()=>{D.custom.splice(D.custom.indexOf(edit),1);save();close();render()}}
@@ -517,7 +556,7 @@ function settings(){const m=D.macroPct;
  $('#st_imp').onclick=()=>$('#st_file').click();
  $('#st_file').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!j.meals||!j.log)throw 0;if(!confirm('Replace all data on this device with this backup?'))return;
   D=Object.assign(def(),j,{exAddBack:D.exAddBack,stepsAddBack:D.stepsAddBack,noAddBackV1:1});save();toast('Backup restored');go('today')}catch(x){toast('That file isn\'t a valid backup')}}}
-function recipe(){const items=[];const draw=()=>{const s=sumEntries(items);$('#r_list').innerHTML=items.map(e=>`<div class="item"><div>${esc(e.food.name)}<small>${r1(e.qty)} × ${esc(e.food.units[e.ui].label)}</small></div><b>${r0(e.kcal)}</b></div>`).join('')+`<p><b>Total ${r0(s.kcal)} cal</b></p>`};
+function recipe(){const items=[];const draw=()=>{const s=sumEntries(items);$('#r_list').innerHTML=items.map(e=>`<div class="item"><div>${esc(e.food.name)}<small>${esc(amtLbl(e))}</small></div><b>${r0(e.kcal)}</b></div>`).join('')+`<p><b>Total ${r0(s.kcal)} cal</b></p>`};
  sheet(`<h2>Build a recipe / meal</h2><label>Name</label><input id="r_n" placeholder="e.g. Chicken rice bowl"><div id="r_list"></div>
  <label>Add ingredients from your foods</label><select id="r_pick"><option value="">Choose…</option>${[...D.custom,...Object.values(D.stats).map(s=>s.food)].map((f,i)=>`<option value="${i}">${esc(f.name)}</option>`).join('')}</select>
  <div class="row"><div><label>Amount</label><input id="r_q" type="number" value="1"></div></div><button class="btn alt" id="r_add">Add ingredient</button>

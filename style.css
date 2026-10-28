@@ -237,3 +237,14 @@ main{padding:8px 14px 12px}
 .pico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--pri) 18%,transparent);color:var(--pri)}.pico svg{width:20px;height:20px}
 .dayp{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.dayp button{border:1px solid var(--ln);background:transparent;color:var(--tx);border-radius:12px;padding:10px 0;font-weight:700}.dayp button.on{background:var(--pri);border-color:transparent;color:#fff}
 .choice.on{outline:2px solid var(--pri)}
+.amtbox{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.amtin{font-size:40px!important;font-weight:700;text-align:center;padding:12px!important;border-radius:16px!important}
+.amtin.bad{border-color:var(--bad)!important}
+.uchips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.uchips::-webkit-scrollbar{display:none}
+.uchip{flex:none;padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:15px}
+.uchip.on{background:var(--acc,#ff7a2f);border-color:transparent;color:#fff;font-weight:600}
+.qchips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.qchips button{padding:10px 0;border-radius:12px;border:0;background:rgba(255,255,255,.08);color:inherit;font:inherit;font-weight:600;font-size:16px}
+.nutbox{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:14px 0 4px;padding:12px 6px;border-radius:16px;background:rgba(255,255,255,.05);text-align:center}
+.nutbox b{display:block;font-size:17px}.nutbox div:first-child b{color:var(--acc,#ff7a2f);font-size:20px}.nutbox span{font-size:11px;opacity:.6}
+.cunit{display:flex;align-items:center;gap:6px}.cunit input{flex:1;min-width:0}.cunit input#c_g{flex:0 0 70px}
