@@ -227,3 +227,13 @@ main{padding:8px 14px 12px}
 .whsel{position:absolute;left:12px;right:12px;top:80px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);pointer-events:none}
 .burn{text-align:center;margin:10px 0 4px}.burn b{display:block;font-size:34px;color:var(--pri)}.burn small{color:var(--mut)}.burn input{margin-top:8px}
 .mchips{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.mchips button{padding:10px 0;font-size:15px}
+.prog h2{margin-top:0}.pchart{position:relative;display:flex;gap:8px;height:142px;align-items:flex-end;margin:6px 0 4px}
+.pcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}.pcol small{color:var(--mut);font-size:12px;height:16px}.pcol.today small{color:var(--pri);font-weight:700}
+.pbar{position:relative;width:100%;max-width:30px;height:120px}.pbar i{position:absolute;bottom:0;left:0;right:0;border-radius:6px;transition:height .5s cubic-bezier(.2,.8,.2,1)}
+.pb{background:color-mix(in srgb,var(--pri) 22%,transparent)}.pe{background:var(--pri);left:5px!important;right:5px!important}.pe.over{background:var(--bad)}
+.pline{position:absolute;left:0;right:0;border-top:1.5px dashed var(--mut);opacity:.7;pointer-events:none}
+.plg{display:flex;gap:16px;font-size:12px;color:var(--mut);margin:2px 0 8px}.plg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.prow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--ln);cursor:pointer}.prow>div{flex:1;font-weight:600}.prow small{display:block;color:var(--mut);font-weight:400;font-size:13px}.prow>b{color:var(--mut);font-size:20px}
+.pico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--pri) 18%,transparent);color:var(--pri)}.pico svg{width:20px;height:20px}
+.dayp{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.dayp button{border:1px solid var(--ln);background:transparent;color:var(--tx);border-radius:12px;padding:10px 0;font-weight:700}.dayp button.on{background:var(--pri);border-color:transparent;color:#fff}
+.choice.on{outline:2px solid var(--pri)}
