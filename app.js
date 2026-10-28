@@ -398,7 +398,7 @@ function relScore(f,ws,store){const nm=(f.name||'').toLowerCase(),seg=nm.split('
  ws.forEach(w=>{if(toks.includes(stem(w)))s+=10;else if(nm.includes(stem(w)))s+=4;else s-=6});
  if(ws.length&&stem(seg)===stem(ws.join(' ')))s+=8;if(/\braw\b/.test(nm))s+=3;if(/dehydrated|powder|babyfood|chips|candied|canned in heavy|frozen dessert/.test(nm))s-=4;
  if(f.cond)s+=6;if(f.dt==='SR Legacy')s+=2;if(f.src==='custom')s+=6;
- if(store){if(storeOf(f)===store)s+=25;else s-=30}else if(f.branded||f.src==='off')s-=12;
+ if(f.cur)s+=40;if(store){if(storeOf(f)===store)s+=25;else s-=30}else if(f.branded||f.src==='off')s-=12;
  return s-Math.min(nm.length,120)/40}
 async function usdaQ(q,types){const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=30&dataType='+encodeURIComponent(types)+'&query='+encodeURIComponent(q));
  if(!r.ok)throw new Error(r.status===429?'limit':'usda');const j=await r.json();return(j.foods||[]).map(usdaFood).filter(f=>f.n.kcal||f.n.p)}
@@ -410,7 +410,7 @@ async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STOR
  const rest=q.replace(st0?new RegExp(st0.re.source,'gi'):/$^/,' ').replace(/\s+/g,' ').trim(),ws=qWords(rest);
  if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));
- const lq=rest.toLowerCase(),loc=st0?[]:[...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>ws.length&&ws.every(w=>f.name.toLowerCase().includes(stem(w))));
+ const lq=rest.toLowerCase(),loc=st0?STORELIB.filter(f=>storeOf(f)===st0&&ws.length&&ws.every(w=>f.name.toLowerCase().includes(stem(w)))):[...STORELIB,...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>ws.length&&ws.every(w=>f.name.toLowerCase().includes(stem(w))));
  const ck=(st0?.k||'')+':'+lq;let list=[],err='';
  if(SC[ck])list=SC[ck];else{
   const jobs=[];
@@ -470,7 +470,7 @@ function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=f
  sheet(`<h2>${esc(f.name)}</h2>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
  <div class="amtbox"><input id="v_q" class="amtin" inputmode="decimal" autocomplete="off" value="${fmtAmt(qty).replace('½',' 1/2').replace('¼',' 1/4').replace('¾',' 3/4').trim()}" aria-label="Amount"><div class="uchips" id="v_u">${L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('')}</div></div>
  <div class="qchips">${[['1/2','½'],['1','1'],['1.5','1½'],['2','2']].map(([v,t])=>`<button data-q="${v}">${t}</button>`).join('')}</div>
- ${f.chk?`<div class="chkhint">⚠️ Check serving: ${esc(f.chk)} Compare with your package or use grams.</div>`:''}<div class="mut" id="v_note" style="font-size:13px;margin:2px 2px 0;min-height:16px">${sv&&sv.note?'1 serving = '+esc(sv.note):''}</div>
+ ${f.chk?`<div class="chkhint">⚠️ Check serving: ${esc(f.chk)} Compare with your package or use grams.</div>`:''}<div class="mut" id="v_note" style="font-size:13px;margin:2px 2px 0;min-height:16px">${sv&&sv.note?'1 serving = '+esc(sv.note):''}</div>${f.url?`<div class="mut" style="font-size:12px;margin:2px">Label data: <a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:inherit">source</a></div>`:''}
  <div class="nutbox"><div><b id="v_k">0</b><span>cal</span></div><div><b id="v_p">0</b><span>protein</span></div><div><b id="v_c">0</b><span>carbs</span></div><div><b id="v_fb">0</b><span>fiber</span></div><div><b id="v_f">0</b><span>fat</span></div></div>
  <div class="row"><div style="flex:1"><label>Meal</label><select id="v_meal">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div>
  <button class="btn" id="v_go">${onDel?'Save':'Add'}</button>${onDel?'<button class="btn alt" id="v_del" style="color:var(--bad)">Remove</button>':''}
