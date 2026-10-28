@@ -656,8 +656,8 @@ render();
 
 /* inline step edit: tap a steps number, type to replace, empty/0 clears */
 document.addEventListener('click',ev=>{const el=ev.target.closest('.stepnum');if(!el||el.querySelector('input'))return;ev.stopPropagation();ev.preventDefault();
- const d=el.dataset.sd,v=D.steps[d]||0,w=el.offsetWidth;el.innerHTML=`<input class="stepin" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" value="${v||''}" placeholder="0" aria-label="Steps" style="width:${Math.max(120,w+24)}px">`;
- const i=el.querySelector('input');i.focus({preventScroll:true});i.select();let done=false;
+ const d=el.dataset.sd,v=D.steps[d]||0,w=el.offsetWidth;el.innerHTML=`<input class="stepin" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" value="${v||''}" placeholder="0" aria-label="Steps" style="width:${Math.max(3,String(v||'').length+1)}ch">`;
+ const i=el.querySelector('input');i.oninput=()=>{i.style.width=Math.max(3,i.value.length+1)+'ch'};i.focus({preventScroll:true});i.select();let done=false;
  const fin=ok=>{if(done)return;done=true;const sy=scrollY;if(ok){const raw=i.value.replace(/[^0-9]/g,''),was=v>=D.stepGoal;if(raw===''||+raw===0)delete D.steps[d];else D.steps[d]=Math.round(+raw);save();
    const n=D.steps[d]||0;if(n!==v){toastU(n?`Steps: ${n.toLocaleString()}`+(!was&&n>=D.stepGoal?' 🎉 goal hit!':''):'Steps cleared',()=>{if(v)D.steps[d]=v;else delete D.steps[d]})}}
   render();scrollTo(0,sy)};
