@@ -110,6 +110,35 @@ function summary(){const p=W0;if(p.goalType==='maintain')p.goal=p.weight;const c
   $('#a_go').onclick=()=>{const k=+$('#a_k').value;if(!(k>=800))return toast('Enter a budget');close();commit(k)}}}
 const onboarding=budgetHome;
 
+
+/* ---------- activity rings ---------- */
+const RC=[['cal','#ff2d6f','#ff7a59'],['stp','#9cff2e','#3ee08f'],['wat','#2ee6ff','#2f8cff']];
+const RICON={cal:'<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1.5 2 2 2 2s-.5-4 1-7z"/>',stp:'<path d="M5 12h12M13 7l5 5-5 5"/>',wat:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>'};
+function heroRings(t,b,exc,left){const st=D.steps[cur]||0,sg=D.stepGoal||10000,oz=D.water[cur]||0,wg=D.waterGoal||64;
+ const v=[t.kcal/(b+exc||1),st/sg,oz/wg],S=200,c=S/2,w=22,rs=[c-w/2-2,c-w*1.5-6,c-w*2.5-10];
+ const svg=`<svg class="arings" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"><defs>${RC.map(([k,a,z])=>`<linearGradient id="g_${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${z}"/><stop offset="1" stop-color="${a}"/></linearGradient>`).join('')}<filter id="rsh"><feDropShadow dx="0" dy="0" stdDeviation="2.2" flood-color="#000" flood-opacity=".7"/></filter></defs>
+ ${RC.map(([k,a],i)=>{const r=rs[i],C=2*Math.PI*r,p=Math.max(0,v[i]||0),p1=Math.min(1,p),p2=Math.min(1,Math.max(0,p-1));
+  return`<g><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${a}" stroke-opacity=".2" stroke-width="${w}"/>
+  <circle class="ra" cx="${c}" cy="${c}" r="${r}" fill="none" stroke="url(#g_${k})" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-to="${C*(1-p1)}" style="opacity:${p>0?1:0}"/>
+  ${p2>0?`<circle class="ra ra2" cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${a}" stroke-width="${w}" stroke-linecap="round" filter="url(#rsh)" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-to="${C*(1-p2)}"/>`:''}</g>`}).join('')}</svg>
+ <svg class="ricons" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${RC.map(([k],i)=>`<g transform="translate(${c-7} ${c-rs[i]-7}) scale(.58)" fill="none" stroke="#000" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">${RICON[k]}</g>`).join('')}</svg>`;
+ const over=left<0;
+ return`<div class="card rhero"><div class="rwrap">${svg}</div><div class="rstats">
+ <div class="rs"><small>Calories</small><b style="color:#ff4f6d">${r0(t.kcal).toLocaleString()}<i>/${(b+exc).toLocaleString()}</i><em>CAL</em></b></div>
+ <div class="rs"><small>Steps</small><b style="color:#a6ff3a">${st.toLocaleString()}<i>/${sg.toLocaleString()}</i></b></div>
+ <div class="rs"><small>Water</small><b style="color:#3fe3ff">${oz}<i>/${wg}</i><em>OZ</em></b></div>
+ </div><div class="rleft ${over?'over':''}"><b>${r0(Math.abs(left)).toLocaleString()}</b> ${over?'calories over budget':'calories left today'}${exc?` <span class="mut">· +${r0(exc)} exercise</span>`:''}</div></div>`}
+function animRings(){const rs=[...V.querySelectorAll('.ra')];requestAnimationFrame(()=>requestAnimationFrame(()=>rs.forEach(r=>r.style.strokeDashoffset=r.dataset.to)))}
+function spark(vals,goal,col){const m=Math.max(goal||0,...vals,1);return`<div class="spark">${vals.map((v,i)=>`<i style="height:${Math.max(4,v/m*100)}%;background:${col};opacity:${i===vals.length-1?1:.55}"></i>`).join('')}</div>`}
+function statGrid(){const days=[...Array(7)].map((_,i)=>addDays(cur,i-6)),S=streaks(),g=macroGoal(),t=dayTotal(cur);
+ const card=(id,lbl,col,big,unit,ch)=>`<div class="scard" data-go="${id}"><small>${lbl}</small><b style="color:${col}">${big}<em>${unit}</em></b>${ch}</div>`;
+ const gymDays=days.map(d=>D.gym[d]?1:0);
+ return`<div class="sgrid">
+ ${card('steps','Step Count','#a6ff3a',(D.steps[cur]||0).toLocaleString(),'steps',spark(days.map(d=>D.steps[d]||0),D.stepGoal,'#8be22d'))}
+ ${card('water','Water','#3fe3ff',D.water[cur]||0,'oz',spark(days.map(d=>D.water[d]||0),D.waterGoal,'#2ec5ff'))}
+ ${card('protein','Protein','#5b9dff',r0(t.p),'g / '+r0(g.p),spark(days.map(d=>dayTotal(d).p),g.p,'#4c8dff'))}
+ ${card('gym','Gym Streak','#ffb020',S.gym.cur,S.gym.cur===1?'day':'days',`<div class="spark dots7">${gymDays.map(x=>`<i class="${x?'on':''}"></i>`).join('')}</div>`)}
+ </div>`}
 /* ---------- today ---------- */
 function ring(pct,color){const R=52,C=2*Math.PI*R;return`<svg width="120" height="120"><circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--ln)" stroke-width="12"/>
  <circle cx="60" cy="60" r="${R}" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-Math.min(1,pct))}"/></svg>`}
@@ -135,7 +164,7 @@ const bankCol=(left,b)=>left<0?'var(--bad)':left<b*0.15?'var(--warn)':'var(--ok)
 function bankRing(left,b){const R=80,C=2*Math.PI*R,pc=Math.max(0,Math.min(1,left/b));return`<svg width="190" height="190" viewBox="0 0 190 190"><circle cx="95" cy="95" r="${R}" fill="none" stroke="var(--ln)" stroke-width="16"/>
  <circle class="bankarc" cx="95" cy="95" r="${R}" fill="none" stroke="${bankCol(left,b)}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(today.lastPc??1))}" data-to="${C*(1-pc)}"/></svg>`}
 function stepsCard(){const d=cur,st=D.steps[d]||0,g=D.stepGoal||10000,S=streaks().steps,days=[...Array(7)].map((_,i)=>addDays(d,i-6));
- return`<div class="card"><h2 style="margin-top:0">Steps</h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'var(--ok)':'var(--steps)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b>${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
+ return`<div class="card stepsc"><h2 style="margin-top:0">Steps</h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'var(--ok)':'var(--steps)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b>${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
  <div style="flex:1"><div>🔥 ${S.cur}-day streak<small class="mut" style="display:block">Best ${S.best}</small></div><div class="mut" style="font-size:13px">≈ ${stepKcal(d).toLocaleString()} cal burned${D.stepsAddBack?` · +${stepCredit(d)} added`:''}</div>
  <div class="row" style="margin-top:6px"><button class="add" data-sp="1000">+1,000</button><button class="add" data-sp="5000">+5,000</button></div>
  <div class="row"><input id="sp_n" type="number" inputmode="numeric" placeholder="Exact steps" style="flex:1;min-width:0"><button class="add" id="sp_set">Set</button></div></div></div>
@@ -149,9 +178,9 @@ function bindSteps(re){const d=cur,set=v=>{const was=(D.steps[d]||0)>=D.stepGoal
 function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBack?ex:0,net=t.kcal-exc,left=b-net,g=macroGoal(),L=dayLog(cur),X=exList(cur);
  const top=Object.values(D.stats).sort((a,b)=>b.count-a.count||b.last-a.last);
  V.innerHTML=nudges()+`<div class="card datebar"><button id="prev" aria-label="Previous day">‹</button><b id="dlabel">${nice(cur)}</b><button id="next" aria-label="Next day">›</button></div>
- <div class="card bank"><div class="mut bankt">Calorie bank</div><div class="ring big2" id="bankRing">${bankRing(left,b)}<div class="in"><b>${r0(Math.abs(left)).toLocaleString()}</b><small>${left<0?'cal over':'cal left'}</small><small class="mut tap" id="budTap">of ${b.toLocaleString()} ✎</small></div></div>
- <div class="bstats"><div><b>${r0(t.kcal).toLocaleString()}</b><small>Eaten</small></div><div><b>${ex?'+'+r0(exc).toLocaleString():'0'}</b><small>Exercise${D.exAddBack?' added':' (off)'}</small></div><div><b style="color:${bankCol(left,b)}">${r0(left).toLocaleString()}</b><small>Left</small></div></div>
- <div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'var(--fb)']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
+ ${heroRings(t,b,exc,left)}
+ ${statGrid()}
+ <div class="card"><h3 class="ch"><span>Nutrition</span><span class="mut tap" id="budTap">Budget ${b.toLocaleString()} ✎</span></h3><div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'var(--fb)']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
  ${stepsCard()}
  ${waterCard()}
  ${visMeals().map(m=>{const es=L[m.id]||[],s=sumEntries(es),chips=top.filter(x=>x.meal===m.id).slice(0,3);return`<div class="card meal"><h3><span>${esc(m.name)}</span><span><span class="mut">${r0(s.kcal)} cal</span> <button class="x" data-menu="${m.id}" aria-label="Meal options">⋯</button></span></h3>
@@ -161,7 +190,7 @@ function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBac
  <div class="card meal"><h3><span>🏃 Exercise</span><span class="mut">${r0(ex)} cal</span></h3>
  ${X.map(e=>`<div class="item" ${e.gym?'':`data-ex="${e.id}"`}><div>${esc(e.name)}${e.min?`<small>${e.min} min</small>`:''}</div><b>${r0(e.kcal)}</b></div>`).join('')}<button class="add" id="exAdd">+ Add exercise</button></div>
  <div class="card"><label style="margin-top:0">📝 Notes for the day</label><textarea id="dayNote" rows="2" placeholder="How did today go?">${esc(D.notes[cur]||'')}</textarea><button class="btn alt" id="copyDay">📋 Copy yesterday's food to ${nice(cur)}</button></div>`;
- {const arc=V.querySelector('.bankarc');if(arc){requestAnimationFrame(()=>requestAnimationFrame(()=>arc.style.strokeDashoffset=arc.dataset.to));today.lastPc=Math.max(0,Math.min(1,left/b))}}
+ animRings();
  $('#prev').onclick=()=>{cur=addDays(cur,-1);today()};$('#next').onclick=()=>{cur=addDays(cur,1);today()};
  $('#dlabel').onclick=()=>{cur=logicalToday();today()};$('#goalsTap').onclick=goalsSheet;
  V.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openAdd(b.dataset.add));
@@ -173,6 +202,7 @@ function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBac
  V.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const n=+b.dataset.w;D.water[cur]=(D.water[cur]||0)+n;waterStack.push([cur,n]);save();today();if(D.water[cur]>=D.waterGoal&&D.water[cur]-n<D.waterGoal)toast('Water goal hit! 💧')});
  $('#w_undo').onclick=()=>{const i=waterStack.map(x=>x[0]).lastIndexOf(cur),n=i>=0?waterStack.splice(i,1)[0][1]:8;D.water[cur]=Math.max(0,(D.water[cur]||0)-n);save();today()};
  bindSteps(today);
+ V.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>{const k=c.dataset.go;if(k==='gym')return go('gym');const el=k==='protein'?$('#goalsTap'):k==='water'?V.querySelector('.water'):V.querySelector('.stepsc');el&&el.scrollIntoView({behavior:'smooth',block:'center'})});
  $('#copyDay').onclick=()=>{const y=D.log[addDays(cur,-1)]||{};let n=0;Object.entries(y).forEach(([m,es])=>es.forEach(e=>{addEntry(m,{...e,id:uid()});n++}));if(!n)return toast('Nothing logged the day before');render();toast('Copied '+n+' item'+(n>1?'s':''))};
  $('#dayNote').onchange=e=>{const v=e.target.value.trim();if(v)D.notes[cur]=v;else delete D.notes[cur];save()};
  $('#budTap').onclick=e=>{e.stopPropagation();budgetHome()};$('#exAdd').onclick=()=>exSheet();
@@ -491,7 +521,9 @@ function workoutSheet(w0){const w=JSON.parse(JSON.stringify(w0||{type:'Strength'
  draw()}
 /* ---------- nav / install ---------- */
 const views={today,myfoods,gym,activity,progress,history,weight,settings};
-function render(){$('#fab').classList.toggle('hidden',!D.budget);if(!D.budget)return budgetHome();nb();views[tab]()}
+function render(){$('#fab').classList.toggle('hidden',!D.budget);if(!D.budget)return budgetHome();nb();views[tab]();pageTitle()}
+const TITLES={today:'Summary',myfoods:'My Foods',gym:'Gym',activity:'Streaks',progress:'Progress',history:'History',weight:'Weight',settings:'Settings'};
+function pageTitle(){const h=document.querySelector('.top h1');h.innerHTML=`<small>${new Date((tab==='today'?cur:logicalToday())+'T12:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}).toUpperCase()}</small>${TITLES[tab]||APP_NAME}`}
 function go(t){tab=t;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));window.scrollTo(0,0);render()}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='today')cur=logicalToday();go(b.dataset.tab)});
 document.querySelector('.top h1').textContent=APP_NAME;
