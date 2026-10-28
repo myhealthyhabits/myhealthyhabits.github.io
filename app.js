@@ -118,21 +118,22 @@ const onboarding=budgetHome;
 /* ---------- activity rings ---------- */
 const RC=[['cal','#ff2d6f','#ff7a59'],['stp','#9cff2e','#3ee08f'],['wat','#2ee6ff','#2f8cff']];
 const RICON={cal:'<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1.5 2 2 2 2s-.5-4 1-7z"/>',stp:'<path d="M5 12h12M13 7l5 5-5 5"/>',wat:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>'};
-function heroRings(t,b,exc,left){const st=D.steps[cur]||0,sg=D.stepGoal||10000,oz=D.water[cur]||0,wg=wGoal();
- const v=[t.kcal/(b+exc||1),st/sg,oz/wg],S=200,c=S/2,w=22,rs=[c-w/2-2,c-w*1.5-6,c-w*2.5-10];
- const svg=`<svg class="arings" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"><defs>${RC.map(([k,a,z])=>`<linearGradient id="g_${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${z}"/><stop offset="1" stop-color="${a}"/></linearGradient>`).join('')}<filter id="rsh"><feDropShadow dx="0" dy="0" stdDeviation="2.2" flood-color="#000" flood-opacity=".7"/></filter></defs>
- ${RC.map(([k,a],i)=>{const r=rs[i],C=2*Math.PI*r,p=Math.max(0,v[i]||0),p1=Math.min(1,p),p2=Math.min(1,Math.max(0,p-1));
-  return`<g><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${a}" stroke-opacity=".2" stroke-width="${w}"/>
-  <circle class="ra" cx="${c}" cy="${c}" r="${r}" fill="none" stroke="url(#g_${k})" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-to="${C*(1-p1)}" style="opacity:${p>0?1:0}"/>
-  ${p2>0?`<circle class="ra ra2" cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${a}" stroke-width="${w}" stroke-linecap="round" filter="url(#rsh)" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-to="${C*(1-p2)}"/>`:''}</g>`}).join('')}</svg>
- <svg class="ricons" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${RC.map(([k],i)=>`<g transform="translate(${c-7} ${c-rs[i]-7}) scale(.58)" fill="none" stroke="#000" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">${RICON[k]}</g>`).join('')}</svg>`;
- const over=left<0;
- return`<div class="card rhero"><div class="rwrap">${svg}</div><div class="rstats">
- <div class="rs"><small>Calories</small><b style="color:#ff4f6d">${eN(t.kcal).toLocaleString()}<i>/${eN(b+exc).toLocaleString()}</i><em>${eU().toUpperCase()}</em></b></div>
- <div class="rs sgedit tap" role="button" aria-label="Steps, tap to change goal"><small>Steps ✎</small><b style="color:#a6ff3a">${st.toLocaleString()}<i>/${sg.toLocaleString()}</i></b></div>
- <div class="rs"><small>Water</small><b style="color:#3fe3ff">${lN(oz)}<i>/${lN(wg)}</i><em>${lU().toUpperCase()}</em></b></div>
- </div><div class="rleft ${over?'over':''}"><b>${eN(Math.abs(left)).toLocaleString()}</b> ${eU()==='kJ'?'kJ':'calories'} ${over?'over budget':'left today'}${exc?` <span class="mut">· +${r0(exc)} exercise</span>`:(()=>{const bn=exList(cur).reduce((s,e)=>s+(+e.kcal||0),0)+stepKcal(cur);return bn?` <span class="mut">· ${fE(bn)} burned</span>`:''})()}</div></div>`}
-function animRings(){const rs=[...V.querySelectorAll('.ra')];if(prevRA)rs.forEach((r,i)=>{if(prevRA[i]){r.style.transition='none';r.style.strokeDashoffset=prevRA[i];r.getBoundingClientRect();r.style.transition=''}});requestAnimationFrame(()=>requestAnimationFrame(()=>rs.forEach(r=>r.style.strokeDashoffset=r.dataset.to)))}
+function heroRings(t,b,exc,left){const B=b+exc||1,p=Math.max(0,t.kcal/B),over=left<0,S=240,c=S/2,r=96,N=42,g=macroGoal(),fg=D.fiberGoal||28;
+ const a0=135,sw=270,L=Math.PI*r*sw/180,pt=(deg,rr)=>{const q=deg*Math.PI/180;return[(c+rr*Math.cos(q)).toFixed(2),(c+rr*Math.sin(q)).toFixed(2)]};
+ const ticks=[...Array(N)].map((_,i)=>{const d=a0+sw*i/(N-1),[x1,y1]=pt(d,r-11),[x2,y2]=pt(d,r+11);return`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`}).join('');
+ const[sx,sy]=pt(a0,r),[ex,ey]=pt(a0+sw,r),arc=`M${sx} ${sy}A${r} ${r} 0 1 1 ${ex} ${ey}`,fill=Math.min(1,p);
+ const svg=`<svg class="gauge" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" aria-hidden="true"><defs>
+  <linearGradient id="gg_ok" gradientUnits="userSpaceOnUse" x1="20" y1="200" x2="220" y2="200"><stop offset="0" stop-color="#ffc24d"/><stop offset=".55" stop-color="#ff9f0a"/><stop offset="1" stop-color="#ff6a1a"/></linearGradient>
+  <linearGradient id="gg_ov" gradientUnits="userSpaceOnUse" x1="20" y1="200" x2="220" y2="200"><stop offset="0" stop-color="#ff8a3d"/><stop offset="1" stop-color="#ff3b30"/></linearGradient>
+</defs>
+  <g class="gtr" stroke="rgba(255,255,255,.1)" stroke-width="6" stroke-linecap="round">${ticks}</g>
+  <g class="gfl" stroke="url(#${over?'gg_ov':'gg_ok'})" stroke-width="6" stroke-linecap="round">${ticks.split('/>').filter(Boolean).map((l,i)=>l+` class="gt" data-on="${i<Math.round(fill*N)||(fill>0&&i===0)?1:0}" style="transition-delay:${i*18}ms"/>`).join('')}</g></svg>`;
+ const pill=(lbl,v,goal,col)=>{const pc=Math.min(100,v/(goal||1)*100);return`<div class="gp" style="--c:${col}"><div class="gpt"><span>${lbl}</span><b>${r0(v)}<i>/${r0(goal)}g</i></b></div><div class="gpb"><i style="width:${pc}%"></i></div></div>`};
+ const bn=exList(cur).reduce((s,e)=>s+(+e.kcal||0),0)+stepKcal(cur);
+ return`<div class="card rhero gh${over?' over':''}"><div class="gwrap">${svg}<div class="gin"><b>${eN(Math.abs(left)).toLocaleString()}</b><span>${eU()==='kJ'?'kJ':'cal'} ${over?'over':'left'}</span><small>${eN(t.kcal).toLocaleString()} eaten · ${eN(B).toLocaleString()} budget</small></div><div class="gends"><span>0</span><span>${eN(B).toLocaleString()}</span></div></div>
+ <div class="gps">${pill('Protein',t.p,g.p,'#ff9f0a')}${pill('Carbs',t.c,g.c,'#ffd60a')}${pill('Fiber',t.fb,fg,'#30d158')}</div>
+ ${exc||bn?`<div class="gx mut">${exc?`+${fE(exc)} exercise added`:`${fE(bn)} burned`}</div>`:''}</div>`}
+function animRings(){const gt=[...V.querySelectorAll('.gt')];gt.forEach((g,i)=>{g.style.opacity=prevGT?prevGT[i]||'0':'0';if(prevGT)g.style.transitionDelay='0ms'});requestAnimationFrame(()=>requestAnimationFrame(()=>gt.forEach(g=>g.style.opacity=g.dataset.on)));const rs=[...V.querySelectorAll('.ra')];if(prevRA)rs.forEach((r,i)=>{if(prevRA[i]){r.style.transition='none';r.style.strokeDashoffset=prevRA[i];r.getBoundingClientRect();r.style.transition=''}});requestAnimationFrame(()=>requestAnimationFrame(()=>rs.forEach(r=>r.style.strokeDashoffset=r.dataset.to)))}
 function spark(vals,goal,col){const m=Math.max(goal||0,...vals,1);return`<div class="spark">${vals.map((v,i)=>`<i style="height:${Math.max(4,v/m*100)}%;background:${col};opacity:${i===vals.length-1?1:.55}"></i>`).join('')}</div>`}
 function statGrid(){const days=[...Array(7)].map((_,i)=>addDays(cur,i-6)),S=streaks(),g=macroGoal(),t=dayTotal(cur);
  const card=(id,lbl,col,big,unit,ch)=>`<div class="scard" data-go="${id}"><small>${lbl}</small><b style="color:${col}">${big}<em>${unit}</em></b>${ch}</div>`;
@@ -158,7 +159,7 @@ function tips(t,g,b){if(cur!==logicalToday())return'';const out=[],need=(k,v,goa
  if(t.kcal>b)out.push(`You're ${r0(t.kcal-b)} cal over. A walk helps, and tomorrow is a fresh start.`);
  return out.length?`<div class="tips">${out.slice(0,2).map(x=>`<div>💡 ${x}</div>`).join('')}</div>`:(t.kcal?'<div class="tips"><div>✅ Nice balance so far today!</div></div>':'')}
 function mini(lbl,v,goal,col,u='g'){const R=26,C=2*Math.PI*R,pc=Math.min(1,v/(goal||1));return`<div class="mr"><div class="mrr"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--ln)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pc)}"/></svg><b>${r0(v)}</b></div><small>${lbl}</small><small class="mut">of ${r0(goal)}${u}</small></div>`}
-let prevOz=null,prevRA=null,lastView=null;
+let prevGT=null,prevOz=null,prevRA=null,lastView=null;
 function cupSVG(f,i,pop){const id='cw'+i,y=4+40*(1-f);return`<svg viewBox="0 0 36 48" width="100%" height="100%" aria-hidden="true"><defs><clipPath id="${id}"><path d="M5 4h26l-3.2 38.5a3 3 0 0 1-3 2.5H11.2a3 3 0 0 1-3-2.5z"/></clipPath><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cf0ff"/><stop offset="1" stop-color="#0aa8d8"/></linearGradient></defs>
 <path d="M5 4h26l-3.2 38.5a3 3 0 0 1-3 2.5H11.2a3 3 0 0 1-3-2.5z" fill="#3fe3ff" fill-opacity=".06"/>
 <g clip-path="url(#${id})"><g class="wf${pop?' pop':''}" style="transform:translateY(${y}px)"><path class="wave" d="M-36 0q4.5-3 9 0t9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0V60H-36z" fill="url(#${id}g)" opacity="${f>0?1:0}"/>${f>0?'<circle class="bub" cx="14" cy="30" r="1.3"/><circle class="bub b2" cx="22" cy="34" r="1"/>':''}</g></g>
@@ -186,7 +187,7 @@ function bindSteps(re){V.querySelectorAll('.sgedit').forEach(e=>e.onclick=ev=>{e
  V.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>set((D.steps[d]||0)+ +b.dataset.sp));
  const sb=$('#sp_set');if(sb)sb.onclick=()=>{const v=+$('#sp_n').value;if($('#sp_n').value!==''&&v>=0)set(v)};
  const ab=$('#sp_ab');if(ab)ab.onchange=e=>{D.stepsAddBack=e.target.checked;save();re()}}
-function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,sy=window.scrollY;prevRA=soft?[...V.querySelectorAll('.ra')].map(r=>r.style.strokeDashoffset):null;lastView=view;const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=(D.exAddBack?ex-stepCredit(cur):0)+stepCredit(cur),net=t.kcal-exc,left=b-net,g=macroGoal(),L=dayLog(cur),X=exList(cur);
+function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,sy=window.scrollY;prevRA=soft?[...V.querySelectorAll('.ra')].map(r=>r.style.strokeDashoffset):null;prevGT=soft?[...V.querySelectorAll('.gt')].map(r=>r.style.opacity):null;lastView=view;const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=(D.exAddBack?ex-stepCredit(cur):0)+stepCredit(cur),net=t.kcal-exc,left=b-net,g=macroGoal(),L=dayLog(cur),X=exList(cur);
  const top=Object.values(D.stats).sort((a,b)=>b.count-a.count||b.last-a.last);
  V.innerHTML=nudges()+`<div class="card datebar"><button id="prev" aria-label="Previous day">‹</button><b id="dlabel" class="tap">${nice(cur)} ▾</b>${cur!==logicalToday()?'<button id="toToday" class="pill todayb">Today</button>':''}<button id="next" aria-label="Next day" ${cur>=logicalToday()?'disabled':''}>›</button></div>
  ${heroRings(t,b,exc,left)}

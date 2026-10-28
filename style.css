@@ -276,3 +276,17 @@ main{padding:8px 14px 12px}
 .skc.zero .skv b{color:#8e8e93}.skc.zero .skic{filter:grayscale(1);opacity:.7}.skhero.zero .skhn b{color:#8e8e93}
 .mcal button{position:relative}.cdots{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:center;gap:2px}.cdots i,.mleg i.g,.mleg i.s{width:4px;height:4px;border-radius:50%;display:inline-block}.cdots i.g,.mleg i.g{background:#a6ff00}.cdots i.s,.mleg i.s{background:#00e5ff}.mleg i.g,.mleg i.s{width:8px;height:8px}
 .mleg{flex-wrap:wrap;row-gap:4px}
+.rhero.gh{display:block;padding:14px 16px 16px}
+.gwrap{position:relative;width:240px;height:212px;margin:0 auto}.gwrap .gauge{position:absolute;top:0;left:0;transform:none}
+.gin{position:absolute;left:0;right:0;top:66px;text-align:center;line-height:1.1}.gin b{display:block;font-size:46px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--tx)}
+.gin span{display:block;font-size:15px;font-weight:700;color:#ff9f0a;text-transform:uppercase;letter-spacing:.08em;margin-top:2px}.gh.over .gin span{color:#ff453a}
+.gin small{display:block;font-size:12px;color:#8e8e93;margin-top:8px;font-variant-numeric:tabular-nums}
+.gends{position:absolute;left:34px;right:34px;bottom:2px;display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;font-variant-numeric:tabular-nums}
+.gps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.gpt{display:flex;flex-direction:column;gap:1px}.gpt span{font-size:12px;color:#8e8e93;font-weight:600}.gpt b{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.gpt i{font-style:normal;font-size:11px;color:#8e8e93;font-weight:600}
+.gpb{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:5px}.gpb i{display:block;height:100%;border-radius:3px;background:var(--c);transition:width .8s cubic-bezier(.22,1,.36,1)}
+.gx{text-align:center;font-size:12px;margin-top:10px}
+@media (prefers-reduced-motion:reduce){.ra,.gpb i{transition:none!important}}
+.cdots i{box-shadow:0 0 0 1.5px #fff}.cdots i{width:5px;height:5px}
+.gt{opacity:0;transition:opacity .35s ease}
+.gends{left:46px;right:46px;bottom:0}.gin small{font-size:11.5px}
