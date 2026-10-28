@@ -118,7 +118,7 @@ const onboarding=budgetHome;
 /* ---------- activity rings ---------- */
 const RC=[['cal','#ff2d6f','#ff7a59'],['stp','#9cff2e','#3ee08f'],['wat','#2ee6ff','#2f8cff']];
 const RICON={cal:'<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1.5 2 2 2 2s-.5-4 1-7z"/>',stp:'<path d="M5 12h12M13 7l5 5-5 5"/>',wat:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>'};
-function heroRings(t,b,exc,left){const st=D.steps[cur]||0,sg=D.stepGoal||10000,oz=D.water[cur]||0,wg=D.waterGoal||64;
+function heroRings(t,b,exc,left){const st=D.steps[cur]||0,sg=D.stepGoal||10000,oz=D.water[cur]||0,wg=wGoal();
  const v=[t.kcal/(b+exc||1),st/sg,oz/wg],S=200,c=S/2,w=22,rs=[c-w/2-2,c-w*1.5-6,c-w*2.5-10];
  const svg=`<svg class="arings" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"><defs>${RC.map(([k,a,z])=>`<linearGradient id="g_${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${z}"/><stop offset="1" stop-color="${a}"/></linearGradient>`).join('')}<filter id="rsh"><feDropShadow dx="0" dy="0" stdDeviation="2.2" flood-color="#000" flood-opacity=".7"/></filter></defs>
  ${RC.map(([k,a],i)=>{const r=rs[i],C=2*Math.PI*r,p=Math.max(0,v[i]||0),p1=Math.min(1,p),p2=Math.min(1,Math.max(0,p-1));
@@ -131,7 +131,7 @@ function heroRings(t,b,exc,left){const st=D.steps[cur]||0,sg=D.stepGoal||10000,o
  <div class="rs"><small>Calories</small><b style="color:#ff4f6d">${eN(t.kcal).toLocaleString()}<i>/${eN(b+exc).toLocaleString()}</i><em>${eU().toUpperCase()}</em></b></div>
  <div class="rs sgedit tap" role="button" aria-label="Steps, tap to change goal"><small>Steps ✎</small><b style="color:#a6ff3a">${st.toLocaleString()}<i>/${sg.toLocaleString()}</i></b></div>
  <div class="rs"><small>Water</small><b style="color:#3fe3ff">${lN(oz)}<i>/${lN(wg)}</i><em>${lU().toUpperCase()}</em></b></div>
- </div><div class="rleft ${over?'over':''}"><b>${eN(Math.abs(left)).toLocaleString()}</b> ${eU()==='kJ'?'kJ':'calories'} ${over?'over budget':'left today'}${exc?` <span class="mut">· +${r0(exc)} exercise</span>`:(()=>{const bn=exList(cur).reduce((s,e)=>s+(+e.kcal||0),0)+stepKcal(cur);return bn?` <span class="mut">· ${r0(bn).toLocaleString()} burned</span>`:''})()}</div></div>`}
+ </div><div class="rleft ${over?'over':''}"><b>${eN(Math.abs(left)).toLocaleString()}</b> ${eU()==='kJ'?'kJ':'calories'} ${over?'over budget':'left today'}${exc?` <span class="mut">· +${r0(exc)} exercise</span>`:(()=>{const bn=exList(cur).reduce((s,e)=>s+(+e.kcal||0),0)+stepKcal(cur);return bn?` <span class="mut">· ${fE(bn)} burned</span>`:''})()}</div></div>`}
 function animRings(){const rs=[...V.querySelectorAll('.ra')];if(prevRA)rs.forEach((r,i)=>{if(prevRA[i]){r.style.transition='none';r.style.strokeDashoffset=prevRA[i];r.getBoundingClientRect();r.style.transition=''}});requestAnimationFrame(()=>requestAnimationFrame(()=>rs.forEach(r=>r.style.strokeDashoffset=r.dataset.to)))}
 function spark(vals,goal,col){const m=Math.max(goal||0,...vals,1);return`<div class="spark">${vals.map((v,i)=>`<i style="height:${Math.max(4,v/m*100)}%;background:${col};opacity:${i===vals.length-1?1:.55}"></i>`).join('')}</div>`}
 function statGrid(){const days=[...Array(7)].map((_,i)=>addDays(cur,i-6)),S=streaks(),g=macroGoal(),t=dayTotal(cur);
@@ -163,10 +163,10 @@ function cupSVG(f,i,pop){const id='cw'+i,y=4+40*(1-f);return`<svg viewBox="0 0 3
 <path d="M5 4h26l-3.2 38.5a3 3 0 0 1-3 2.5H11.2a3 3 0 0 1-3-2.5z" fill="#3fe3ff" fill-opacity=".06"/>
 <g clip-path="url(#${id})"><g class="wf${pop?' pop':''}" style="transform:translateY(${y}px)"><path class="wave" d="M-36 0q4.5-3 9 0t9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0V60H-36z" fill="url(#${id}g)" opacity="${f>0?1:0}"/>${f>0?'<circle class="bub" cx="14" cy="30" r="1.3"/><circle class="bub b2" cx="22" cy="34" r="1"/>':''}</g></g>
 <path d="M5 4h26l-3.2 38.5a3 3 0 0 1-3 2.5H11.2a3 3 0 0 1-3-2.5z" fill="none" stroke="#3fe3ff" stroke-opacity="${f>0?.9:.35}" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 9l2.2 28" stroke="#fff" stroke-opacity=".18" stroke-width="1.6" stroke-linecap="round"/><text x="18" y="29" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff" fill-opacity="${f>0?.95:.6}" stroke="#04384a" stroke-opacity="${f>0?.55:0}" stroke-width="2" paint-order="stroke" style="font-family:inherit">${cupLbl()}</text></svg>`}
-function waterCard(){const oz=D.water[cur]||0,g=D.waterGoal||64,gc=Math.max(1,Math.ceil(g/8)),n=Math.max(gc,Math.ceil(oz/8)),po=prevOz??oz,hit=oz>=g;
+function waterCard(){const oz=D.water[cur]||0,g=wGoal(),C=CUP(),gc=Math.max(1,Math.round(g/C)),n=Math.max(gc,Math.ceil(oz/C-1e-6)),po=prevOz??oz,hit=oz>=g;
  return`<div class="card water ${hit?'hit':''}"><h3><span>Water</span><span class="wst">${hit?'✓ Goal reached · ':''}<b>${lN(oz)}</b> of ${fL(g)}</span></h3>
- <div class="cups2">${[...Array(n)].map((_,i)=>{const f=Math.max(0,Math.min(1,(oz-i*8)/8)),pf=Math.max(0,Math.min(1,(po-i*8)/8));return`<button class="cup ${f>0?'full':''} ${i>=gc?'xtra':''}" data-cup="${i}" aria-label="Cup ${i+1}, ${f>=1?'full':f>0?'partly full':'empty'}. ${f>0&&Math.ceil(oz/8)-1===i?'Tap to empty':'Tap to fill to '+(i+1)*8+' oz'}">${cupSVG(f,i,f>pf)}</button>`}).join('')}${hit?`<button class="cup ghost" data-cup="${n}" aria-label="Add 8 oz">+8</button>`:''}</div></div>`}
-function waterTap(i){const d=cur,oz=D.water[d]||0,last=Math.ceil(oz/8)-1,g=D.waterGoal||64;prevOz=oz;D.water[d]=(i===last&&oz>0)?i*8:(i+1)*8;if(!D.water[d])delete D.water[d];save();today();prevOz=null;const nw=D.water[d]||0;if(oz<g&&nw>=g)toast('Water goal hit! 💧')}
+ <div class="cups2">${[...Array(n)].map((_,i)=>{const f=Math.max(0,Math.min(1,(oz-i*C)/C)),pf=Math.max(0,Math.min(1,(po-i*C)/C));return`<button class="cup ${f>0?'full':''} ${i>=gc?'xtra':''}" data-cup="${i}" aria-label="Cup ${i+1}, ${f>=1?'full':f>0?'partly full':'empty'}. ${f>0&&Math.ceil(oz/C-1e-6)-1===i?'Tap to empty':'Tap to fill to '+fL((i+1)*C)}">${cupSVG(f,i,f>pf)}</button>`}).join('')}${hit?`<button class="cup ghost" data-cup="${n}" aria-label="Add 8 oz">+8</button>`:''}</div></div>`}
+function waterTap(i){const d=cur,oz=D.water[d]||0,C=CUP(),last=Math.ceil(oz/C-1e-6)-1,g=wGoal();prevOz=oz;D.water[d]=(i===last&&oz>0)?i*C:(i+1)*C;if(!D.water[d])delete D.water[d];save();today();prevOz=null;const nw=D.water[d]||0;if(oz<g&&nw>=g)toast('Water goal hit! 💧')}
 let waterStack=[];
 const bankCol=(left,b)=>left<0?'var(--bad)':left<b*0.15?'var(--warn)':'var(--ok)';
 function bankRing(left,b){const R=80,C=2*Math.PI*R,pc=Math.max(0,Math.min(1,left/b));return`<svg width="190" height="190" viewBox="0 0 190 190"><circle cx="95" cy="95" r="${R}" fill="none" stroke="var(--ln)" stroke-width="16"/>
@@ -193,10 +193,10 @@ function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,
  ${statGrid()}
  ${doneCard()}
  ${visMeals().map(m=>{const es=L[m.id]||[],s=sumEntries(es),chips=top.filter(x=>x.meal===m.id).slice(0,3);return`<div class="card meal"><h3><span>${esc(m.name)}</span><span><span class="mut">${r0(s.kcal)} cal</span> <button class="x" data-menu="${m.id}" aria-label="Meal options">⋯</button></span></h3>
- ${es.map(e=>`<div class="item" data-edit="${m.id}|${e.id}"><div>${esc(e.food.name)}<small>${r1(e.qty)} × ${esc(e.food.units[e.ui]?.label||'serving')}${e.food.brand?' · '+esc(e.food.brand):''}</small></div><b>${r0(e.kcal)}</b></div>`).join('')}
+ ${es.map(e=>`<div class="item" data-edit="${m.id}|${e.id}"><div>${esc(e.food.name)}<small>${r1(e.qty)} × ${esc(e.food.units[e.ui]?.label||'serving')}${e.food.brand?' · '+esc(e.food.brand):''}</small></div><b class="kc">${r0(e.kcal)}</b></div>`).join('')}
  ${!es.length&&chips.length?`<div class="chips">${chips.map(c=>`<button data-chip="${m.id}|${esc(fkey(c.food))}">+ ${esc(c.food.name)}</button>`).join('')}</div>`:''}
- <div class="row"><button class="add" data-add="${m.id}">+ Add food</button><button class="add qa" data-qa="${m.id}" aria-label="Quick calories">⚡ Cal</button><button class="add qa" data-scan="${m.id}" aria-label="Scan barcode">📷</button></div></div>`}).join('')}
- <div class="card"><h3 class="ch"><span>Nutrition</span><span class="mut tap" id="budTap">Budget ${b.toLocaleString()} ✎</span></h3><div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'var(--fb)']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
+ <div class="row"><button class="add" data-add="${m.id}">+ Add food</button><button class="add qa" data-qa="${m.id}" aria-label="Quick calories">⚡ ${eU()==='kJ'?'kJ':'Cal'}</button><button class="add qa" data-scan="${m.id}" aria-label="Scan barcode">📷</button></div></div>`}).join('')}
+ <div class="card"><h3 class="ch"><span>Nutrition</span><span class="mut tap" id="budTap">Budget ${fE(b)} ✎</span></h3><div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'var(--fb)']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
  ${stepsCard()}
  ${waterCard()}
  <div class="card meal"><h3><span>Exercise</span><span class="mut">${r0(ex)} cal</span></h3>
@@ -319,11 +319,11 @@ function gymLog(day,ne,old){let w=D.workouts.find(x=>x.date===day&&x.quick);if(!
  if(!w.items.length)D.workouts=D.workouts.filter(x=>x!==w);syncGymDay(day)}
 
 function quickAdd(mealId){sheet(`<h2>Quick add</h2><label>Meal</label><select id="q_m">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
- <label>Name (optional)</label><input id="q_n" placeholder="Quick add"><label>Calories</label><input id="q_k" type="number" inputmode="numeric" class="bigin" autofocus>
+ <label>Name (optional)</label><input id="q_n" placeholder="Quick add"><label>${eU()==='kJ'?'Kilojoules':'Calories'}</label><input id="q_k" type="number" inputmode="numeric" class="bigin" autofocus>
  <div class="row"><div><label>Protein g</label><input id="q_p" type="number"></div><div><label>Carbs g</label><input id="q_c" type="number"></div><div><label>Fat g</label><input id="q_f" type="number"></div><div><label>Fiber g</label><input id="q_fb" type="number"></div></div>
  <button class="btn" id="q_go">Add</button><button class="btn alt" onclick="close()">Cancel</button>`);
  if(mealId)$('#q_m').value=mealId;
- $('#q_go').onclick=()=>{const k=+$('#q_k').value;if(!k)return toast('Enter calories');
+ $('#q_go').onclick=()=>{const k=eU()==='kJ'?Math.round(+$('#q_k').value/4.184):+$('#q_k').value;if(!k)return toast('Enter calories');
   const f={src:'quick',name:$('#q_n').value||'Quick add',n:{kcal:k,p:+$('#q_p').value||0,c:+$('#q_c').value||0,f:+$('#q_f').value||0,fb:+$('#q_fb').value||0},units:[{label:'serving',mult:1}]};
   f.ref=uid();addEntry($('#q_m').value,entryFrom(f,0,1));close();render()};setTimeout(()=>$('#q_k')?.focus(),50)}
 function mealMenu(mid){const m=D.meals.find(x=>x.id===mid);sheet(`<h2>${esc(m.name)}</h2>
@@ -649,6 +649,7 @@ const U=()=>Object.assign({w:'lb',e:'cal',h:'ft',d:'mi',l:'oz'},D.units||{});
 const fW=lb=>U().w==='kg'?r1(lb*0.453592)+' kg':r1(lb)+' lb',wU=()=>U().w,toLb=v=>U().w==='kg'?r1(v/0.453592):v;
 const fE=k=>U().e==='kJ'?Math.round(k*4.184).toLocaleString()+' kJ':r0(k).toLocaleString()+' cal',eU=()=>U().e==='kJ'?'kJ':'cal',eN=k=>U().e==='kJ'?Math.round(k*4.184):r0(k);
 const fD=mi=>U().d==='km'?r1(mi*1.60934)+' km':mi+' mi';
+const CUP=()=>U().l==='ml'?250/29.5735:8,wGoal=()=>U().l==='ml'?Math.max(1,Math.round((D.waterGoal||64)/8))*CUP():(D.waterGoal||64);
 const fL=oz=>U().l==='ml'?Math.round(oz*29.5735/10)*10+' ml':r0(oz)+' oz',lU=()=>U().l==='ml'?'ml':'oz',lN=oz=>U().l==='ml'?Math.round(oz*29.5735/10)*10:r0(oz),cupLbl=()=>U().l==='ml'?'250 ml':'8 oz';
 function unitsSheet(){const u=U(),R=[['w','Weight',[['lb','Pounds (lb)'],['kg','Kilograms (kg)']]],['e','Energy',[['cal','Calories'],['kJ','Kilojoules (kJ)']]],['h','Height',[['ft','Feet & inches'],['cm','Centimeters']]],['d','Distance',[['mi','Miles'],['km','Kilometers']]],['l','Liquids',[['oz','Fluid ounces'],['ml','Milliliters']]]];
  sheet(`<h2>Units</h2>${R.map(([k,n,o])=>`<label>${n}</label><div class="seg" data-uk="${k}">${o.map(([v,l])=>`<button data-uv="${v}" class="${u[k]===v?'on':''}">${l}</button>`).join('')}</div>`).join('')}<p class="hint">Your data is stored once and converted for display, so switching is safe.</p><button class="btn" id="un_done">Done</button>`);
@@ -675,6 +676,16 @@ function bindProgram(){if(!$('#pg_goal'))return;$('#pg_goal').onclick=budgetHome
   <p class="hint">Other days drop by ${s.days.length&&s.days.length<7?Math.round(s.extra*s.days.length/(7-s.days.length)):0} cal so your weekly total stays ${fE((D.budget||1800)*7)}.</p>`:'<p class="hint">Same budget every day.</p>'}<button class="btn" id="sc_go">Save</button>`);
   $('#sc_m').querySelectorAll('button').forEach(b=>b.onclick=()=>{s.mode=b.dataset.m;draw()});document.querySelectorAll('[data-wd]').forEach(b=>b.onclick=()=>{const i=+b.dataset.wd;s.days=s.days.includes(i)?s.days.filter(x=>x!==i):[...s.days,i].sort();draw()});
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{s.extra=+b.dataset.x;draw()});$('#sc_go').onclick=()=>{D.sched=s;save();close();render();toast('Schedule saved')}};draw()}}
+/* kJ display: convert "N cal" text and .kc numbers in rendered UI (data stays in kcal) */
+const KJR=/(~?)(\d[\d,]*(?:\.\d+)?)(\s?)cal\b/g;
+function kjText(s){return s.replace(KJR,(m,t,n,sp)=>t+Math.round(+n.replace(/,/g,'')*4.184).toLocaleString()+sp+'kJ').replace(/\bcal\b(?=\s|$|\)|\/|·)/g,'kJ')}
+function kjWalk(root){if(U().e!=='kJ'||!root)return;const tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const ns=[];while(tw.nextNode())ns.push(tw.currentNode);
+ ns.forEach(n=>{if(n.parentElement&&n.parentElement.closest('[data-kj],input,textarea,select,option'))return;const v=n.nodeValue;if(!/cal\b/.test(v))return;
+  if(/^\s*cal\b/.test(v)){const p=n.previousSibling;if(p&&p.nodeType===1&&/^~?[\d,]+$/.test(p.textContent.trim())&&!p.dataset.kj){const t=p.textContent.trim();p.textContent=(t[0]==='~'?'~':'')+Math.round(+t.replace(/[~,]/g,'')*4.184).toLocaleString();p.dataset.kj=1}}
+  const nv=kjText(v);if(nv!==v)n.nodeValue=nv});
+ root.querySelectorAll('.kc:not([data-kj])').forEach(el=>{const t=el.textContent.trim();if(/^~?[\d,]+$/.test(t)){el.textContent=(t[0]==='~'?'~':'')+Math.round(+t.replace(/[~,]/g,'')*4.184).toLocaleString();el.dataset.kj=1}})}
+{let busy=false;const mo=new MutationObserver(()=>{if(busy||U().e!=='kJ')return;busy=true;mo.disconnect();['#view','#sheet','#toast'].forEach(s=>kjWalk($(s)));obs();busy=false});
+ const obs=()=>['#view','#sheet','#toast'].forEach(s=>$(s)&&mo.observe($(s),{childList:true,subtree:true,characterData:true}));obs()}
 /* ---------- nav / install ---------- */
 const views={today,myfoods,gym,activity,progress,history,weight,settings};
 function render(){$('#fab').classList.toggle('hidden',!D.budget);if(!D.budget)return budgetHome();nb();views[tab]();pageTitle()}
