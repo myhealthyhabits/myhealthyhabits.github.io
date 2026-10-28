@@ -344,14 +344,15 @@ let addTab='recent';
 const myFoods=()=>{const m=new Map();Object.values(D.stats).forEach(s=>m.set(fkey(s.food),{food:s.food,count:s.count,last:s.last,ui:s.ui,qty:s.qty}));D.custom.forEach(f=>{const k=fkey(f);if(!m.has(k))m.set(k,{food:f,count:0,last:0,ui:0,qty:1})});return[...m.values()].sort((a,b)=>b.count-a.count||b.last-a.last)};
 function openAdd(mid){sheet(`<h2>Add to ${esc(D.meals.find(m=>m.id===mid).name)}</h2>
  <div class="row"><input id="s_q" type="search" placeholder="Search foods…" enterkeyhint="search"><button class="btn sm" id="s_scan" style="flex:none">📷 Scan</button></div>
- <div class="seg" id="s_tabs">${[['recent','Recent'],['fav','★ Favorites'],['my','My Foods'],['meals','Saved meals']].map(([k,v])=>`<button data-t="${k}" class="${k===addTab?'on':''}">${v}</button>`).join('')}</div>
+ <div class="seg" id="s_tabs">${[['recent','Recent'],['fav','★ Favorites'],['my','My Foods'],['meals','Saved meals'],['cond','Condiments & sauces']].map(([k,v])=>`<button data-t="${k}" class="${k===addTab?'on':''}">${v}</button>`).join('')}</div>
+ <div class="stores" id="s_st">${STORES.map(s=>`<button data-st="${s.k}" class="${storeSel?.k===s.k?'on':''}">${esc(s.lbl)}${s.sub?`<small>${esc(s.sub)}</small>`:''}</button>`).join('')}</div>
  <div id="s_res"></div><button class="btn alt" id="s_new">+ Create a custom food</button><button class="btn alt" onclick="close()">Done</button>`);
  const showTab=()=>{$('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===addTab));listLocal(mid)};
  $('#s_tabs').onclick=e=>{if(e.target.dataset.t){addTab=e.target.dataset.t;showTab()}};
  let tmo;$('#s_q').oninput=e=>{clearTimeout(tmo);const q=e.target.value.trim();if(!q)return showTab();tmo=setTimeout(()=>search(q,mid),800)};
  $('#s_q').onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tmo);search(e.target.value.trim(),mid)}};
- $('#s_scan').onclick=()=>scan(mid);$('#s_new').onclick=()=>customFood(mid);showTab()}
-const resRow=(f,extra='')=>`<div class="res" data-i>${esc(f.name)} ${extra}<br><small>${f.brand?esc(f.brand)+' · ':''}${r0(f.n.kcal*f.units[0].mult)} cal per ${esc(f.units[0].label)}</small></div>`;
+ $('#s_st').onclick=e=>{const b=e.target.closest('[data-st]');if(!b)return;const s=STORES.find(x=>x.k===b.dataset.st);storeSel=storeSel===s?null:s;$('#s_st').querySelectorAll('button').forEach(x=>x.classList.toggle('on',storeSel?.k===x.dataset.st));const q=$('#s_q').value.trim();if(q||storeSel)search(q,mid);else showTab()};$('#s_scan').onclick=()=>scan(mid);$('#s_new').onclick=()=>customFood(mid);showTab()}
+const resRow=(f,extra='')=>{const st=storeOf(f),u0=unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res" data-i>${esc(f.name)} ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}<br><small>${f.brand?esc(f.brand)+' · ':''}${r0(f.n.kcal*u0.mult)} cal per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div>`};
 function bindRes(list,mid,onpick){$('#s_res').querySelectorAll('[data-i]').forEach((el,i)=>el.onclick=()=>onpick(list[i]))}
 function listLocal(mid){let html='',list=[];const S=Object.values(D.stats);
  if(addTab==='recent'||addTab==='freq'){list=S.sort((a,b)=>addTab==='recent'?b.last-a.last:b.count-a.count).slice(0,30);
@@ -359,36 +360,68 @@ function listLocal(mid){let html='',list=[];const S=Object.values(D.stats);
   $('#s_res').innerHTML=html;bindRes(list,mid,s=>pick(s.food,mid,s.ui,s.qty))}
  else if(addTab==='fav'){list=D.fav.map(k=>D.stats[k]).filter(Boolean);$('#s_res').innerHTML=list.map(s=>resRow(s.food,'<small class="mut">★</small>')).join('')||'<p class="mut">Tap ☆ on any food to make it a favorite.</p>';bindRes(list,mid,s=>pick(s.food,mid,s.ui,s.qty))}
  else if(addTab==='my'){list=myFoods();$('#s_res').innerHTML=list.map(s=>resRow(s.food,`<small class="mut">· ${s.count}× ${s.food.barcode||s.food.src==='off'?'· UPC '+esc(s.food.barcode||s.food.ref):''}</small>`)).join('')||'<p class="mut">Foods you log, scan or create show up here, most used first.</p>';bindRes(list,mid,s=>pick(s.food,mid,s.ui,s.qty))}
+ else if(addTab==='cond'){list=CONDLIB;$('#s_res').innerHTML=list.map(f=>resRow(f)).join('');bindRes(list,mid,f=>pick(f,mid))}
  else{list=D.saved;$('#s_res').innerHTML=list.map(m=>{const s=sumEntries(m.items);return`<div class="res" data-i>${esc(m.name)}<br><small>${m.items.length} items · ${r0(s.kcal)} cal</small></div>`}).join('')||'<p class="mut">Save a meal from the ⋯ menu on any meal, or build one in Settings.</p>';
   bindRes(list,mid,m=>{m.items.forEach(e=>addEntry(mid,{...e,id:uid()}));close();render();toast('Added '+m.name)})}}
 const pick=(f,mid,ui=0,qty=1)=>servingSheet(f,ui,qty,mid,(e,m)=>{addEntry(m,e);render();toast('Added '+f.name)});
 
+const UCODE=s=>String(s||'').replace(/(\d)\s*(oza)\b/gi,'$1 fl oz').replace(/\boza\b/gi,'fl oz').replace(/\bonz\b/gi,'oz').replace(/(\d)\s*grm\b/gi,'$1g').replace(/\bgrm\b/gi,'g').replace(/(\d)\s*mlt\b/gi,'$1ml').replace(/\bmlt\b/gi,'ml');
 function usdaFood(x){const g=id=>{const n=(x.foodNutrients||[]).find(n=>n.nutrientId===id||n.nutrientNumber===String(id));return n?n.value:0};
  let kcal=g(1008)||g(208)||g(2047)||g(2048);const n={kcal,p:g(1003),c:g(1005),f:g(1004),fb:g(1079)||g(291)};
- const units=[];if(x.servingSize&&x.dataType==='Branded'){const gu=(x.servingSizeUnit||'g').toLowerCase();units.push({label:(x.householdServingFullText?x.householdServingFullText.toLowerCase()+' ('+x.servingSize+gu+')':x.servingSize+gu),mult:x.servingSize/100})}
+ const units=[];if(x.servingSize&&x.dataType==='Branded'){const gu=UCODE((x.servingSizeUnit||'g').toLowerCase()),ss=+(+x.servingSize).toFixed(1);units.push({label:UCODE(x.householdServingFullText?x.householdServingFullText.toLowerCase()+' ('+ss+gu+')':ss+gu),mult:x.servingSize/100})}
  (x.foodMeasures||[]).filter(m=>m.gramWeight&&m.disseminationText&&m.disseminationText!=='Quantity not specified').slice(0,4).forEach(m=>units.push({label:m.disseminationText,mult:m.gramWeight/100}));
  units.push({label:'100 g',mult:1},{label:'1 oz',mult:.2835},{label:'1 g',mult:.01});
  const nm=x.description.charAt(0)+x.description.slice(1).toLowerCase();
- return{src:'usda',ref:x.fdcId,name:x.dataType==='Branded'?nm.replace(/\b\w/g,c=>c.toUpperCase()):x.description,brand:x.brandName||x.brandOwner||'',n,units}}
+ return{src:'usda',ref:x.fdcId,dt:x.dataType,branded:x.dataType==='Branded',owner:x.brandOwner||'',name:x.dataType==='Branded'?nm.replace(/\b\w/g,c=>c.toUpperCase()):x.description,brand:(x.brandName||x.brandOwner||'').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()).replace(/'S\b/g,"'s"),n,units}}
 function offFood(p){const N=p.nutriments||{};const kcal=N['energy-kcal_100g']??(N.energy_100g?N.energy_100g/4.184:0);
  const n={kcal:+kcal||0,p:+N.proteins_100g||0,c:+N.carbohydrates_100g||0,f:+N.fat_100g||0,fb:+N.fiber_100g||0};const units=[];
- const sq=parseFloat(p.serving_quantity);if(sq)units.push({label:p.serving_size||sq+' g',mult:sq/100});
+ const sq=parseFloat(p.serving_quantity)||(N['energy-kcal_serving']&&N['energy-kcal_100g']?Math.round(N['energy-kcal_serving']/N['energy-kcal_100g']*1000)/10:0);if(sq)units.push({label:p.serving_size?p.serving_size:sq+' g',mult:sq/100});
  units.push({label:'100 g',mult:1},{label:'1 oz',mult:.2835},{label:'1 g',mult:.01});
- return{src:'off',ref:p.code,barcode:p.code,name:p.product_name||'Unnamed product',brand:(p.brands||'').split(',')[0],n,units}}
+ return{src:'off',ref:p.code,barcode:p.code,name:p.product_name||'Unnamed product',brand:(Array.isArray(p.brands)?p.brands[0]||'':(p.brands||'').split(',')[0]).trim(),stores:Array.isArray(p.stores)?p.stores:String(p.stores||'').split(','),n,units}}
+/* ---------- store brands ---------- */
+const STORES=[
+ {k:'costco',lbl:'Costco',re:/\b(costco|kirkland(\s+signature)?)\b/i,m:/kirkland|costco/i,usda:['+brandOwner:costco'],ob:['kirkland-signature','kirkland','costco'],os:'costco'},
+ {k:'tj',lbl:"Trader Joe's",re:/\b(trader\s*joe'?s?|tj'?s)\b/i,m:/trader\s*joe/i,usda:['+brandName:trader','+brandOwner:trader'],ob:['trader-joe-s'],os:'trader-joe-s'},
+ {k:'wf',lbl:'Whole Foods',re:/\b(whole\s*foods(\s+market)?|365)\b/i,m:/whole foods|365/i,usda:['+brandOwner:whole'],ob:['365-by-whole-foods-market','365-everyday-value','whole-foods-market'],os:'whole-foods'},
+ {k:'wm',lbl:'Walmart',sub:'Great Value',re:/\b(walmart|great\s+value)\b/i,m:/walmart|great value/i,usda:['+brandOwner:walmart','+brandName:great'],ob:['great-value'],os:'walmart'},
+ {k:'tg',lbl:'Target',sub:'Good & Gather',re:/\b(target|good\s*(&|and)\s*gather|market\s+pantry)\b/i,m:/target|good\s*&\s*gather|market pantry/i,usda:['+brandOwner:target'],ob:['good-gather','market-pantry'],os:'target'},
+ {k:'kr',lbl:'Kroger',sub:'Simple Truth',re:/\b(kroger|simple\s+truth|private\s+selection)\b/i,m:/kroger|simple truth|private selection/i,usda:['+brandOwner:kroger'],ob:['kroger','simple-truth','private-selection'],os:'kroger'}];
+let storeSel=null;
+const storeOf=f=>{const s=[f.brand,f.owner,...(f.stores||[])].filter(Boolean).join(' ');return STORES.find(x=>x.m.test(s))};
+const qWords=q=>q.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1&&!/^(and|with|the|of)$/.test(w));
+const stem=w=>w.replace(/(ies)$/,'y').replace(/(es|s)$/,'');
+function relScore(f,ws,store){const nm=(f.name||'').toLowerCase(),seg=nm.split(',')[0].trim(),toks=nm.replace(/[^a-z0-9 ]/g,' ').split(/\s+/).map(stem);let s=0;
+ ws.forEach(w=>{if(toks.includes(stem(w)))s+=10;else if(nm.includes(stem(w)))s+=4;else s-=6});
+ if(ws.length&&stem(seg)===stem(ws.join(' ')))s+=8;if(/\braw\b/.test(nm))s+=3;if(/dehydrated|powder|babyfood|chips|candied|canned in heavy|frozen dessert/.test(nm))s-=4;
+ if(f.cond)s+=6;if(f.dt==='SR Legacy')s+=2;if(f.src==='custom')s+=6;
+ if(store){if(storeOf(f)===store)s+=25;else s-=30}else if(f.branded||f.src==='off')s-=12;
+ return s-Math.min(nm.length,120)/40}
+async function usdaQ(q,types){const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=30&dataType='+encodeURIComponent(types)+'&query='+encodeURIComponent(q));
+ if(!r.ok)throw new Error(r.status===429?'limit':'usda');const j=await r.json();return(j.foods||[]).map(usdaFood).filter(f=>f.n.kcal||f.n.p)}
+async function offQ(q,tag){const F='code,product_name,brands,stores,nutriments,serving_size,serving_quantity',map=j=>(j.products||j.hits||[]).filter(p=>p.product_name).map(offFood).filter(f=>f.n.kcal);
+ const us=['https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=24&fields='+F+'&search_terms='+encodeURIComponent(q)+(tag?'&tagtype_0='+tag[0]+'&tag_contains_0=contains&tag_0='+encodeURIComponent(tag[1]):'')];
+ for(const u of us){try{const r=await tfetch(u,7000);if(!r.ok)continue;return map(await r.json())}catch(e){}}return null}
 const SC={};
-async function search(q,mid){if(!q)return;const R=$('#s_res');R.innerHTML='<p class="mut">Searching…</p>';
+async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STORES.find(s=>s.re.test(q))||storeSel;if(!q&&!st0)return;
+ const rest=q.replace(st0?new RegExp(st0.re.source,'gi'):/$^/,' ').replace(/\s+/g,' ').trim(),ws=qWords(rest);
+ if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));
- const loc=[...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
- let list=[],err='';
- const ck='q:'+q.toLowerCase();SC[ck]=SC[ck]||null;
- try{if(SC[ck])list=SC[ck];else{const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=25&dataType=Foundation,SR%20Legacy,Branded&query='+encodeURIComponent(q));
-  if(!r.ok)throw new Error(r.status===429?'limit':'usda');const j=await r.json();list=SC[ck]=(j.foods||[]).sort((a,b)=>(a.dataType==='Branded')-(b.dataType==='Branded')).map(usdaFood).filter(f=>f.n.kcal||f.n.p)}}catch(e){err=e.message}
- if(list.length<5){const ok='off:'+q.toLowerCase();if(SC[ok])list=list.concat(SC[ok]);else{let ps=null;const f='code,product_name,brands,nutriments,serving_size,serving_quantity';
-  for(const u of['https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=20&fields='+f+'&search_terms='+encodeURIComponent(q),'https://world.openfoodfacts.org/api/v2/search?page_size=20&fields='+f+'&search_terms='+encodeURIComponent(q)]){try{const r=await tfetch(u);if(!r.ok)continue;const j=await r.json();ps=(j.products||[]).filter(p=>p.product_name).map(offFood);break}catch(e){}}
-  if(ps){SC[ok]=ps;list=list.concat(ps)}else err+=' off'}}
-if($('#s_q')?.value.trim()!==q)return;
- const seen=new Set(),all=[...loc,...list].filter(f=>{const k=fkey(f);if(seen.has(k))return false;seen.add(k);return true});
- R.innerHTML=all.map(f=>resRow(f)).join('')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a minute.':'No results.'}</p>`;
+ const lq=rest.toLowerCase(),loc=st0?[]:[...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>ws.length&&ws.every(w=>f.name.toLowerCase().includes(stem(w))));
+ const ck=(st0?.k||'')+':'+lq;let list=[],err='';
+ if(SC[ck])list=SC[ck];else{
+  const jobs=[];
+  if(st0){const req=ws.map(w=>'+'+w).join(' ');st0.usda.forEach(b=>jobs.push(usdaQ(b+' '+req,'Branded').then(r=>r.length||!ws.length?r:usdaQ(b+' '+rest,'Branded')).catch(e=>{err+=e.message;return[]})));
+   0}
+  else{jobs.push(usdaQ(rest,'Foundation,SR Legacy').catch(e=>{err+=e.message;return[]}),usdaQ(rest,'Branded').catch(e=>{err+=e.message;return[]}))}
+  list=(await Promise.all(jobs)).flat();if(list.filter(f=>!st0||storeOf(f)===st0).length<8){const oj=st0?[...st0.ob.slice(0,2).map(b=>offQ(rest,['brands',b])),offQ(rest,['stores',st0.os])]:[offQ(rest)];list=list.concat(...(await Promise.all(oj)).map(x=>x||[]))}if(list.length)SC[ck]=list}
+ if(($('#s_q')?.value.trim()||'')!==q)return;
+ const seen=new Set();let all=[...loc,...list].filter(f=>{const k=fkey(f),k2=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k)||seen.has(k2))return false;seen.add(k);seen.add(k2);return true});
+ const hits=f=>{const nm=f.name.toLowerCase();return ws.filter(w=>nm.includes(stem(w))).length};
+ all=all.map(f=>[f,relScore(f,ws,st0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,40);
+ let note='';if(st0&&!all.length&&ws.length){note=`<p class="mut" style="font-size:13px">No ${esc(st0.lbl)} match for “${esc(rest)}” in the food databases yet. Showing general results — or create it as a custom food from the label.</p>`;
+  const gk=':'+lq;let g=SC[gk];if(!g){g=(await Promise.all([usdaQ(rest,'Foundation,SR Legacy').catch(()=>[]),usdaQ(rest,'Branded').catch(()=>[])])).flat();SC[gk]=g}
+  if(($('#s_q')?.value.trim()||'')!==q)return;all=g.map(f=>[f,relScore(f,ws,null)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,30)}
+ R.innerHTML=note+all.map(f=>resRow(f)).join('')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a minute.':'No results'+(st0?' at '+st0.lbl:'')+'.'}</p>`;
  bindRes(all,mid,f=>pick(f,mid))}
 /* ---------- amounts: units + parsing ---------- */
 const parseAmt=s=>{s=String(s||'').trim().replace(',','.').replace(/[½¼¾⅓⅔]/g,c=>({'½':' 1/2','¼':' 1/4','¾':' 3/4','⅓':' 1/3','⅔':' 2/3'})[c]).trim();if(!s)return 0;
@@ -401,7 +434,7 @@ function unitsFor(f){const gk=f.src==='custom'?(f.gpS?f.gpS:0):(f.src==='quick'?
  (f.units||[]).forEach((u,i)=>{if(OLDGEN.test(u.label)||['g','oz','ml'].includes(u.label))return;let L=u.label.trim();
   if(u.kind){add(u);return}
   const m=L.match(/^(\d+(?:\.\d+)?|\d+\/\d+)\s+([a-zA-Z][a-zA-Z .-]*?)(?:\s*\((.*)\))?$/);
-  if(f.src==='custom'&&i===0){const nm=L.replace(/^1\s+/,'');add({label:nm||'serving',mult:u.mult,kind:'n'});if(nm!=='serving')add({label:'serving',mult:u.mult,kind:'s'});return}
+  if(f.src==='custom'&&i===0){const nm=L.replace(/^1\s+/,'');add({label:nm||'serving',mult:u.mult,kind:nm&&nm!=='serving'?'n':'s'});return}
   if(i===0){add({label:'serving',mult:u.mult,kind:'s',note:L})}
   if(m){const n=parseAmt(m[1])||1,w=m[2].trim().toLowerCase();if(!/^(g|grams?|oz|ml|serving)$/.test(w))add({label:n>1?sing(w):w,mult:u.mult/n,kind:'n'})}
   else if(i>0)add({label:L,mult:u.mult,kind:'n'})});
@@ -409,7 +442,15 @@ function unitsFor(f){const gk=f.src==='custom'?(f.gpS?f.gpS:0):(f.src==='quick'?
  const gw=gk||(f.units||[]).find(u=>u.label==='g')&&1/(f.units.find(u=>u.label==='g').mult);
  if(gw){add({label:'g',mult:1/gw,kind:'w'});add({label:'oz',mult:28.3495/gw,kind:'w'});if(/ml|drink|juice|milk|soda|water|beverage/i.test((f.units||[]).map(u=>u.label).join(' ')+' '+f.name))add({label:'ml',mult:1/gw,kind:'w'})}
  return out}
-function servingSheet(f,ui,qty,mid,onSave,onDel){const L=unitsFor(f);let lbl=(f.units[ui]||f.units[0]||{}).label;
+const PZ={};
+async function usdaPortions(f){if(f.src!=='usda'||f.pz)return null;if(PZ[f.ref])return PZ[f.ref];
+ try{const r=await tfetch('https://api.nal.usda.gov/fdc/v1/food/'+f.ref+'?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY'));if(!r.ok)return null;const j=await r.json();
+  const U2=[];let sv=null;(j.foodPortions||[]).forEach(p=>{const gw=+p.gramWeight,am=+p.amount||1;if(!gw)return;const un=(p.measureUnit?.name||'').toLowerCase(),md=(p.modifier||p.portionDescription||'').trim();
+   if(un==='racc'||/^(oz|g|grams?|quantity not specified)$/i.test(md))return;if(/nlea serving/i.test(md)){sv=gw/am;return}
+   let lb=(un&&un!=='undetermined'?un+(md?', '+md.toLowerCase():''):md).replace(/\s*\(approx\.?\s*([^)]*?)\s*dia\)/i,' $1').replace(/\s*\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+   if(lb&&!U2.some(u=>u.label===lb))U2.push({label:lb,mult:gw/am/100,kind:'n'})});
+  const res={units:U2.slice(0,8),sv};PZ[f.ref]=res;return res}catch(e){return null}}
+function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=false;let lbl=(f.units[ui]||f.units[0]||{}).label;
  if(!onDel){const st=D.stats[fkey(f)];if(st&&st.food.units[st.ui]){lbl=st.food.units[st.ui].label;qty=st.qty}}
  if(OLDGEN.test(lbl||''))lbl={'100 g':'g','1 oz':'oz','1 g':'g'}[lbl],qty=lbl==='g'&&(f.units[ui]||{}).label==='100 g'?qty*100:qty;
  if(!L.some(u=>u.label===lbl))lbl=L[0].label==='serving'?'serving':L[0].label;
@@ -417,37 +458,44 @@ function servingSheet(f,ui,qty,mid,onSave,onDel){const L=unitsFor(f);let lbl=(f.
  sheet(`<h2>${esc(f.name)}</h2>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
  <div class="amtbox"><input id="v_q" class="amtin" inputmode="decimal" autocomplete="off" value="${fmtAmt(qty).replace('½',' 1/2').replace('¼',' 1/4').replace('¾',' 3/4').trim()}" aria-label="Amount"><div class="uchips" id="v_u">${L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('')}</div></div>
  <div class="qchips">${[['1/2','½'],['1','1'],['1.5','1½'],['2','2']].map(([v,t])=>`<button data-q="${v}">${t}</button>`).join('')}</div>
- ${sv&&sv.note?`<div class="mut" style="font-size:13px;margin:2px 2px 0">1 serving = ${esc(sv.note)}</div>`:''}
+ <div class="mut" id="v_note" style="font-size:13px;margin:2px 2px 0;min-height:16px">${sv&&sv.note?'1 serving = '+esc(sv.note):''}</div>
  <div class="nutbox"><div><b id="v_k">0</b><span>cal</span></div><div><b id="v_p">0</b><span>protein</span></div><div><b id="v_c">0</b><span>carbs</span></div><div><b id="v_fb">0</b><span>fiber</span></div><div><b id="v_f">0</b><span>fat</span></div></div>
  <div class="row"><div style="flex:1"><label>Meal</label><select id="v_meal">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div>
  <button class="btn" id="v_go">${onDel?'Save':'Add'}</button>${onDel?'<button class="btn alt" id="v_del" style="color:var(--bad)">Remove</button>':''}
  <button class="btn alt sm" id="v_fav" style="width:100%">${D.fav.includes(fkey(f))?'★ Favorite':'☆ Add to favorites'}</button><button class="btn alt" id="v_x">Cancel</button>`);
  $('#v_x').onclick=close;$('#v_meal').value=mid;
  $('#v_fav').onclick=()=>{const k=fkey(f),i=D.fav.indexOf(k);if(i<0){D.fav.push(k);if(!D.stats[k])D.stats[k]={food:{...f,units:L},count:0,last:Date.now(),ui:0,qty:1}}else D.fav.splice(i,1);save();$('#v_fav').textContent=D.fav.includes(k)?'★ Favorite':'☆ Add to favorites'};
- const f2={...f,units:L},ix=()=>Math.max(0,L.findIndex(u=>u.label===lbl)),q=()=>parseAmt($('#v_q').value);
+ let f2={...f,units:L};const ix=()=>Math.max(0,L.findIndex(u=>u.label===lbl)),q=()=>parseAmt($('#v_q').value);
  const upd=()=>{$('#v_u').querySelectorAll('.uchip').forEach(b=>b.classList.toggle('on',b.dataset.l===lbl));const a=q(),e=entryFrom(f2,ix(),a>0?a:0);
   const k=$('#v_k');delete k.dataset.kj;k.textContent=r0(e.kcal).toLocaleString();$('#v_k').nextSibling.textContent=eU()==='kJ'?'kJ':'cal';if(eU()==='kJ'){k.textContent=Math.round(e.kcal*4.184).toLocaleString();k.dataset.kj=1}
   $('#v_p').textContent=r1(e.p)+'g';$('#v_c').textContent=r1(e.c)+'g';$('#v_fb').textContent=r1(e.fb)+'g';$('#v_f').textContent=r1(e.f)+'g';$('#v_q').classList.toggle('bad',!(a>0)&&$('#v_q').value.trim()!=='')};
- $('#v_q').oninput=upd;$('#v_u').onclick=e=>{const b=e.target.closest('.uchip');if(!b)return;
-  const old=L[ix()],nu=L.find(u=>u.label===b.dataset.l),a=q();lbl=nu.label;
+ $('#v_q').oninput=()=>{touched=true;upd()};$('#v_u').onclick=e=>{const b=e.target.closest('.uchip');if(!b)return;
+  touched=true;const old=L[ix()],nu=L.find(u=>u.label===b.dataset.l),a=q();lbl=nu.label;
   if(a>0&&(old.kind==='w'||nu.kind==='w')&&old!==nu){const v=a*old.mult/nu.mult;$('#v_q').value=nu.kind==='w'?String(Math.round(v)):String(+v.toFixed(2))}upd()};
- document.querySelectorAll('.qchips [data-q]').forEach(b=>b.onclick=()=>{$('#v_q').value=b.dataset.q;upd()});
+ document.querySelectorAll('.qchips [data-q]').forEach(b=>b.onclick=()=>{touched=true;$('#v_q').value=b.dataset.q;upd()});
  $('#v_q').onkeydown=e=>{if(e.key==='Enter')$('#v_go').click()};
  $('#v_q').onfocus=e=>e.target.select();upd();
  $('#v_go').onclick=()=>{const a=q();if(!(a>0))return toast('Enter an amount, like 1, 1.5 or 1 1/2');close();onSave(entryFrom(f2,ix(),a),$('#v_meal').value)};
- if(onDel)$('#v_del').onclick=onDel}
+ if(onDel)$('#v_del').onclick=onDel;
+ if(f.src==='usda'&&!f.pz)usdaPortions(f).then(P=>{if(!P||!document.body.contains($('#v_u'))||$('#sheet h2')?.textContent!==f.name)return;
+  const base=(f.units||[]).filter(u=>!OLDGEN.test(u.label));const nu=[];if(P.sv&&!base.length)nu.push({label:'serving',mult:P.sv/100,kind:'s',note:Math.round(P.sv)+' g'});
+  const f3={...f,pz:1,units:[...nu,...base,...P.units]};L=unitsFor(f3);f2={...f3,units:L};
+  if(!touched&&!D.stats[fkey(f)]){const pref=L.find(u=>u.kind==='n'&&/^medium\b/.test(u.label))||L.find(u=>u.kind==='s'&&u.note!=='100 g')||L.find(u=>u.kind==='n'&&!/head|package|container/.test(u.label))||L.find(u=>u.kind==='n');if(pref){lbl=pref.label;$('#v_q').value='1'}}
+  if(!L.some(u=>u.label===lbl))lbl=L[0].label;
+  $('#v_u').innerHTML=L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('');
+  const sv=L.find(u=>u.kind==='s');let nt=$('#v_note');if(nt)nt.textContent=sv&&sv.note?'1 serving = '+sv.note:'';upd()})}
 function customFood(mid,edit,pre={}){const f=edit||{barcode:pre.barcode,name:pre.name||'',brand:pre.brand||'',n:{kcal:'',p:'',c:'',f:''},units:[{label:'serving',mult:1}]};
  const un=(f.units[0].label||'serving').replace(/^1\s+/,'');
  sheet(`<h2>${edit?'Edit':'New'} custom food</h2><label>Name</label><input id="c_n" value="${esc(f.name)}" placeholder="e.g. Flour tortilla"><label>Brand (optional)</label><input id="c_b" value="${esc(f.brand)}">
  <label>Unit</label><div class="cunit">1 <input id="c_s" value="${esc(un)}" placeholder="serving, tortilla, cookie…"> = <input id="c_g" type="number" inputmode="decimal" value="${f.gpS||''}" placeholder="g"> g <span class="mut">(optional)</span></div>
- <label id="c_kl">Calories per 1 ${esc(un)}</label><input id="c_k" type="number" inputmode="decimal" value="${f.n.kcal}">
+ <label id="c_kl">${eU()==='kJ'?'Kilojoules':'Calories'} per 1 ${esc(un)}</label><input id="c_k" type="number" inputmode="decimal" value="${f.n.kcal===''?'':eU()==='kJ'?Math.round(f.n.kcal*4.184):f.n.kcal}">
  <div class="row"><div><label>Protein g</label><input id="c_p" type="number" value="${f.n.p}"></div><div><label>Carbs g</label><input id="c_c" type="number" value="${f.n.c}"></div><div><label>Fat g</label><input id="c_f" type="number" value="${f.n.f}"></div><div><label>Fiber g</label><input id="c_fb" type="number" value="${f.n.fb??''}"></div></div>
  ${f.barcode?`<p class="mut" style="font-size:13px">UPC ${esc(f.barcode)} — saved on this device so the next scan finds it instantly.</p><label class="tog"><input type="checkbox" id="c_share" ${D.shareOFF?'checked':''}> Also share to Open Food Facts so it helps everyone</label>`:''}
  <button class="btn" id="c_go">Save</button>${edit?'<button class="btn alt" id="c_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" id="c_x">Cancel</button>`);
- $('#c_x').onclick=close;$('#c_s').oninput=()=>{$('#c_kl').textContent='Calories per 1 '+($('#c_s').value.trim()||'serving')};
+ $('#c_x').onclick=close;$('#c_s').oninput=()=>{$('#c_kl').textContent=(eU()==='kJ'?'Kilojoules':'Calories')+' per 1 '+($('#c_s').value.trim()||'serving')};
  $('#c_go').onclick=()=>{const n=$('#c_n').value.trim();if(!n||$('#c_k').value==='')return toast('Name and calories are required');
   const u=$('#c_s').value.trim().replace(/^1\s+/,'')||'serving',g=+$('#c_g').value||0;
-  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0},units:[{label:u,mult:1}],...(g?{gpS:g}:{})};
+  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:eU()==='kJ'?Math.round(+$('#c_k').value/4.184*10)/10:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0},units:[{label:u,mult:1}],...(g?{gpS:g}:{})};
   if(f.barcode&&$('#c_share')?.checked){D.shareOFF=true;shareOFF({...nf,units:[{label:'1 '+u+(g?` (${g} g)`:''),mult:1}]})}else if($('#c_share'))D.shareOFF=false;
   if(edit)D.custom[D.custom.indexOf(edit)]=nf;else D.custom.push(nf);save();
   if(mid)pick(nf,mid);else{close();render()}};
