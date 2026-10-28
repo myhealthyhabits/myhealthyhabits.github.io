@@ -192,13 +192,13 @@ function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,
  ${heroRings(t,b,exc,left)}
  ${statGrid()}
  ${doneCard()}
- <div class="card"><h3 class="ch"><span>Nutrition</span><span class="mut tap" id="budTap">Budget ${b.toLocaleString()} ✎</span></h3><div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'var(--fb)']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
- ${stepsCard()}
- ${waterCard()}
  ${visMeals().map(m=>{const es=L[m.id]||[],s=sumEntries(es),chips=top.filter(x=>x.meal===m.id).slice(0,3);return`<div class="card meal"><h3><span>${esc(m.name)}</span><span><span class="mut">${r0(s.kcal)} cal</span> <button class="x" data-menu="${m.id}" aria-label="Meal options">⋯</button></span></h3>
  ${es.map(e=>`<div class="item" data-edit="${m.id}|${e.id}"><div>${esc(e.food.name)}<small>${r1(e.qty)} × ${esc(e.food.units[e.ui]?.label||'serving')}${e.food.brand?' · '+esc(e.food.brand):''}</small></div><b>${r0(e.kcal)}</b></div>`).join('')}
  ${!es.length&&chips.length?`<div class="chips">${chips.map(c=>`<button data-chip="${m.id}|${esc(fkey(c.food))}">+ ${esc(c.food.name)}</button>`).join('')}</div>`:''}
  <div class="row"><button class="add" data-add="${m.id}">+ Add food</button><button class="add qa" data-qa="${m.id}" aria-label="Quick calories">⚡ Cal</button><button class="add qa" data-scan="${m.id}" aria-label="Scan barcode">📷</button></div></div>`}).join('')}
+ <div class="card"><h3 class="ch"><span>Nutrition</span><span class="mut tap" id="budTap">Budget ${b.toLocaleString()} ✎</span></h3><div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'var(--fb)']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
+ ${stepsCard()}
+ ${waterCard()}
  <div class="card meal"><h3><span>Exercise</span><span class="mut">${r0(ex)} cal</span></h3>
  ${X.map(e=>`<div class="item" ${e.gym?'':`data-ex="${e.id}"`}><div class="exli">${exIco(e.gym?'free':(findEx(e.name)||{}).cat,30)}<div>${esc(e.name)}${e.min?`<small>${e.min} min${e.dist?' · '+e.dist+' mi':''}</small>`:''}</div></div><b class="exk">${e.gym?r0(e.kcal)+' cal':kcalTxt(e)}</b></div>`).join('')}<button class="add" id="exAdd">+ Add exercise</button></div>
  <div class="card"><label style="margin-top:0">📝 Notes for the day</label><textarea id="dayNote" rows="2" placeholder="How did today go?">${esc(D.notes[cur]||'')}</textarea><button class="btn alt" id="copyDay">📋 Copy yesterday's food to ${nice(cur)}</button></div>`;
