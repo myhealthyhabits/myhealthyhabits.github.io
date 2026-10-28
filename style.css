@@ -169,3 +169,15 @@ main{padding:8px 14px 12px}
 .tabs button{padding:6px 0 7px}
 .fab{bottom:calc(88px + env(safe-area-inset-bottom))}
 .toast{bottom:150px}
+
+.datebar .todayb{font-size:13px;padding:4px 12px;margin-left:auto;margin-right:4px}.datebar button:disabled{opacity:.3}
+.donec{display:flex;align-items:center;gap:12px}.dflame{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgba(255,159,10,.12);color:#8e8e93;flex:none}
+.donec.on .dflame{color:#ff9f0a;background:rgba(255,159,10,.22)}.dtx{flex:1;display:flex;flex-direction:column;gap:2px}.dtx small{font-size:13px}.donec.on .dtx small:first-of-type{color:#ff9f0a;font-weight:600}
+.sw{width:51px;height:31px;border-radius:99px;border:0;background:#39393d;position:relative;flex:none;padding:0;transition:background .2s}.sw i{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:left .2s}.sw.on{background:#30d158}.sw.on i{left:22px}.sw:disabled{opacity:.4}
+.calhd{display:flex;align-items:center;justify-content:space-between}.calhd h2{margin:0}.calhd button{background:none;border:0;color:var(--tx);font-size:24px;padding:4px 12px}.calhd button:disabled{opacity:.3}
+.mcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px;text-align:center}.mcal .mh{font-size:11px;color:#8e8e93}
+.mcal button{aspect-ratio:1;border:0;border-radius:50%;background:none;color:var(--tx);font-size:14px;padding:0}.mcal button.fd{box-shadow:inset 0 0 0 2px rgba(255,159,10,.6)}.mcal button.dn{background:#ff9f0a;color:#000;font-weight:700}
+.mcal button.td{outline:2px solid var(--tx);outline-offset:-2px}.mcal button.sel{box-shadow:0 0 0 2px #00e5ff}.mcal button.fu{opacity:.3}
+.mleg{display:flex;gap:14px;font-size:12px;color:#8e8e93;margin-top:8px}.mleg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}.mleg i.dn{background:#ff9f0a}.mleg i.fd{box-shadow:inset 0 0 0 2px rgba(255,159,10,.6)}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:99;overflow:hidden}.confetti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:cf 2.2s ease-in forwards}
+@keyframes cf{to{top:105%;transform:rotate(720deg) translateX(40px)}}
