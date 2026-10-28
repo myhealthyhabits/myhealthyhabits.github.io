@@ -200,7 +200,7 @@ function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,
  ${stepsCard()}
  ${waterCard()}
  <div class="card meal"><h3><span>Exercise</span><span class="mut">${r0(ex)} cal</span></h3>
- ${X.map(e=>`<div class="item" ${e.gym?'':`data-ex="${e.id}"`}><div class="exli">${exIco(e.gym?'free':(findEx(e.name)||{}).cat,30)}<div>${esc(e.name)}${e.min?`<small>${e.min} min${e.dist?' · '+e.dist+' mi':''}</small>`:''}</div></div><b class="exk">${e.gym?r0(e.kcal)+' cal':kcalTxt(e)}</b></div>`).join('')}<button class="add" id="exAdd">+ Add exercise</button></div>
+ ${X.map(e=>`<div class="item" ${e.gym?'':`data-ex="${e.id}"`}><div class="exli">${exIcon(e.gym?{cat:'free',name:''}:findEx(e.name),30)}<div>${esc(e.name)}${e.min?`<small>${e.min} min${e.dist?' · '+e.dist+' mi':''}</small>`:''}</div></div><b class="exk">${e.gym?r0(e.kcal)+' cal':kcalTxt(e)}</b></div>`).join('')}<button class="add" id="exAdd">+ Add exercise</button></div>
  <div class="card"><label style="margin-top:0">📝 Notes for the day</label><textarea id="dayNote" rows="2" placeholder="How did today go?">${esc(D.notes[cur]||'')}</textarea><button class="btn alt" id="copyDay">📋 Copy yesterday's food to ${nice(cur)}</button></div>`;
  V.classList.toggle('noanim',!!soft);animRings();pageTitle();if(soft)window.scrollTo(0,sy);
  $('#prev').onclick=()=>{cur=addDays(cur,-1);today()};$('#next').onclick=()=>{if(cur<logicalToday()){cur=addDays(cur,1);today()}};$('#toToday')&&($('#toToday').onclick=()=>{cur=logicalToday();today()});
@@ -240,18 +240,23 @@ function exScore(x,q){const n=x.name.toLowerCase();if(!q)return 1;if(n===q)retur
  if(!s&&q.length>=2){let i=0;for(const ch of n)if(ch===q[i])i++;if(i===q.length)s=200-n.length;}
  if(!s&&q.length>=3){const ws=n.split(/\s+/);const lev=(A,B)=>{const d=[...Array(B.length+1).keys()];for(let i=1;i<=A.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=B.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(A[i-1]===B[j-1]?0:1));p=t}}return d[B.length]};if(ws.some(w=>lev(q,w.slice(0,q.length+1))<=1))s=150}
  return s+((D.exFav||[]).includes(x.name)?40:0)+((D.exRecent||[]).includes(x.name)?20:0)}
-function exPicker(cb,back){D.exFav=D.exFav||[];let cat='all',q='',top=null;
- sheet(`<div class="shhead"><button class="x" id="xp_bk" aria-label="Back">‹</button><h2>Choose exercise</h2><span></span></div>
+const EXEMO=[[/treadmill/i,'🏃'],[/ellip/i,'⛷️'],[/stair|step/i,'🪜'],[/row(ing)? machine|canoe|kayak|paddle/i,'🚣'],[/bike|cycl|spin/i,'🚴'],[/hik/i,'🥾'],[/walk/i,'🚶'],[/run|jog/i,'🏃'],[/swim|water/i,'🏊'],[/yoga|stretch|pilates|barre/i,'🧘'],[/dance|zumba/i,'💃'],[/box/i,'🥊'],[/climb/i,'🧗'],[/golf/i,'⛳'],[/tennis|pickle/i,'🎾'],[/basket/i,'🏀'],[/soccer/i,'⚽'],[/volley/i,'🏐'],[/snowboard/i,'🏂'],[/ski/i,'⛷️'],[/skate/i,'🛹'],[/surf/i,'🏄'],[/fish/i,'🎣'],[/yard|mow|garden|shovel/i,'🌿'],[/push-up|pull-up|\bchin|\bdips?\b|plank|burpee|crunch|sit-up|squats|jumping|mountain climb|lunge|bridge|raise|wall sit/i,'🤸'],[/hiit|crossfit|bootcamp/i,'🔥']];
+const exEmoji=x=>{if(!x)return null;const m=EXEMO.find(r=>r[0].test(x.name));return m?m[1]:x.cat==='mach'?null:x.cat==='free'?'🏋️':null};
+const exIcon=(x,sz)=>{const e=exEmoji(x);if(!e)return exIco(x&&x.cat,sz);const c=EXCATS.find(c=>c.id===(x&&x.cat))||{col:'#8e8e93'};return `<span class="exico emo" style="--c:${c.col}${sz?';width:'+sz+'px;height:'+sz+'px':''}">${e}</span>`};
+const myEx=()=>{const s=new Set([...(D.exCustom||[]).map(x=>x.name),...(D.exFav||[]),...(D.exRecent||[])]);Object.values(D.exercise||{}).forEach(a=>a.forEach(e=>s.add(e.name)));(D.workouts||[]).forEach(w=>w.items.forEach(i=>s.add(i.name)));return[...s].map(findEx).filter(Boolean).sort((p,q)=>p.name.localeCompare(q.name))};
+function exPicker(cb,back){D.exFav=D.exFav||[];let cat='all',q='',top=null,ptab=myEx().length?'my':'all';
+ sheet(`<div class="shhead"><button class="x" id="xp_bk" aria-label="Back">‹</button><h2>Exercise</h2><button class="linkbtn" id="xp_new2">Create</button></div><div class="seg xptabs" id="xp_t"><button data-pt="my">My Exercises</button><button data-pt="all">All Exercises</button></div>
  <div class="xpsearch"><input id="xp_q" type="search" enterkeyhint="go" placeholder="Search ${EXLIB.length}+ exercises — try bike, lat, walk" autocomplete="off" autocapitalize="off"></div>
- <div class="segscroll" id="xp_c"><button data-c="all" class="on">All</button>${EXCATS.map(c=>`<button data-c="${c.id}">${c.name}</button>`).join('')}<button data-c="custom">Custom</button></div>
+ <div class="segscroll" id="xp_c" ${myEx().length?'style="display:none"':''}><button data-c="all" class="on">All</button>${EXCATS.map(c=>`<button data-c="${c.id}">${c.name}</button>`).join('')}<button data-c="custom">Custom</button></div>
  <div id="xp_l" class="xplist"></div><button class="btn alt" id="xp_new">+ Custom exercise</button>`);
- const row=x=>`<div class="xprow" data-n="${esc(x.name)}">${exIco(x.cat)}<div class="xpn">${esc(x.name)}<small>${x.type==='s'?'Sets · reps · weight':'Time · distance'} · ${x.met} MET</small></div><button class="star ${D.exFav.includes(x.name)?'on':''}" data-st="${esc(x.name)}" aria-label="Favorite">★</button></div>`;
- const list=()=>{const A=allEx(),qq=q.toLowerCase();let h='';
-  if(!qq&&cat==='all'){const F=D.exFav.map(findEx).filter(Boolean),R=(D.exRecent||[]).filter(n=>!D.exFav.includes(n)).map(findEx).filter(Boolean);
+ const row=x=>`<div class="xprow" data-n="${esc(x.name)}">${exIcon(x)}<div class="xpn">${esc(x.name)}<small>${(EXCATS.find(c=>c.id===x.cat)||{name:'Custom'}).name}</small></div><button class="star ${D.exFav.includes(x.name)?'on':''}" data-st="${esc(x.name)}" aria-label="Favorite">★</button></div>`;
+ const list=()=>{const qq=q.toLowerCase(),MY=myEx(),A=ptab==='my'&&!qq?MY:allEx(),myN=new Set(MY.map(x=>x.name));let h='';
+  if(ptab==='my'&&!qq){let ltr='';A.forEach(x=>{const c=x.name[0].toUpperCase();if(c!==ltr){ltr=c;h+=`<div class="xph">${c}</div>`}h+=row(x)});if(!A.length)h='<div class="empty"><p>Exercises you log or create show up here.</p></div>'}
+  else if(!qq&&cat==='all'){const F=D.exFav.map(findEx).filter(Boolean),R=(D.exRecent||[]).filter(n=>!D.exFav.includes(n)).map(findEx).filter(Boolean);
    if(F.length)h+=`<div class="xph">Favorites</div>${F.map(row).join('')}`;if(R.length)h+=`<div class="xph">Recent</div>${R.map(row).join('')}`;
    EXCATS.forEach(c=>h+=`<div class="xph">${c.name}</div>${A.filter(x=>x.cat===c.id&&!x.custom).map(row).join('')}`);
    const C=A.filter(x=>x.custom);if(C.length)h+=`<div class="xph">Custom</div>${C.map(row).join('')}`}
-  else{const L=A.filter(x=>cat==='all'||(cat==='custom'?x.custom:x.cat===cat)).map(x=>[exScore(x,qq),x]).filter(z=>z[0]>0).sort((p,r)=>r[0]-p[0]).map(z=>z[1]);top=L[0];h=L.slice(0,40).map((x,i)=>row(x).replace('class="xprow"',i?'class="xprow"':'class="xprow top"')).join('');if(q&&!L.some(x=>x.name.toLowerCase()===qq))h+=`<button class="xpadd" id="xp_mk">+ Add “${esc(q)}” as custom</button>`;if(!L.length)h=`<button class="xpadd only" id="xp_mk">+ Add “${esc(q)}” as custom</button><p class="hint" style="text-align:center">Saved to your library for next time.</p>`}
+  else{const L=A.filter(x=>cat==='all'||(cat==='custom'?x.custom:x.cat===cat)).map(x=>[exScore(x,qq)+(ptab==='my'&&myN.has(x.name)?60:0),x]).filter(z=>z[0]>0).sort((p,r)=>r[0]-p[0]).map(z=>z[1]);top=L[0];h=L.slice(0,40).map((x,i)=>row(x).replace('class="xprow"',i?'class="xprow"':'class="xprow top"')).join('');if(q&&!L.some(x=>x.name.toLowerCase()===qq))h+=`<button class="xpadd" id="xp_mk">+ Add “${esc(q)}” as custom</button>`;if(!L.length)h=`<button class="xpadd only" id="xp_mk">+ Add “${esc(q)}” as custom</button><p class="hint" style="text-align:center">Saved to your library for next time.</p>`}
   const l=$('#xp_l');l.innerHTML=h;
   l.querySelectorAll('.xprow').forEach(r=>r.onclick=e=>{if(e.target.closest('.star'))return;cb(findEx(r.dataset.n))});
   l.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{const n=b.dataset.st,i=D.exFav.indexOf(n);i<0?D.exFav.unshift(n):D.exFav.splice(i,1);save();b.classList.toggle('on',i<0);if(!q&&cat==='all')list()});
@@ -259,7 +264,7 @@ function exPicker(cb,back){D.exFav=D.exFav||[];let cat='all',q='',top=null;
  const quick=()=>{const n=q.replace(/^./,c=>c.toUpperCase());if(findEx(n))return cb(findEx(n));const x={name:n,met:3.5,type:/run|walk|bike|swim|hik|row|ride|skat|paddl|ski/i.test(n)?'c':'s',cat:'',custom:1};x.cat=x.type==='c'?'out':'free';D.exCustom=[x,...(D.exCustom||[])];save();toast('Added to your library');cb(x)};
  $('#xp_q').oninput=e=>{q=e.target.value.trim();list()};$('#xp_q').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();if(q&&top)cb(top);else if(q)quick()}};
  $('#xp_c').querySelectorAll('button').forEach(b=>b.onclick=()=>{cat=b.dataset.c;$('#xp_c').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));list()});
- $('#xp_bk').onclick=()=>back?back():close();$('#xp_new').onclick=()=>customEx(q,cb,()=>exPicker(cb,back));list();setTimeout(()=>$('#xp_q')&&$('#xp_q').focus(),30);$('#xp_q').focus()}
+ $('#xp_t').querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.pt===ptab);b.onclick=()=>{ptab=b.dataset.pt;$('#xp_t').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));$('#xp_c').style.display=ptab==='all'?'':'none';list()}});$('#xp_new2').onclick=()=>customEx(q,cb,()=>exPicker(cb,back));$('#xp_bk').onclick=()=>back?back():close();$('#xp_new').onclick=()=>customEx(q,cb,()=>exPicker(cb,back));list();setTimeout(()=>$('#xp_q')&&$('#xp_q').focus(),30);$('#xp_q').focus()}
 function customEx(name,cb,back){sheet(`<div class="shhead"><button class="x" id="cx_bk">‹</button><h2>Custom exercise</h2><span></span></div>
  <label>Name</label><input id="cx_n" value="${esc(name)}" placeholder="e.g. Battle ropes">
  <label>Category</label><select id="cx_c">${EXCATS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
@@ -270,19 +275,48 @@ function customEx(name,cb,back){sheet(`<div class="shhead"><button class="x" id=
  $('#cx_c').onchange=e=>{t=EXCATS.find(c=>c.id===e.target.value).t;st()};$('#cx_t').querySelectorAll('button').forEach(b=>b.onclick=()=>{t=b.dataset.t;st()});
  $('#cx_bk').onclick=back;$('#cx_go').onclick=()=>{const n=$('#cx_n').value.trim();if(!n)return toast('Name your exercise');if(findEx(n)&&!findEx(n).custom)return cb(findEx(n));
   D.exCustom=(D.exCustom||[]).filter(x=>x.name.toLowerCase()!==n.toLowerCase());const x={name:n,met:+$('#cx_m').value,type:t,cat:$('#cx_c').value};D.exCustom.unshift(x);save();toast('Saved to your library');cb(x)}}
-function exSheet(id,pre,onSaved){const arr=D.exercise[cur]=D.exercise[cur]||[],old=arr.find(x=>x.id===id),e=pre||old||{name:'',min:30,kcal:0};
- const L=findEx(e.name)||(e.name?{name:e.name,met:5,type:'c',cat:''}:null);let typed=!!id&&!pre;
- sheet(`<h2>${id?'Edit':'Add'} exercise</h2><label>Activity</label><button class="pickbtn" id="e_pick">${L?exIco(L.cat)+`<span>${esc(L.name)}<small>${L.met} MET</small></span>`:'<span class="mut">Choose from library…</span>'}<b>›</b></button>
- <div class="row"><div><label>Minutes</label><input id="e_m" type="number" inputmode="numeric" value="${e.min||0}"></div>${L&&L.type==='c'?`<div><label>Distance mi</label><input id="e_ds" type="number" step="0.1" inputmode="decimal" value="${e.dist||''}"></div>`:''}<div><label>Calories (est.)</label><input id="e_k" type="number" inputmode="numeric" value="${e.kcal||''}"></div></div>
- <p class="hint">A rough, conservative estimate of net calories burned (MET − 1) × your weight (${r0(curLb())} lb) × time. It isn't added to your food budget. Type your own number to override.</p>
- <button class="btn" id="e_go">Save</button>${id?'<button class="btn alt" id="e_del" style="color:var(--bad)">Remove</button>':''}<button class="btn alt" onclick="close()">Cancel</button>`);
- const rd=()=>({...e,min:+$('#e_m').value||0,dist:$('#e_ds')?+$('#e_ds').value||'':'',kcal:+$('#e_k').value||0});
- $('#e_pick').onclick=()=>{const s=rd();exPicker(x=>exSheet(id,{...s,name:x.name,kcal:0},onSaved),()=>exSheet(id,s,onSaved))};
- const est=()=>{if(!typed&&L)$('#e_k').value=estKcal(L.met,+$('#e_m').value||0)};$('#e_m').oninput=est;$('#e_k').oninput=()=>typed=true;if(!typed)est();
- $('#e_go').onclick=()=>{if(!L)return toast('Choose an activity');const k=+$('#e_k').value;if(!k)return toast('Enter calories burned');const s=rd(),ne={id:id||uid(),name:L.name,min:s.min,kcal:k};if(!typed)ne.est=1;if(s.dist)ne.dist=s.dist;
-  if(old)arr[arr.indexOf(old)]=ne;else arr.push(ne);pushRecent(L.name);save();close();render();onSaved&&onSaved(ne)};
- if(id)$('#e_del').onclick=()=>{arr.splice(arr.indexOf(old),1);save();close();render()};
- if(!L&&!pre)$('#e_pick').click();else if(pre){const f=$('#e_m');f.focus();f.select()}}
+const INTS=[['l','Light',.75],['m','Moderate',1],['v','Vigorous',1.25]];
+const intF=k=>(INTS.find(x=>x[0]===k)||INTS[1])[2];
+function wheel(el,n,v,onv,fmt){const H=40;el.innerHTML=`<div class="whpad"></div>${[...Array(n)].map((_,i)=>`<div class="whi" data-v="${i}">${fmt?fmt(i):i}</div>`).join('')}<div class="whpad"></div>`;
+ let cur=v,raf=0,lock=Date.now()+300;const mark=()=>el.querySelectorAll('.whi').forEach((x,i)=>x.classList.toggle('on',i===cur));
+ el.scrollTop=v*H;mark();el.onscroll=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(Date.now()<lock)return;const nv=Math.max(0,Math.min(n-1,Math.round(el.scrollTop/H)));if(nv!==cur){cur=nv;mark();onv(nv)}})};
+ el.querySelectorAll('.whi').forEach(x=>x.onclick=()=>el.scrollTo({top:+x.dataset.v*H,behavior:'smooth'}));
+ return{set:(nv,sm=true)=>{cur=nv;mark();lock=Date.now()+(sm?600:100);el.scrollTo({top:nv*H,behavior:sm?'smooth':'auto'})},get:()=>cur}}
+/* Simple exercise sheet: name, intensity, duration wheels, live estimate. opts.gym → logs into today's gym session */
+function exSheet(id,pre,onSaved,opts={}){const gymMode=!!opts.gym,day=opts.day||cur;
+ const arr=gymMode?null:(D.exercise[day]=D.exercise[day]||[]),old=gymMode?opts.item:arr.find(x=>x.id===id),e={name:'',min:30,int:'m',...(old||{}),...(pre||{})};
+ const L=findEx(e.name)||(e.name?{name:e.name,met:3.5,type:'c',cat:''}:null);if(!L)return exPicker(x=>exSheet(id,{...e,name:x.name},onSaved,opts),close);
+ let min=e.min||30,int=e.int||'m',typed=!!old&&!old.est&&!pre,showSR=!!(e.sets||e.reps||e.wt);
+ const kc=()=>estKcal(L.met*intF(int),min);
+ sheet(`<div class="exhead"><button class="pickbtn" id="e_pick">${exIcon(L)}<span>${esc(L.name)}<small>Tap to change</small></span><b>›</b></button></div>
+ <label>Intensity</label><div class="seg" id="e_int">${INTS.map(([k,n])=>`<button data-i="${k}" class="${int===k?'on':''}">${n}</button>`).join('')}</div>
+ <label>Duration <span class="mut" style="font-weight:400">(minutes)</span></label><div class="chips mchips">${[10,15,20,30,45,60].map(m=>`<button data-mc="${m}">${m}</button>`).join('')}</div>
+ <div class="wheels"><div class="wcol"><div class="wh" id="wh_h"></div><span>hours</span></div><div class="wcol"><div class="wh" id="wh_m"></div><span>mins</span></div><div class="whsel"></div></div>
+ <div class="burn"><b id="e_burn"></b><small>calories burned (estimate) · not added to your budget</small><button class="linkbtn" id="e_adj">Adjust</button><input id="e_k" type="number" inputmode="numeric" class="hidden" placeholder="Your number"></div>
+ <button class="linkbtn" id="e_srt">${showSR?'− Hide sets & reps':'+ Add sets & reps (optional)'}</button>
+ <div id="e_sr" class="row ${showSR?'':'hidden'}"><div><small>Sets</small><input id="e_s" type="number" inputmode="numeric" value="${e.sets||''}"></div><div><small>Reps</small><input id="e_r" type="number" inputmode="numeric" value="${e.reps||''}"></div><div><small>Weight lb</small><input id="e_w" type="number" inputmode="decimal" value="${e.wt||''}"></div></div>
+ <button class="btn" id="e_go">Save</button><button class="btn alt" id="e_more">Save & add another</button>${old?'<button class="btn alt" id="e_del" style="color:var(--bad)">Remove</button>':''}`);
+ const upd=()=>{$('#e_burn').textContent=typed&&$('#e_k').value?(+$('#e_k').value).toLocaleString():'~'+kc().toLocaleString();
+  document.querySelectorAll('[data-mc]').forEach(b=>b.classList.toggle('on',+b.dataset.mc===min))};
+ const hW=wheel($('#wh_h'),6,Math.floor(min/60),h=>{min=h*60+mW.get();upd()}),mW=wheel($('#wh_m'),60,min%60,m=>{min=hW.get()*60+m;upd()},m=>String(m).padStart(2,'0'));
+ if(typed){$('#e_k').classList.remove('hidden');$('#e_k').value=e.kcal}
+ $('#e_int').querySelectorAll('button').forEach(b=>b.onclick=()=>{int=b.dataset.i;$('#e_int').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));upd()});
+ document.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{min=+b.dataset.mc;hW.set(Math.floor(min/60));mW.set(min%60);upd()});
+ $('#e_adj').onclick=()=>{typed=true;const k=$('#e_k');k.classList.remove('hidden');k.value=k.value||kc();k.focus();k.select()};$('#e_k').oninput=upd;
+ $('#e_srt').onclick=()=>{showSR=!showSR;$('#e_sr').classList.toggle('hidden',!showSR);$('#e_srt').textContent=showSR?'− Hide sets & reps':'+ Add sets & reps (optional)'};
+ $('#e_pick').onclick=()=>{const s={...e,min,int};exPicker(x=>exSheet(id,{...s,name:x.name},onSaved,opts),()=>exSheet(id,s,onSaved,opts))};
+ const build=()=>{const k=typed&&+$('#e_k').value?+$('#e_k').value:kc();const ne={id:old?.id||uid(),name:L.name,min,int,kcal:k};if(!(typed&&+$('#e_k').value))ne.est=1;
+  if(showSR){const s=+$('#e_s').value,r=+$('#e_r').value,w=+$('#e_w').value;if(s)ne.sets=s;if(r)ne.reps=r;if(w)ne.wt=w}return ne};
+ const commit=()=>{if(!min)return toast('Pick a duration'),null;const ne=build();pushRecent(L.name);
+  if(gymMode)gymLog(day,ne,old);else{if(old)arr[arr.indexOf(old)]=ne;else arr.push(ne)}save();return ne};
+ $('#e_go').onclick=()=>{const ne=commit();if(!ne)return;close();render();onSaved&&onSaved(ne)};
+ $('#e_more').onclick=()=>{const ne=commit();if(!ne)return;render();toast(`Logged ${ne.name} · ~${ne.kcal} cal`);exPicker(x=>exSheet(null,{name:x.name},onSaved,{...opts,item:null}),close)};
+ if(old)$('#e_del').onclick=()=>{if(gymMode)gymLog(day,null,old);else arr.splice(arr.indexOf(old),1);save();close();render()};upd()}
+/* gym session: one workout per day holding simple items */
+function gymLog(day,ne,old){let w=D.workouts.find(x=>x.date===day&&x.quick);if(!w){w={id:uid(),ts:Date.now(),date:day,type:'Gym',items:[],notes:'',min:0,kcal:0,quick:1,est:1};D.workouts.push(w)}
+ const i=old?w.items.findIndex(x=>x.id===old.id):-1;if(ne){if(i>=0)w.items[i]=ne;else w.items.push(ne)}else if(i>=0)w.items.splice(i,1);
+ w.min=w.items.reduce((s,x)=>s+(+x.min||0),0);w.kcal=w.items.reduce((s,x)=>s+(+x.kcal||0),0);w.est=w.items.some(x=>x.est)?1:0;
+ if(!w.items.length)D.workouts=D.workouts.filter(x=>x!==w);syncGymDay(day)}
 
 function quickAdd(mealId){sheet(`<h2>Quick add</h2><label>Meal</label><select id="q_m">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
  <label>Name (optional)</label><input id="q_n" placeholder="Quick add"><label>Calories</label><input id="q_k" type="number" inputmode="numeric" class="bigin" autofocus>
@@ -574,20 +608,20 @@ function gym(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInWeek(w
  <div class="bar" style="margin:12px 0 4px"><i style="width:${Math.min(100,gw/D.gymGoal*100)}%;background:var(--acc)"></i></div>
  ${g?`<div class="item"><div>✅ Checked in today${g.type?' · '+esc(g.type):''}${g.kcal?' · '+g.kcal+' cal':''}</div>${g.auto?'':'<button class="x" id="g_undo">Undo</button>'}</div>`:'<button class="btn big1" id="g_check">💪 Check in — I went to the gym</button>'}
  <label>Weekly gym goal</label><select id="g_goal">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}">${n} day${n>1?'s':''} a week</option>`).join('')}</select></div>
- <div class="card"><h2>Log a workout</h2><button class="btn" id="w_new">+ New workout</button>${last?`<button class="btn alt" id="w_rep">🔁 Repeat last: ${esc(last.type)} (${nice(last.date)})</button>`:''}
+ <div class="card"><h2>Log a workout</h2><button class="btn" id="w_new">+ Log exercise</button><p class="hint" style="text-align:center;margin:6px 0 10px">Pick an exercise and how long — e.g. 30 min weight machines.</p>${last?`<button class="btn alt" id="w_rep">🔁 Repeat last: ${esc(last.type)} (${nice(last.date)})</button>`:''}
  ${D.wtemplates.length?`<label>Templates</label>${D.wtemplates.map((x,i)=>`<div class="item"><div>${esc(x.name)}<small>${wSum(x)}</small></div><span><button class="btn sm" data-tu="${i}">Start</button> <button class="x" data-td="${i}">✕</button></span></div>`).join('')}`:''}</div>
  <div class="card"><h2>History</h2>${H.slice(0,40).map(w=>`<div class="item" data-wo="${w.id}"><div>${nice(w.date)} · <b>${esc(w.type)}</b><small>${wSum(w)||'No exercises'}${w.notes?' — '+esc(w.notes):''}</small></div><span class="mut">${w.kcal?(w.est?'~':'')+w.kcal+' cal':''}</span></div>`).join('')||'<div class="empty">'+exIco('free',44).replace('exico','exico big')+'<p>No workouts yet.<br>Tap <b>New workout</b> and pick from 100+ exercises.</p></div>'}</div>`;
  if($('#g_check'))$('#g_check').onclick=()=>{D.gym[t]={type:'',kcal:0};save();gym();toast('Nice work! 💪 Streak saved')};
  if($('#g_undo'))$('#g_undo').onclick=()=>{delete D.gym[t];save();gym()};
  $('#g_goal').value=D.gymGoal;$('#g_goal').onchange=e=>{D.gymGoal=+e.target.value;save();gym()};
- $('#w_new').onclick=()=>workoutSheet();if(last)$('#w_rep').onclick=()=>workoutSheet({...last,id:null,date:t,notes:''});
+ $('#w_new').onclick=()=>exSheet(null,null,()=>toast('Workout saved 💪'),{gym:1,day:t});if(last)$('#w_rep').onclick=()=>workoutSheet({...last,id:null,date:t,notes:''});
  V.querySelectorAll('[data-tu]').forEach(b=>b.onclick=()=>workoutSheet({...D.wtemplates[+b.dataset.tu],id:null,date:t}));
  V.querySelectorAll('[data-td]').forEach(b=>b.onclick=()=>{D.wtemplates.splice(+b.dataset.td,1);save();gym()});
- V.querySelectorAll('[data-wo]').forEach(el=>el.onclick=()=>workoutSheet(D.workouts.find(w=>w.id===el.dataset.wo)))}
+ V.querySelectorAll('[data-wo]').forEach(el=>el.onclick=()=>{const w=D.workouts.find(w=>w.id===el.dataset.wo);if(!w.quick)return workoutSheet(w);sheet(`<h2>${nice(w.date)} · Gym</h2>${w.items.map(x=>`<div class="item tap" data-qi="${x.id}"><div class="exli">${exIcon(findEx(x.name),30)}<div>${esc(x.name)}<small>${x.min} min · ${(INTS.find(k=>k[0]===x.int)||INTS[1])[1]}${x.sets?` · ${x.sets}×${x.reps||'?'}${x.wt?' @ '+x.wt+' lb':''}`:''}</small></div></div><b>${x.est?'~':''}${x.kcal} cal</b></div>`).join('')}<button class="btn" id="qi_add">+ Add another exercise</button><button class="btn alt" onclick="close()">Done</button>`);document.querySelectorAll('[data-qi]').forEach(r=>r.onclick=()=>exSheet(null,null,null,{gym:1,day:w.date,item:w.items.find(x=>x.id===r.dataset.qi)}));$('#qi_add').onclick=()=>exSheet(null,null,null,{gym:1,day:w.date})})}
 function workoutSheet(w0){const w=JSON.parse(JSON.stringify(w0||{type:'Strength',date:logicalToday(),items:[],notes:'',min:0,kcal:0}));if(!w.items.length)w.items.push(isCardio(w.type)?{name:'',min:30,dist:''}:{name:'',sets:3,reps:10,wt:''});
  let typedK=!!w0?.id;
  const draw=()=>{const c=isCardio(w.type);sheet(`<h2>${w.id?'Edit':'Log'} workout</h2><div class="row"><div><label>Type</label><select id="wk_t">${WTYPES.map(x=>`<option>${x}</option>`).join('')}</select></div><div><label>Date</label><input id="wk_d" type="date" value="${w.date}"></div></div>
- <label>Exercises</label>${w.items.map((x,i)=>`<div class="exrow"><div class="exname">${exIco((findEx(x.name)||{}).cat)}<input data-f="name" data-i="${i}" placeholder="${c?'e.g. Treadmill':'e.g. Bench press'}" value="${esc(x.name)}" list="exdl"></div>
+ <label>Exercises</label>${w.items.map((x,i)=>`<div class="exrow"><div class="exname">${exIcon(findEx(x.name))}<input data-f="name" data-i="${i}" placeholder="${c?'e.g. Treadmill':'e.g. Bench press'}" value="${esc(x.name)}" list="exdl"></div>
   <div class="row">${'min' in x?`<div><small>Minutes</small><input data-f="min" data-i="${i}" type="number" value="${x.min}"></div><div><small>Distance mi</small><input data-f="dist" data-i="${i}" type="number" step="0.1" value="${x.dist}"></div>`:`<div><small>Sets</small><input data-f="sets" data-i="${i}" type="number" value="${x.sets}"></div><div><small>Reps</small><input data-f="reps" data-i="${i}" type="number" value="${x.reps}"></div><div><small>Weight lb</small><input data-f="wt" data-i="${i}" type="number" value="${x.wt}"></div>`}<button class="x" data-rm="${i}" style="flex:none">✕</button></div></div>`).join('')}
  <datalist id="exdl">${allEx().map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist><button class="btn alt" id="wk_lib">+ Add from exercise library</button><div class="row"><button class="btn alt sm" id="wk_as">+ Sets/reps exercise</button><button class="btn alt sm" id="wk_ac">+ Cardio (time/distance)</button></div>
  <div class="row"><div><label>Total minutes (optional)</label><input id="wk_m" inputmode="numeric" type="number" value="${w.min||''}"></div><div><label>Calories (est.)</label><input id="wk_k" type="number" value="${w.kcal||''}"></div></div>
@@ -637,7 +671,7 @@ function fabMenu(){const nm=nextMeal(),d=cur;
  <label>💧 Water</label><div class="row"><button class="btn alt" data-fw="8">+8 oz</button><button class="btn alt" data-fw="16">+16 oz</button></div>`);
  let mid=nm;document.querySelectorAll('[data-fm]').forEach(b=>b.onclick=()=>{mid=b.dataset.fm;document.querySelectorAll('[data-fm]').forEach(x=>x.classList.toggle('on',x===b))});
  document.querySelectorAll('[data-fw]').forEach(b=>b.onclick=()=>{const n=+b.dataset.fw;D.water[d]=(D.water[d]||0)+n;save();close();render();toastU(`+${n} oz water · ${D.water[d]} oz today`,()=>{D.water[d]=Math.max(0,(D.water[d]||0)-n)})});
- const A={food:()=>{close();openAdd(mid)},scan:()=>{close();openAdd(mid);scan(mid)},gym:()=>{close();go('gym')},
+ const A={food:()=>{close();openAdd(mid)},scan:()=>{close();openAdd(mid);scan(mid)},gym:()=>exSheet(null,null,e=>toast(`Logged ${e.name} · ~${e.kcal} cal`),{gym:1,day:d}),
   ex:()=>exSheet(null,null,e=>{const arr=D.exercise[d]||[];toastU(`Logged ${e.name} · ${e.kcal} cal`,()=>{arr.splice(arr.indexOf(e),1)})}),
   steps:()=>{sheet(`<h2>👟 Steps</h2><input id="fs_n" type="number" inputmode="numeric" class="bigin" placeholder="${(D.steps[d]||0).toLocaleString()}" autofocus>
    <button class="btn" id="fs_go">Set steps</button><div class="row"><button class="btn alt" data-fs="1000">+1,000</button><button class="btn alt" data-fs="5000">+5,000</button></div>`);
