@@ -209,3 +209,9 @@ main{padding:8px 14px 12px}
 .empty{text-align:center;padding:22px 8px;color:var(--mut)}
 #wk_lib{margin:6px 0 8px}
 .empty .exico{margin:0 auto 10px}
+.estl{font-size:11px;font-weight:500;color:var(--mut)}.exk{text-align:right}
+.xpsearch{position:sticky;top:-16px;z-index:2;background:var(--card);margin:0 -16px;padding:4px 16px 6px}
+.xprow.top{background:color-mix(in srgb,var(--pri) 12%,transparent)}
+.xpadd{width:100%;margin:8px 0;padding:13px;border-radius:14px;border:1px dashed var(--pri);background:var(--pri-soft,transparent);color:var(--pri);font:inherit;font-weight:700}
+.d30{position:relative;display:flex;align-items:flex-end;gap:3px;height:110px;margin-top:8px}.d30 i{flex:1;border-radius:3px 3px 1px 1px;transition:height .4s}.d30 b{position:absolute;left:0;right:0;border-top:1px dashed var(--mut);opacity:.6}
+.d30l{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:4px}
