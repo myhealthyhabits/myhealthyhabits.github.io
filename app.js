@@ -36,7 +36,9 @@ function calc(p){const kg=p.weight*0.453592,cm=heightCm(p),bmr=10*kg+6.25*cm-5*p
  const realRate=p.goalType==='lose'?Math.max(0,(tdee-final)/500):rate,eta=realRate>0&&diff?new Date(Date.now()+diff/realRate*7*864e5):null;
  return{bmr:r0(bmr),tdee:r0(tdee),adj:r0(adj),raw:r0(raw),final,floor,capped:raw<floor,eta,weeks}}
 const budget=()=>D.budget||1800;
-const macroGoal=()=>{if(D.macroGrams)return D.macroGrams;const b=budget(),m=D.macroPct;return{p:b*m.p/100/4,c:b*m.c/100/4,f:b*m.f/100/9}};
+const macroGoal=()=>{if(D.macroGrams)return D.macroGrams;const b=budget(),m=D.macroPct;const dflt=m.p===30&&m.c===40&&m.f===30;
+ if(dflt){const pr=D.profile,w=pr&&+pr.weight?Math.min(+pr.weight,+pr.goal||+pr.weight):0;let p=w?w*0.7:b*0.2/4;p=Math.max(50,Math.min(p,160,b*0.3/4));const f=b*0.3/9,c=Math.max(0,(b-p*4-f*9)/4);return{p:Math.round(p),c:Math.round(c),f:Math.round(f)}}
+ return{p:b*m.p/100/4,c:b*m.c/100/4,f:b*m.f/100/9}};
 const dayLog=d=>D.log[d]||(D.log[d]={});
 const sumEntries=a=>a.reduce((s,e)=>({kcal:s.kcal+e.kcal,p:s.p+e.p,c:s.c+e.c,f:s.f+e.f,fb:s.fb+(e.fb||0)}),{kcal:0,p:0,c:0,f:0,fb:0});
 const dayTotal=d=>sumEntries(Object.values(D.log[d]||{}).flat());
