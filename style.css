@@ -195,3 +195,17 @@ main{padding:8px 14px 12px}
 .bub{fill:#fff;opacity:.5;animation:bb 3s ease-in infinite}.bub.b2{animation-delay:1.4s}@keyframes bb{0%{transform:translateY(8px);opacity:0}30%{opacity:.55}100%{transform:translateY(-22px);opacity:0}}
 .water .wst{color:var(--mut,#999);font-size:14px;font-weight:500}.water .wst b{color:#3fe3ff;font-size:17px}.water.hit .wst{color:#3fe3ff}
 .whint{font-size:12px;margin:8px 0 0}
+/* exercise library */
+.exico{flex:none;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 18%,transparent)}.exico svg{width:58%;height:58%}
+.shhead{display:grid;grid-template-columns:36px 1fr 36px;align-items:center;margin-bottom:8px}.shhead h2{text-align:center;margin:0}.shhead .x{font-size:26px;line-height:1}
+.segscroll{display:flex;gap:6px;overflow-x:auto;margin:10px -16px 4px;padding:0 16px 4px;scrollbar-width:none}.segscroll::-webkit-scrollbar{display:none}
+.segscroll button{flex:none;border:1px solid var(--ln);background:transparent;color:var(--mut);border-radius:99px;padding:7px 13px;font-weight:600;font-size:13px}.segscroll button.on{background:var(--acc,var(--pri));border-color:transparent;color:#fff}
+.xplist{max-height:52vh;overflow:auto;margin:0 -4px 10px}.xph{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);padding:14px 4px 6px}
+.xprow{display:flex;align-items:center;gap:12px;padding:8px 4px;border-radius:12px;cursor:pointer}.xprow:active{background:var(--ln)}.xpn{flex:1;font-weight:600}.xpn small{display:block;color:var(--mut);font-weight:400;font-size:12px}
+.star{border:0;background:none;font-size:20px;color:var(--ln);padding:6px}.star.on{color:#ffd60a}
+.pickbtn{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:var(--bg);border:1px solid var(--ln);border-radius:14px;padding:10px 12px;color:inherit;font:inherit;font-weight:600}.pickbtn>span:not(.exico){flex:1}.pickbtn small{display:block;color:var(--mut);font-weight:400;font-size:12px}.pickbtn b{color:var(--mut);font-size:20px}
+.exname{display:flex;gap:10px;align-items:center}.exname input{flex:1}.exname .exico{width:32px;height:32px}
+.exli{display:flex;align-items:center;gap:12px}.hint{color:var(--mut);font-size:13px;margin:8px 0 12px}
+.empty{text-align:center;padding:22px 8px;color:var(--mut)}
+#wk_lib{margin:6px 0 8px}
+.empty .exico{margin:0 auto 10px}

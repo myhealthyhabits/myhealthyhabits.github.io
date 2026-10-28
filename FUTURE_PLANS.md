@@ -14,3 +14,6 @@ Domain: myhealthyhabitsapp.com (Porkbun, renews $11.08/yr, expires 2027-10-28)
 
 ## Not built yet
 - Reminders (they need a server for push notifications).
+
+## Exercise library (Sam wants next)
+- Exercise categories, starting with Weight Machines (leg press, chest press, lat pulldown, seated row, leg curl/extension, shoulder press, cable machine, etc.), plus free weights, bodyweight and cardio machines.
