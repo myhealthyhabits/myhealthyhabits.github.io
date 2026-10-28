@@ -53,3 +53,24 @@ h2{font-size:18px;margin:4px 0 10px}
 .bigin{font-size:26px;text-align:center;padding:14px}.wiz h2{font-size:22px}.wnav .btn{margin-top:4px}
 .tog{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--tx);margin-top:12px}.tog input{width:auto}
 .heat .h1{background:#fed7aa}.heat .h2{background:#fb923c}.heat .h3{background:#c2410c}
+
+/* v5: goals, water, quick entry */
+.minis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px;text-align:center;cursor:pointer}.mr small{display:block;font-size:12px}
+.mrr{position:relative;width:64px;height:64px;margin:0 auto}.mrr svg{transform:rotate(-90deg)}.mrr b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px}
+.tips{margin-top:12px;background:var(--bg);border-radius:12px;padding:10px 12px;font-size:14px;display:grid;gap:6px}
+.cups{display:flex;flex-wrap:wrap;gap:6px}.cups i{width:22px;height:28px;border:2px solid #0ea5e9;border-top:0;border-radius:0 0 6px 6px;opacity:.45}.cups i.full{background:#0ea5e9;opacity:1}
+.wb{margin-top:4px;padding:14px;font-size:16px}.water .btn:not(.alt){background:#0ea5e9}.btn:disabled{opacity:.4}
+.water h3{margin:0 0 10px;font-size:16px;display:flex;justify-content:space-between}
+.meal .add{margin-top:10px}.meal .qa{flex:0 0 auto;width:auto;padding:8px 12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.chips button{border:0;background:#fff4ec;color:var(--pri);border-radius:99px;padding:8px 12px;font-weight:600;font-size:13px}
+@media(prefers-color-scheme:dark){.chips button{background:#3a2112}}
+.card{border-radius:18px;padding:16px}
+textarea{width:100%;padding:11px;border-radius:10px;border:1px solid var(--ln);background:var(--card);color:var(--tx);font:inherit;font-size:16px}
+.wkbars{display:flex;gap:6px;height:90px;align-items:flex-end;margin-top:12px}.wkbars div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}.wkbars i{width:100%;border-radius:6px 6px 0 0;min-height:2px}.wkbars small{color:var(--mut);font-size:11px}
+.big1{padding:18px;font-size:18px;border-radius:14px}.exrow{background:var(--card);border-radius:12px;padding:10px;margin-bottom:8px}.exrow .row{margin-top:6px;align-items:flex-end}.exrow small{color:var(--mut);font-size:11px}
+.tabs button{font-size:11px}
+.bank{text-align:center;padding:18px 16px}.bankt{font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.ring.big2{width:190px;height:190px;margin:8px auto}.big2 .in b{font-size:40px;font-weight:800}.big2 .in small{display:block}
+.bankarc{transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1),stroke .4s}
+.bstats{display:grid;grid-template-columns:repeat(3,1fr);margin:6px 0 4px}.bstats b{display:block;font-size:20px}.bstats small{color:var(--mut);font-size:12px}
+.mbars{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;text-align:left;cursor:pointer}
