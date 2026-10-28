@@ -138,7 +138,7 @@ function statGrid(){const days=[...Array(7)].map((_,i)=>addDays(cur,i-6)),S=stre
  const card=(id,lbl,col,big,unit,ch)=>`<div class="scard" data-go="${id}"><small>${lbl}</small><b style="color:${col}">${big}<em>${unit}</em></b>${ch}</div>`;
  const gymDays=days.map(d=>D.gym[d]?1:0);
  return`<div class="sgrid">
- ${card('steps','Step Count','#a6ff3a',(D.steps[cur]||0).toLocaleString(),'steps',spark(days.map(d=>D.steps[d]||0),D.stepGoal,'#8be22d'))}
+ ${card('steps','Step Count','#a6ff3a',`<span class="stepnum" data-sd="${cur}" role="button" aria-label="Edit steps">${(D.steps[cur]||0).toLocaleString()}</span>`,'steps',spark(days.map(d=>D.steps[d]||0),D.stepGoal,'#8be22d'))}
  ${card('water','Water','#3fe3ff',D.water[cur]||0,'oz',spark(days.map(d=>D.water[d]||0),D.waterGoal,'#2ec5ff'))}
  ${card('protein','Protein','#5b9dff',r0(t.p),'g / '+r0(g.p),spark(days.map(d=>dayTotal(d).p),g.p,'#4c8dff'))}
  ${card('gym','Gym Streak','#ffb020',S.gym.cur,S.gym.cur===1?'day':'days',`<div class="spark dots7">${gymDays.map(x=>`<i class="${x?'on':''}"></i>`).join('')}</div>`)}
@@ -172,7 +172,7 @@ const bankCol=(left,b)=>left<0?'var(--bad)':left<b*0.15?'var(--warn)':'var(--ok)
 function bankRing(left,b){const R=80,C=2*Math.PI*R,pc=Math.max(0,Math.min(1,left/b));return`<svg width="190" height="190" viewBox="0 0 190 190"><circle cx="95" cy="95" r="${R}" fill="none" stroke="var(--ln)" stroke-width="16"/>
  <circle class="bankarc" cx="95" cy="95" r="${R}" fill="none" stroke="${bankCol(left,b)}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(today.lastPc??1))}" data-to="${C*(1-pc)}"/></svg>`}
 function stepsCard(){const d=cur,st=D.steps[d]||0,g=D.stepGoal||10000,S=streaks().steps,days=[...Array(7)].map((_,i)=>addDays(d,i-6));
- return`<div class="card stepsc"><h2 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">Steps<button class="pill sgedit" aria-label="Change step goal">Goal ${g.toLocaleString()} ✎</button></h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'var(--ok)':'var(--steps)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b>${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
+ return`<div class="card stepsc"><h2 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">Steps<button class="pill sgedit" aria-label="Change step goal">Goal ${g.toLocaleString()} ✎</button></h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'var(--ok)':'var(--steps)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b class="stepnum" data-sd="${d}" role="button" aria-label="Edit steps">${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
  <div style="flex:1"><div>🔥 ${S.cur}-day streak<small class="mut" style="display:block">Best ${S.best}</small></div><div class="mut" style="font-size:13px">≈ ${stepKcal(d).toLocaleString()} cal burned${D.stepsAddBack?` · +${stepCredit(d)} added`:''}</div>
  <div class="row" style="margin-top:6px"><button class="add" data-sp="1000">+1,000</button><button class="add" data-sp="5000">+5,000</button></div>
  <div class="row"><input id="sp_n" type="number" inputmode="numeric" placeholder="Exact steps" style="flex:1;min-width:0"><button class="add" id="sp_set">Set</button></div></div></div>
@@ -540,7 +540,7 @@ function activity(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInW
  let ym=ymOf(t);V.innerHTML=`<div class="card"><h2>Streaks</h2><div class="sks">${box('✅','day Done Logging streak',S.done.cur,S.done.best,'days')}${box('🍽️','days with food logged',S.food.cur,S.food.best,'days')}${box('💪','week gym streak',S.gym.cur,S.gym.best,'weeks')}${box('👟','day step streak',S.steps.cur,S.steps.best,'days')}</div></div>
  <div class="card"><div class="calhd"><button id="am_p" aria-label="Previous month">‹</button><h2 id="am_t">${ymName(ym)}</h2><button id="am_n" aria-label="Next month">›</button></div><div id="am_g">${monthGrid(ym,null,true)}</div><p class="mut" style="font-size:12px;margin:6px 0 0">Streak counts days marked Done Logging. Tap a day to open it, add food and mark it — a missed day can be fixed later.</p></div>
  <div class="card"><button class="btn" id="toGym">💪 Open Gym — check in & log workouts</button></div>
- <div class="card"><h2>Steps today</h2><div class="mut"><b style="font-size:22px;color:var(--tx)">${st.toLocaleString()}</b> / ${D.stepGoal.toLocaleString()}</div><div class="bar" style="margin:8px 0"><i style="width:${Math.min(100,st/D.stepGoal*100)}%;background:var(--p)"></i></div>
+ <div class="card"><h2>Steps today</h2><div class="mut"><b class="stepnum" data-sd="${t}" role="button" aria-label="Edit steps" style="font-size:22px;color:var(--tx)">${st.toLocaleString()}</b> / ${D.stepGoal.toLocaleString()}</div><div class="bar" style="margin:8px 0"><i style="width:${Math.min(100,st/D.stepGoal*100)}%;background:var(--p)"></i></div>
  <div class="row"><input id="s_n" type="number" inputmode="numeric" placeholder="Total steps from your phone"><button class="btn sm" id="s_set" style="flex:none">Save</button></div>
  <div class="seg">${[1000,2500,5000].map(n=>`<button data-plus="${n}">+${n.toLocaleString()}</button>`).join('')}</div>
  <p class="mut" style="font-size:12px;margin:0">Copy the number from Apple Health or Google Fit — browsers can't read them directly.</p>
@@ -590,13 +590,15 @@ function workoutSheet(w0){const w=JSON.parse(JSON.stringify(w0||{type:'Strength'
  <label>Exercises</label>${w.items.map((x,i)=>`<div class="exrow"><div class="exname">${exIco((findEx(x.name)||{}).cat)}<input data-f="name" data-i="${i}" placeholder="${c?'e.g. Treadmill':'e.g. Bench press'}" value="${esc(x.name)}" list="exdl"></div>
   <div class="row">${'min' in x?`<div><small>Minutes</small><input data-f="min" data-i="${i}" type="number" value="${x.min}"></div><div><small>Distance mi</small><input data-f="dist" data-i="${i}" type="number" step="0.1" value="${x.dist}"></div>`:`<div><small>Sets</small><input data-f="sets" data-i="${i}" type="number" value="${x.sets}"></div><div><small>Reps</small><input data-f="reps" data-i="${i}" type="number" value="${x.reps}"></div><div><small>Weight lb</small><input data-f="wt" data-i="${i}" type="number" value="${x.wt}"></div>`}<button class="x" data-rm="${i}" style="flex:none">✕</button></div></div>`).join('')}
  <datalist id="exdl">${allEx().map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist><button class="btn alt" id="wk_lib">+ Add from exercise library</button><div class="row"><button class="btn alt sm" id="wk_as">+ Sets/reps exercise</button><button class="btn alt sm" id="wk_ac">+ Cardio (time/distance)</button></div>
- <div class="row"><div><label>Total minutes</label><input id="wk_m" type="number" value="${w.min||''}"></div><div><label>Calories (est.)</label><input id="wk_k" type="number" value="${w.kcal||''}"></div></div>
+ <div class="row"><div><label>Total minutes (optional)</label><input id="wk_m" inputmode="numeric" type="number" value="${w.min||''}"></div><div><label>Calories (est.)</label><input id="wk_k" type="number" value="${w.kcal||''}"></div></div>
  <label>Notes</label><textarea id="wk_n" rows="2">${esc(w.notes)}</textarea>
  <button class="btn" id="wk_go">Save workout</button><button class="btn alt" id="wk_tp">Save as template</button>${w.id?'<button class="btn alt" id="wk_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" onclick="close()">Cancel</button>`);
   $('#wk_t').value=w.type;
-  const est=()=>{const m=+$('#wk_m').value||w.items.reduce((s,x)=>s+(+x.min||0),0)||(w.items.filter(x=>x.sets).length*8);if(!$('#wk_m').value&&m)$('#wk_m').placeholder=m;if(typedK)return;const named=w.items.filter(x=>String(x.name).trim());const lib=named.reduce((s,x)=>s+estKcal((findEx(x.name)||{met:x.met||5}).met,exMin(x)),0);
-   $('#wk_k').value=$('#wk_m').value&&m?estKcal(named.length?lib/Math.max(1,named.reduce((s,x)=>s+exMin(x),0))/curLb()/0.453592*60:({Strength:5,Cardio:7,'Full body':6,Class:8,Swim:7}[w.type]||5),m):named.length?r0(lib):m?estKcal(5,m):''};
-  const read=()=>{w.type=$('#wk_t').value;w.date=$('#wk_d').value||logicalToday();w.notes=$('#wk_n').value.trim();w.min=+$('#wk_m').value||+$('#wk_m').placeholder||0;w.kcal=+$('#wk_k').value||0;
+  const est=()=>{const named=w.items.filter(x=>String(x.name).trim()),auto=w.items.reduce((s,x)=>s+('min' in x?(+x.min||0):(+x.sets||0)*2),0),typedM=+$('#wk_m').value,m=typedM||auto;
+   $('#wk_m').placeholder=auto?'~'+auto+' (est.)':'e.g. 45';
+   const wm=named.reduce((s,x)=>{const mm='min' in x?(+x.min||0):(+x.sets||0)*2;return[s[0]+(findEx(x.name)||{met:x.met||3.5}).met*mm,s[1]+mm]},[0,0]);
+   const met=wm[1]?wm[0]/wm[1]:({Strength:3.5,Cardio:6,'Full body':4,Class:5,Swim:5.8}[w.type]||3.5);if(!typedK)$('#wk_k').value=m?estKcal(met,m):''};
+  const read=()=>{w.type=$('#wk_t').value;w.date=$('#wk_d').value||logicalToday();w.notes=$('#wk_n').value.trim();w.min=+$('#wk_m').value||+String($('#wk_m').placeholder).replace(/[^0-9]/g,'')||0;w.kcal=+$('#wk_k').value||0;
    document.querySelectorAll('#sheetBody [data-f]').forEach(el=>{const x=w.items[+el.dataset.i];x[el.dataset.f]=el.dataset.f==='name'?el.value:el.value===''?'':+el.value})};
   document.querySelectorAll('#sheetBody [data-f]').forEach(el=>el.oninput=()=>{read();est()});$('#wk_m').oninput=est;$('#wk_k').oninput=()=>typedK=true;$('#wk_t').onchange=()=>{read();est()};est();
   document.querySelectorAll('#sheetBody [data-f=name]').forEach(el=>el.onfocus=()=>{if(el.value.trim())return;read();const i=+el.dataset.i;el.blur();exPicker(x=>{const o=w.items[i];w.items[i]=x.type==='s'?{name:x.name,sets:o.sets||3,reps:o.reps||10,wt:o.wt||''}:{name:x.name,min:o.min||20,dist:o.dist||''};pushRecent(x.name);draw();const f=[...document.querySelectorAll('#sheetBody [data-i="'+i+'"]')].find(e=>e.dataset.f!=='name');if(f){f.focus();f.select&&f.select()}},draw)});
@@ -651,3 +653,12 @@ function fabMenu(){const nm=nextMeal(),d=cur;
 $('#fab').onclick=fabMenu;
 
 render();
+
+/* inline step edit: tap a steps number, type to replace, empty/0 clears */
+document.addEventListener('click',ev=>{const el=ev.target.closest('.stepnum');if(!el||el.querySelector('input'))return;ev.stopPropagation();ev.preventDefault();
+ const d=el.dataset.sd,v=D.steps[d]||0,w=el.offsetWidth;el.innerHTML=`<input class="stepin" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" value="${v||''}" placeholder="0" aria-label="Steps" style="width:${Math.max(120,w+24)}px">`;
+ const i=el.querySelector('input');i.focus({preventScroll:true});i.select();let done=false;
+ const fin=ok=>{if(done)return;done=true;const sy=scrollY;if(ok){const raw=i.value.replace(/[^0-9]/g,''),was=v>=D.stepGoal;if(raw===''||+raw===0)delete D.steps[d];else D.steps[d]=Math.round(+raw);save();
+   const n=D.steps[d]||0;if(n!==v){toastU(n?`Steps: ${n.toLocaleString()}`+(!was&&n>=D.stepGoal?' 🎉 goal hit!':''):'Steps cleared',()=>{if(v)D.steps[d]=v;else delete D.steps[d]})}}
+  render();scrollTo(0,sy)};
+ i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();fin(true)}else if(e.key==='Escape')fin(false)};i.onblur=()=>fin(true);i.onclick=e=>e.stopPropagation()},true);

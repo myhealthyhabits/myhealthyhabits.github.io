@@ -215,3 +215,5 @@ main{padding:8px 14px 12px}
 .xpadd{width:100%;margin:8px 0;padding:13px;border-radius:14px;border:1px dashed var(--pri);background:var(--pri-soft,transparent);color:var(--pri);font:inherit;font-weight:700}
 .d30{position:relative;display:flex;align-items:flex-end;gap:3px;height:110px;margin-top:8px}.d30 i{flex:1;border-radius:3px 3px 1px 1px;transition:height .4s}.d30 b{position:absolute;left:0;right:0;border-top:1px dashed var(--mut);opacity:.6}
 .d30l{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:4px}
+.stepnum{cursor:text;border-bottom:1px dashed transparent}.stepnum:hover{border-bottom-color:var(--mut)}
+.stepin{font:inherit;font-size:.85em;box-sizing:border-box;color:inherit;background:var(--bg);border:1.5px solid var(--steps,#a6ff3a);border-radius:10px;padding:2px 6px;text-align:center;max-width:150px}
