@@ -4,7 +4,9 @@ document.title=APP_NAME;
 const $=s=>document.querySelector(s),V=$('#view'),KEY='ct-data-v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const r0=n=>Math.round(n||0),r1=n=>Math.round((n||0)*10)/10,uid=()=>Math.random().toString(36).slice(2,10);
-const def=()=>({profile:null,budget:null,macroPct:{p:30,c:40,f:30},meals:[{id:'b',name:'Meal 1'},{id:'l',name:'Meal 2'},{id:'d',name:'Meal 3'},{id:'s',name:'Snacks'}],mealCount:3,fiberGoal:28,water:{},waterGoal:64,notes:{},workouts:[],wtemplates:[],fav:[],shareOFF:false,rollover:0,usdaKey:'',exercise:{},exAddBack:true,budgetMode:'manual',macroGrams:null,gym:{},gymGoal:4,steps:{},stepGoal:10000,log:{},custom:[],saved:[],stats:{},weights:[]});
+const APP_USDA_KEY=''; // built-in api.data.gov key (public, client-side by design)
+const tfetch=(u,ms=8000)=>{const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t))};
+const def=()=>({profile:null,budget:null,macroPct:{p:30,c:40,f:30},meals:[{id:'b',name:'Meal 1'},{id:'l',name:'Meal 2'},{id:'d',name:'Meal 3'},{id:'s',name:'Snacks'}],mealCount:3,fiberGoal:28,water:{},waterGoal:64,notes:{},workouts:[],wtemplates:[],fav:[],shareOFF:false,rollover:0,usdaKey:'',stepsAddBack:false,exercise:{},exAddBack:true,budgetMode:'manual',macroGrams:null,gym:{},gymGoal:4,steps:{},stepGoal:10000,log:{},custom:[],saved:[],stats:{},weights:[]});
 /* Storage adapter: swap Store.backend for a cloud sync backend later (same load/save shape). */
 const Store={backend:{load:()=>JSON.parse(localStorage.getItem(KEY)||'{}'),save:d=>localStorage.setItem(KEY,JSON.stringify(d))},
  load(){try{return Object.assign(def(),this.backend.load())}catch(e){return def()}},save(d){d.updatedAt=Date.now();this.backend.save(d)}};
@@ -110,7 +112,10 @@ const onboarding=budgetHome;
 function ring(pct,color){const R=52,C=2*Math.PI*R;return`<svg width="120" height="120"><circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--ln)" stroke-width="12"/>
  <circle cx="60" cy="60" r="${R}" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-Math.min(1,pct))}"/></svg>`}
 const exList=d=>{const a=[...(D.exercise[d]||[])];if(D.gym[d]?.kcal)a.unshift({id:'gym',name:'Gym'+(D.gym[d].type?' · '+D.gym[d].type:''),kcal:D.gym[d].kcal,gym:1});return a};
-const exTotal=d=>exList(d).reduce((s,e)=>s+(+e.kcal||0),0);
+const KPS=0.04,stepKcal=d=>Math.round((D.steps[d]||0)*KPS);
+// Step credit = step calories minus walking/running already logged as exercise (no double counting)
+const stepCredit=d=>{if(!D.stepsAddBack)return 0;const walk=(D.exercise[d]||[]).filter(e=>/walk|run|jog|hike|step/i.test(e.name||'')).reduce((s,e)=>s+(+e.kcal||0),0);return Math.max(0,stepKcal(d)-walk)};
+const exTotal=d=>exList(d).reduce((s,e)=>s+(+e.kcal||0),0)+stepCredit(d);
 const TIPS={p:'chicken, Greek yogurt, eggs, tuna, cottage cheese',c:'oats, rice, fruit, potatoes, whole-grain bread',fb:'oats, beans, berries, lentils, chia seeds',kcal:'a balanced meal with protein and veggies'};
 function tips(t,g,b){if(cur!==logicalToday())return'';const out=[],need=(k,v,goal,u,n)=>{const d=goal-v;if(d>goal*0.15)out.push(`Add <b>${r0(d)}${u}</b> more ${n}: try ${TIPS[k]}.`)};
  need('p',t.p,g.p,'g','protein');need('fb',t.fb,D.fiberGoal,'g','fiber');
@@ -127,12 +132,25 @@ let waterStack=[];
 const bankCol=(left,b)=>left<0?'#dc2626':left<b*0.15?'#f59e0b':'#16a34a';
 function bankRing(left,b){const R=80,C=2*Math.PI*R,pc=Math.max(0,Math.min(1,left/b));return`<svg width="190" height="190" viewBox="0 0 190 190"><circle cx="95" cy="95" r="${R}" fill="none" stroke="var(--ln)" stroke-width="16"/>
  <circle class="bankarc" cx="95" cy="95" r="${R}" fill="none" stroke="${bankCol(left,b)}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(today.lastPc??1))}" data-to="${C*(1-pc)}"/></svg>`}
+function stepsCard(){const d=cur,st=D.steps[d]||0,g=D.stepGoal||10000,S=streaks().steps,days=[...Array(7)].map((_,i)=>addDays(d,i-6));
+ return`<div class="card"><h2 style="margin-top:0">👟 Steps</h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'#16a34a':'var(--pri)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b>${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
+ <div style="flex:1"><div>🔥 ${S.cur}-day streak<small class="mut" style="display:block">Best ${S.best}</small></div><div class="mut" style="font-size:13px">≈ ${stepKcal(d).toLocaleString()} cal burned${D.stepsAddBack?` · +${stepCredit(d)} added`:''}</div>
+ <div class="row" style="margin-top:6px"><button class="add" data-sp="1000">+1,000</button><button class="add" data-sp="5000">+5,000</button></div>
+ <div class="row"><input id="sp_n" type="number" inputmode="numeric" placeholder="Exact steps" style="flex:1;min-width:0"><button class="add" id="sp_set">Set</button></div></div></div>
+ <div class="wkbars">${days.map(x=>{const v=D.steps[x]||0;return`<div><i style="height:${Math.min(100,v/g*80)}%;background:${v>=g?'#16a34a':'var(--pri)'}"></i><small>${new Date(x+'T12:00').toLocaleDateString(undefined,{weekday:'narrow'})}</small></div>`}).join('')}</div>
+ <label class="tog"><input type="checkbox" id="sp_ab" ${D.stepsAddBack?'checked':''}> Add step calories to my budget (skips walks/runs already logged)</label>
+ <p class="mut" style="font-size:12px;margin:4px 0 0">Enter steps from your phone's health app; automatic counting will come with the app version.</p></div>`}
+function bindSteps(re){const d=cur,set=v=>{const was=(D.steps[d]||0)>=D.stepGoal;D.steps[d]=Math.max(0,Math.round(v));save();re();if(!was&&D.steps[d]>=D.stepGoal)toast('Step goal hit! 🎉')};
+ V.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>set((D.steps[d]||0)+ +b.dataset.sp));
+ const sb=$('#sp_set');if(sb)sb.onclick=()=>{const v=+$('#sp_n').value;if($('#sp_n').value!==''&&v>=0)set(v)};
+ const ab=$('#sp_ab');if(ab)ab.onchange=e=>{D.stepsAddBack=e.target.checked;save();re()}}
 function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBack?ex:0,net=t.kcal-exc,left=b-net,g=macroGoal(),L=dayLog(cur),X=exList(cur);
  const top=Object.values(D.stats).sort((a,b)=>b.count-a.count||b.last-a.last);
  V.innerHTML=nudges()+`<div class="card datebar"><button id="prev" aria-label="Previous day">‹</button><b id="dlabel">${nice(cur)}</b><button id="next" aria-label="Next day">›</button></div>
  <div class="card bank"><div class="mut bankt">Calorie bank</div><div class="ring big2" id="bankRing">${bankRing(left,b)}<div class="in"><b>${r0(Math.abs(left)).toLocaleString()}</b><small>${left<0?'cal over':'cal left'}</small><small class="mut tap" id="budTap">of ${b.toLocaleString()} ✎</small></div></div>
  <div class="bstats"><div><b>${r0(t.kcal).toLocaleString()}</b><small>Eaten</small></div><div><b>${ex?'+'+r0(exc).toLocaleString():'0'}</b><small>Exercise${D.exAddBack?' added':' (off)'}</small></div><div><b style="color:${bankCol(left,b)}">${r0(left).toLocaleString()}</b><small>Left</small></div></div>
  <div id="goalsTap" class="mbars">${[['Protein',t.p,g.p,'var(--p)'],['Carbs',t.c,g.c,'var(--c)'],['Fat',t.f,g.f,'var(--f)'],['Fiber',t.fb,D.fiberGoal,'#16a34a']].map(([n,v,gl,col])=>`<div class="macro"><div class="lbl"><span>${n}</span><span class="mut">${r0(v)} / ${r0(gl)} g</span></div><div class="bar"><i style="width:${Math.min(100,v/(gl||1)*100)}%;background:${col}"></i></div></div>`).join('')}</div>${tips(t,g,b)}</div>
+ ${stepsCard()}
  ${waterCard()}
  ${visMeals().map(m=>{const es=L[m.id]||[],s=sumEntries(es),chips=top.filter(x=>x.meal===m.id).slice(0,3);return`<div class="card meal"><h3><span>${esc(m.name)}</span><span><span class="mut">${r0(s.kcal)} cal</span> <button class="x" data-menu="${m.id}" aria-label="Meal options">⋯</button></span></h3>
  ${es.map(e=>`<div class="item" data-edit="${m.id}|${e.id}"><div>${esc(e.food.name)}<small>${r1(e.qty)} × ${esc(e.food.units[e.ui]?.label||'serving')}${e.food.brand?' · '+esc(e.food.brand):''}</small></div><b>${r0(e.kcal)}</b></div>`).join('')}
@@ -152,6 +170,7 @@ function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBac
  V.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const[m,id]=b.dataset.edit.split('|');editEntry(m,id)});
  V.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const n=+b.dataset.w;D.water[cur]=(D.water[cur]||0)+n;waterStack.push([cur,n]);save();today();if(D.water[cur]>=D.waterGoal&&D.water[cur]-n<D.waterGoal)toast('Water goal hit! 💧')});
  $('#w_undo').onclick=()=>{const i=waterStack.map(x=>x[0]).lastIndexOf(cur),n=i>=0?waterStack.splice(i,1)[0][1]:8;D.water[cur]=Math.max(0,(D.water[cur]||0)-n);save();today()};
+ bindSteps(today);
  $('#copyDay').onclick=()=>{const y=D.log[addDays(cur,-1)]||{};let n=0;Object.entries(y).forEach(([m,es])=>es.forEach(e=>{addEntry(m,{...e,id:uid()});n++}));if(!n)return toast('Nothing logged the day before');render();toast('Copied '+n+' item'+(n>1?'s':''))};
  $('#dayNote').onchange=e=>{const v=e.target.value.trim();if(v)D.notes[cur]=v;else delete D.notes[cur];save()};
  $('#budTap').onclick=e=>{e.stopPropagation();budgetHome()};$('#exAdd').onclick=()=>exSheet();
@@ -239,13 +258,14 @@ async function search(q,mid){if(!q)return;const R=$('#s_res');R.innerHTML='<p cl
  const loc=[...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
  let list=[],err='';
  const ck='q:'+q.toLowerCase();SC[ck]=SC[ck]||null;
- try{if(SC[ck])list=SC[ck];else{const r=await fetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||'DEMO_KEY')+'&pageSize=25&dataType=Foundation,SR%20Legacy,Branded&query='+encodeURIComponent(q));
+ try{if(SC[ck])list=SC[ck];else{const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=25&dataType=Foundation,SR%20Legacy,Branded&query='+encodeURIComponent(q));
   if(!r.ok)throw new Error(r.status===429?'limit':'usda');const j=await r.json();list=SC[ck]=(j.foods||[]).sort((a,b)=>(a.dataType==='Branded')-(b.dataType==='Branded')).map(usdaFood).filter(f=>f.n.kcal||f.n.p)}}catch(e){err=e.message}
- if(list.length<5){try{const r=await fetch('https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=20&fields=code,product_name,brands,nutriments,serving_size,serving_quantity&search_terms='+encodeURIComponent(q));
-  const j=await r.json();list=list.concat((j.products||[]).filter(p=>p.product_name).map(offFood))}catch(e){err+=' off'}}
- if($('#s_q')?.value.trim()!==q)return;
+ if(list.length<5){const ok='off:'+q.toLowerCase();if(SC[ok])list=list.concat(SC[ok]);else{let ps=null;const f='code,product_name,brands,nutriments,serving_size,serving_quantity';
+  for(const u of['https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=20&fields='+f+'&search_terms='+encodeURIComponent(q),'https://world.openfoodfacts.org/api/v2/search?page_size=20&fields='+f+'&search_terms='+encodeURIComponent(q)]){try{const r=await tfetch(u);if(!r.ok)continue;const j=await r.json();ps=(j.products||[]).filter(p=>p.product_name).map(offFood);break}catch(e){}}
+  if(ps){SC[ok]=ps;list=list.concat(ps)}else err+=' off'}}
+if($('#s_q')?.value.trim()!==q)return;
  const seen=new Set(),all=[...loc,...list].filter(f=>{const k=fkey(f);if(seen.has(k))return false;seen.add(k);return true});
- R.innerHTML=all.map(f=>resRow(f)).join('')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a bit, or add your own free key in Settings.':'No results.'}</p>`;
+ R.innerHTML=all.map(f=>resRow(f)).join('')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a minute.':'No results.'}</p>`;
  bindRes(all,mid,f=>pick(f,mid))}
 function servingSheet(f,ui,qty,mid,onSave,onDel){sheet(`<h2>${esc(f.name)}</h2>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
  <div class="card" style="margin-top:10px;text-align:center"><b id="v_k" style="font-size:30px"></b> <span class="mut">cal</span><div class="mut" id="v_m"></div></div><button class="btn alt sm" id="v_fav" style="width:100%">${D.fav.includes(fkey(f))?'★ Favorite':'☆ Add to favorites'}</button>
@@ -350,8 +370,8 @@ function settings(){const m=D.macroPct;
  <div class="card"><h2>My foods & meals</h2>${D.custom.map((f,i)=>`<div class="item" data-cf="${i}"><div>${esc(f.name)}<small>${r0(f.n.kcal)} cal · ${esc(f.units[0].label)}</small></div><span class="mut">Edit</span></div>`).join('')}
  ${D.saved.map((s,i)=>`<div class="item"><div>${esc(s.name)}<small>Saved meal · ${s.items.length} items · ${r0(sumEntries(s.items).kcal)} cal</small></div><button class="x" data-sd="${i}">✕</button></div>`).join('')}
  <button class="btn alt" id="st_cf">+ Create a custom food</button><button class="btn alt" id="st_recipe">+ Build a recipe / meal</button></div>
- <div class="card"><h2>Food search key</h2><p class="mut" style="margin-top:0;font-size:13px">Search uses the free USDA database. The shared demo key allows only a few searches an hour. Get your own free key (1,000/hour) at <a href="https://fdc.nal.usda.gov/api-key-signup" target="_blank" rel="noopener">fdc.nal.usda.gov</a> and paste it here.</p>
- <input id="st_key" placeholder="DEMO_KEY" value="${esc(D.usdaKey)}"></div>
+ <details class="card"><summary class="mut" style="cursor:pointer">Advanced: food search key (optional)</summary><p class="mut" style="margin-top:0;font-size:13px">Food search works out of the box. Only if you want your own USDA quota, get a free key at <a href="https://fdc.nal.usda.gov/api-key-signup" target="_blank" rel="noopener">fdc.nal.usda.gov</a> and paste it here.</p>
+ <input id="st_key" placeholder="DEMO_KEY" value="${esc(D.usdaKey)}"></details>
  <div class="card"><h2>Backup</h2><p class="mut" style="margin-top:0">Your data lives only on this device. Export a backup now and then.</p>
  <button class="btn" id="st_exp">Export backup</button><button class="btn alt" id="st_imp">Import backup</button><input type="file" id="st_file" accept="application/json,.json" hidden></div>
  <p class="mut" style="text-align:center;font-size:12px">Food data: USDA FoodData Central & Open Food Facts. No accounts, no fees.</p>`;
