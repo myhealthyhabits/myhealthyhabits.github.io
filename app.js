@@ -292,20 +292,20 @@ function exSheet(id,pre,onSaved,opts={}){const gymMode=!!opts.gym,day=opts.day||
  <label>Intensity</label><div class="seg" id="e_int">${INTS.map(([k,n])=>`<button data-i="${k}" class="${int===k?'on':''}">${n}</button>`).join('')}</div>
  <label>Duration <span class="mut" style="font-weight:400">(minutes)</span></label><div class="chips mchips">${[10,15,20,30,45,60].map(m=>`<button data-mc="${m}">${m}</button>`).join('')}</div>
  <div class="wheels"><div class="wcol"><div class="wh" id="wh_h"></div><span>hours</span></div><div class="wcol"><div class="wh" id="wh_m"></div><span>mins</span></div><div class="whsel"></div></div>
- <div class="burn"><b id="e_burn"></b><small>calories burned (estimate) · not added to your budget</small><button class="linkbtn" id="e_adj">Adjust</button><input id="e_k" type="number" inputmode="numeric" class="hidden" placeholder="Your number"></div>
+ <div class="burn"><b id="e_burn" data-kj="1"></b><small>${eU()==='kJ'?'kJ':'calories'} burned (estimate) · not added to your budget</small><button class="linkbtn" id="e_adj">Adjust</button><input id="e_k" type="number" inputmode="numeric" class="hidden" placeholder="Your number${eU()==='kJ'?' (kJ)':''}"></div>
  <button class="linkbtn" id="e_srt">${showSR?'− Hide sets & reps':'+ Add sets & reps (optional)'}</button>
  <div id="e_sr" class="row ${showSR?'':'hidden'}"><div><small>Sets</small><input id="e_s" type="number" inputmode="numeric" value="${e.sets||''}"></div><div><small>Reps</small><input id="e_r" type="number" inputmode="numeric" value="${e.reps||''}"></div><div><small>Weight lb</small><input id="e_w" type="number" inputmode="decimal" value="${e.wt||''}"></div></div>
  <button class="btn" id="e_go">Save</button><button class="btn alt" id="e_more">Save & add another</button>${old?'<button class="btn alt" id="e_del" style="color:var(--bad)">Remove</button>':''}`);
- const upd=()=>{$('#e_burn').textContent=typed&&$('#e_k').value?(+$('#e_k').value).toLocaleString():'~'+kc().toLocaleString();
+ const kin=()=>{const v=+$('#e_k').value;return eU()==='kJ'?Math.round(v/4.184):v};const upd=()=>{delete $('#e_burn').dataset.kj;$('#e_burn').textContent=typed&&$('#e_k').value?(+$('#e_k').value).toLocaleString():'~'+eN(kc()).toLocaleString();
   document.querySelectorAll('[data-mc]').forEach(b=>b.classList.toggle('on',+b.dataset.mc===min))};
  const hW=wheel($('#wh_h'),6,Math.floor(min/60),h=>{min=h*60+mW.get();upd()}),mW=wheel($('#wh_m'),60,min%60,m=>{min=hW.get()*60+m;upd()},m=>String(m).padStart(2,'0'));
- if(typed){$('#e_k').classList.remove('hidden');$('#e_k').value=e.kcal}
+ if(typed){$('#e_k').classList.remove('hidden');$('#e_k').value=eU()==='kJ'?Math.round(e.kcal*4.184):e.kcal}
  $('#e_int').querySelectorAll('button').forEach(b=>b.onclick=()=>{int=b.dataset.i;$('#e_int').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));upd()});
  document.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{min=+b.dataset.mc;hW.set(Math.floor(min/60));mW.set(min%60);upd()});
- $('#e_adj').onclick=()=>{typed=true;const k=$('#e_k');k.classList.remove('hidden');k.value=k.value||kc();k.focus();k.select()};$('#e_k').oninput=upd;
+ $('#e_adj').onclick=()=>{typed=true;const k=$('#e_k');k.classList.remove('hidden');k.value=k.value||(eU()==='kJ'?Math.round(kc()*4.184):kc());k.focus();k.select()};$('#e_k').oninput=upd;
  $('#e_srt').onclick=()=>{showSR=!showSR;$('#e_sr').classList.toggle('hidden',!showSR);$('#e_srt').textContent=showSR?'− Hide sets & reps':'+ Add sets & reps (optional)'};
  $('#e_pick').onclick=()=>{const s={...e,min,int};exPicker(x=>exSheet(id,{...s,name:x.name},onSaved,opts),()=>exSheet(id,s,onSaved,opts))};
- const build=()=>{const k=typed&&+$('#e_k').value?+$('#e_k').value:kc();const ne={id:old?.id||uid(),name:L.name,min,int,kcal:k};if(!(typed&&+$('#e_k').value))ne.est=1;
+ const build=()=>{const k=typed&&+$('#e_k').value?kin():kc();const ne={id:old?.id||uid(),name:L.name,min,int,kcal:k};if(!(typed&&+$('#e_k').value))ne.est=1;
   if(showSR){const s=+$('#e_s').value,r=+$('#e_r').value,w=+$('#e_w').value;if(s)ne.sets=s;if(r)ne.reps=r;if(w)ne.wt=w}return ne};
  const commit=()=>{if(!min)return toast('Pick a duration'),null;const ne=build();pushRecent(L.name);
   if(gymMode)gymLog(day,ne,old);else{if(old)arr[arr.indexOf(old)]=ne;else arr.push(ne)}save();return ne};
@@ -650,7 +650,7 @@ const fW=lb=>U().w==='kg'?r1(lb*0.453592)+' kg':r1(lb)+' lb',wU=()=>U().w,toLb=v
 const fE=k=>U().e==='kJ'?Math.round(k*4.184).toLocaleString()+' kJ':r0(k).toLocaleString()+' cal',eU=()=>U().e==='kJ'?'kJ':'cal',eN=k=>U().e==='kJ'?Math.round(k*4.184):r0(k);
 const fD=mi=>U().d==='km'?r1(mi*1.60934)+' km':mi+' mi';
 const CUP=()=>U().l==='ml'?250/29.5735:8,wGoal=()=>U().l==='ml'?Math.max(1,Math.round((D.waterGoal||64)/8))*CUP():(D.waterGoal||64);
-const fL=oz=>U().l==='ml'?Math.round(oz*29.5735/10)*10+' ml':r0(oz)+' oz',lU=()=>U().l==='ml'?'ml':'oz',lN=oz=>U().l==='ml'?Math.round(oz*29.5735/10)*10:r0(oz),cupLbl=()=>U().l==='ml'?'250 ml':'8 oz';
+const fL=oz=>U().l==='ml'?(Math.round(oz*29.5735/10)*10).toLocaleString()+' ml':r0(oz)+' oz',lU=()=>U().l==='ml'?'ml':'oz',lN=oz=>(U().l==='ml'?Math.round(oz*29.5735/10)*10:r0(oz)).toLocaleString(),cupLbl=()=>U().l==='ml'?'250 ml':'8 oz';
 function unitsSheet(){const u=U(),R=[['w','Weight',[['lb','Pounds (lb)'],['kg','Kilograms (kg)']]],['e','Energy',[['cal','Calories'],['kJ','Kilojoules (kJ)']]],['h','Height',[['ft','Feet & inches'],['cm','Centimeters']]],['d','Distance',[['mi','Miles'],['km','Kilometers']]],['l','Liquids',[['oz','Fluid ounces'],['ml','Milliliters']]]];
  sheet(`<h2>Units</h2>${R.map(([k,n,o])=>`<label>${n}</label><div class="seg" data-uk="${k}">${o.map(([v,l])=>`<button data-uv="${v}" class="${u[k]===v?'on':''}">${l}</button>`).join('')}</div>`).join('')}<p class="hint">Your data is stored once and converted for display, so switching is safe.</p><button class="btn" id="un_done">Done</button>`);
  $('#un_done').onclick=()=>close();document.querySelectorAll('[data-uk]').forEach(s=>s.querySelectorAll('button').forEach(b=>b.onclick=()=>{D.units={...U(),[s.dataset.uk]:b.dataset.uv};save();s.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));render()}))}
