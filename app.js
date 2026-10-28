@@ -6,14 +6,16 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const r0=n=>Math.round(n||0),r1=n=>Math.round((n||0)*10)/10,uid=()=>Math.random().toString(36).slice(2,10);
 const APP_USDA_KEY='DT9zrJmwr7F7qwrrM76T9MnHq6BW8HcMMNzgMgBq'; // built-in api.data.gov key (public, client-side by design)
 const tfetch=(u,ms=8000)=>{const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t))};
-const def=()=>({profile:null,budget:null,macroPct:{p:30,c:40,f:30},meals:[{id:'b',name:'Meal 1'},{id:'l',name:'Meal 2'},{id:'d',name:'Meal 3'},{id:'s',name:'Snacks'}],mealCount:3,fiberGoal:28,water:{},waterGoal:64,notes:{},workouts:[],wtemplates:[],fav:[],shareOFF:false,rollover:0,usdaKey:'',stepsAddBack:false,exercise:{},exAddBack:true,budgetMode:'manual',macroGrams:null,gym:{},gymGoal:4,steps:{},stepGoal:10000,log:{},custom:[],saved:[],stats:{},weights:[],done:{}});
+const def=()=>({profile:null,budget:null,macroPct:{p:30,c:40,f:30},meals:[{id:'b',name:'Meal 1'},{id:'l',name:'Meal 2'},{id:'d',name:'Meal 3'},{id:'m4',name:'Meal 4'},{id:'s',name:'Snacks'}],mealCount:3,fiberGoal:28,water:{},waterGoal:64,notes:{},workouts:[],wtemplates:[],fav:[],shareOFF:false,rollover:0,usdaKey:'',stepsAddBack:false,exercise:{},exAddBack:true,budgetMode:'manual',macroGrams:null,gym:{},gymGoal:4,steps:{},stepGoal:10000,log:{},custom:[],saved:[],stats:{},weights:[],done:{}});
 /* Storage adapter: swap Store.backend for a cloud sync backend later (same load/save shape). */
 const Store={backend:{load:()=>JSON.parse(localStorage.getItem(KEY)||'{}'),save:d=>localStorage.setItem(KEY,JSON.stringify(d))},
  load(){try{return Object.assign(def(),this.backend.load())}catch(e){return def()}},save(d){d.updatedAt=Date.now();this.backend.save(d)}};
 let D=Store.load();if(!D.done||typeof D.done!=='object')D.done={};
 /* migrate old Breakfast/Lunch/Dinner names to neutral meals (ids and logs kept) */
 {const old={b:'Breakfast',l:'Lunch',d:'Dinner'},nw={b:'Meal 1',l:'Meal 2',d:'Meal 3'};D.meals.forEach(m=>{if(old[m.id]===m.name)m.name=nw[m.id]});
- if(!D.meals.some(m=>m.id==='s'))D.meals.push({id:'s',name:'Snacks'});}
+ if(!D.meals.some(m=>m.id==='s'))D.meals.push({id:'s',name:'Snacks'});
+ if(!D.meals.some(m=>m.id==='m4')){const si=D.meals.findIndex(m=>m.id==='s');D.meals.splice(si,0,{id:'m4',name:'Meal 4'})}
+ D.mealCount=Math.max(1,Math.min(4,+D.mealCount||3));}
 const mainMeals=()=>D.meals.filter(m=>m.id!=='s');
 const visMeals=(d=cur)=>{const L=D.log[d]||{},mm=mainMeals();return[...mm.filter((m,i)=>i<D.mealCount||(L[m.id]||[]).length),...D.meals.filter(m=>m.id==='s')]};
 const save=()=>Store.save(D);
@@ -125,10 +127,10 @@ function heroRings(t,b,exc,left){const st=D.steps[cur]||0,sg=D.stepGoal||10000,o
  const over=left<0;
  return`<div class="card rhero"><div class="rwrap">${svg}</div><div class="rstats">
  <div class="rs"><small>Calories</small><b style="color:#ff4f6d">${r0(t.kcal).toLocaleString()}<i>/${(b+exc).toLocaleString()}</i><em>CAL</em></b></div>
- <div class="rs"><small>Steps</small><b style="color:#a6ff3a">${st.toLocaleString()}<i>/${sg.toLocaleString()}</i></b></div>
+ <div class="rs sgedit tap" role="button" aria-label="Steps, tap to change goal"><small>Steps ✎</small><b style="color:#a6ff3a">${st.toLocaleString()}<i>/${sg.toLocaleString()}</i></b></div>
  <div class="rs"><small>Water</small><b style="color:#3fe3ff">${oz}<i>/${wg}</i><em>OZ</em></b></div>
  </div><div class="rleft ${over?'over':''}"><b>${r0(Math.abs(left)).toLocaleString()}</b> ${over?'calories over budget':'calories left today'}${exc?` <span class="mut">· +${r0(exc)} exercise</span>`:''}</div></div>`}
-function animRings(){const rs=[...V.querySelectorAll('.ra')];requestAnimationFrame(()=>requestAnimationFrame(()=>rs.forEach(r=>r.style.strokeDashoffset=r.dataset.to)))}
+function animRings(){const rs=[...V.querySelectorAll('.ra')];if(prevRA)rs.forEach((r,i)=>{if(prevRA[i]){r.style.transition='none';r.style.strokeDashoffset=prevRA[i];r.getBoundingClientRect();r.style.transition=''}});requestAnimationFrame(()=>requestAnimationFrame(()=>rs.forEach(r=>r.style.strokeDashoffset=r.dataset.to)))}
 function spark(vals,goal,col){const m=Math.max(goal||0,...vals,1);return`<div class="spark">${vals.map((v,i)=>`<i style="height:${Math.max(4,v/m*100)}%;background:${col};opacity:${i===vals.length-1?1:.55}"></i>`).join('')}</div>`}
 function statGrid(){const days=[...Array(7)].map((_,i)=>addDays(cur,i-6)),S=streaks(),g=macroGoal(),t=dayTotal(cur);
  const card=(id,lbl,col,big,unit,ch)=>`<div class="scard" data-go="${id}"><small>${lbl}</small><b style="color:${col}">${big}<em>${unit}</em></b>${ch}</div>`;
@@ -154,28 +156,36 @@ function tips(t,g,b){if(cur!==logicalToday())return'';const out=[],need=(k,v,goa
  if(t.kcal>b)out.push(`You're ${r0(t.kcal-b)} cal over. A walk helps, and tomorrow is a fresh start.`);
  return out.length?`<div class="tips">${out.slice(0,2).map(x=>`<div>💡 ${x}</div>`).join('')}</div>`:(t.kcal?'<div class="tips"><div>✅ Nice balance so far today!</div></div>':'')}
 function mini(lbl,v,goal,col,u='g'){const R=26,C=2*Math.PI*R,pc=Math.min(1,v/(goal||1));return`<div class="mr"><div class="mrr"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--ln)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pc)}"/></svg><b>${r0(v)}</b></div><small>${lbl}</small><small class="mut">of ${r0(goal)}${u}</small></div>`}
-function waterCard(){const oz=D.water[cur]||0,g=D.waterGoal,pc=Math.min(1,oz/g),cups=Math.ceil(g/8);
- return`<div class="card water"><h3><span>💧 Water</span><span class="mut">${oz} / ${g} oz</span></h3>
- <div class="cups">${[...Array(cups)].map((_,i)=>`<i class="${i<Math.floor(oz/8)?'full':''}"></i>`).join('')}</div>
- <div class="bar" style="margin:8px 0"><i style="width:${pc*100}%;background:var(--water)"></i></div>
- <div class="row"><button class="btn wb" data-w="8">+8 oz</button><button class="btn wb" data-w="16">+16 oz</button><button class="btn alt wb" id="w_undo" ${oz?'':'disabled'}>Undo</button></div></div>`}
+let prevOz=null,prevRA=null,lastView=null;
+function cupSVG(f,i,pop){const id='cw'+i,y=4+40*(1-f);return`<svg viewBox="0 0 36 48" width="100%" height="100%" aria-hidden="true"><defs><clipPath id="${id}"><path d="M5 4h26l-3.2 38.5a3 3 0 0 1-3 2.5H11.2a3 3 0 0 1-3-2.5z"/></clipPath><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cf0ff"/><stop offset="1" stop-color="#0aa8d8"/></linearGradient></defs>
+<path d="M5 4h26l-3.2 38.5a3 3 0 0 1-3 2.5H11.2a3 3 0 0 1-3-2.5z" fill="#3fe3ff" fill-opacity=".06"/>
+<g clip-path="url(#${id})"><g class="wf${pop?' pop':''}" style="transform:translateY(${y}px)"><path class="wave" d="M-36 0q4.5-3 9 0t9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0 9 0V60H-36z" fill="url(#${id}g)" opacity="${f>0?1:0}"/>${f>0?'<circle class="bub" cx="14" cy="30" r="1.3"/><circle class="bub b2" cx="22" cy="34" r="1"/>':''}</g></g>
+<path d="M5 4h26l-3.2 38.5a3 3 0 0 1-3 2.5H11.2a3 3 0 0 1-3-2.5z" fill="none" stroke="#3fe3ff" stroke-opacity="${f>0?.9:.35}" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 9l2.2 28" stroke="#fff" stroke-opacity=".18" stroke-width="1.6" stroke-linecap="round"/></svg>`}
+function waterCard(){const oz=D.water[cur]||0,g=D.waterGoal||64,gc=Math.max(1,Math.ceil(g/8)),n=Math.max(gc,Math.ceil(oz/8)),po=prevOz??oz,hit=oz>=g;
+ return`<div class="card water ${hit?'hit':''}"><h3><span>Water</span><span class="wst">${hit?'✓ Goal reached · ':''}<b>${oz}</b> of ${g} oz</span></h3>
+ <div class="cups2">${[...Array(n)].map((_,i)=>{const f=Math.max(0,Math.min(1,(oz-i*8)/8)),pf=Math.max(0,Math.min(1,(po-i*8)/8));return`<button class="cup ${f>0?'full':''} ${i>=gc?'xtra':''}" data-cup="${i}" aria-label="Cup ${i+1}, ${f>=1?'full':f>0?'partly full':'empty'}. ${f>0&&Math.ceil(oz/8)-1===i?'Tap to empty':'Tap to fill to '+(i+1)*8+' oz'}">${cupSVG(f,i,f>pf)}</button>`}).join('')}${hit?`<button class="cup ghost" data-cup="${n}" aria-label="Add 8 oz">+8</button>`:''}</div>
+ <p class="mut whint">Each cup is 8 oz · tap to fill, tap the last cup to undo</p></div>`}
+function waterTap(i){const d=cur,oz=D.water[d]||0,last=Math.ceil(oz/8)-1,g=D.waterGoal||64;prevOz=oz;D.water[d]=(i===last&&oz>0)?i*8:(i+1)*8;if(!D.water[d])delete D.water[d];save();today();prevOz=null;const nw=D.water[d]||0;if(oz<g&&nw>=g)toast('Water goal hit! 💧')}
 let waterStack=[];
 const bankCol=(left,b)=>left<0?'var(--bad)':left<b*0.15?'var(--warn)':'var(--ok)';
 function bankRing(left,b){const R=80,C=2*Math.PI*R,pc=Math.max(0,Math.min(1,left/b));return`<svg width="190" height="190" viewBox="0 0 190 190"><circle cx="95" cy="95" r="${R}" fill="none" stroke="var(--ln)" stroke-width="16"/>
  <circle class="bankarc" cx="95" cy="95" r="${R}" fill="none" stroke="${bankCol(left,b)}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(today.lastPc??1))}" data-to="${C*(1-pc)}"/></svg>`}
 function stepsCard(){const d=cur,st=D.steps[d]||0,g=D.stepGoal||10000,S=streaks().steps,days=[...Array(7)].map((_,i)=>addDays(d,i-6));
- return`<div class="card stepsc"><h2 style="margin-top:0">Steps</h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'var(--ok)':'var(--steps)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b>${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
+ return`<div class="card stepsc"><h2 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">Steps<button class="pill sgedit" aria-label="Change step goal">Goal ${g.toLocaleString()} ✎</button></h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'var(--ok)':'var(--steps)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b>${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
  <div style="flex:1"><div>🔥 ${S.cur}-day streak<small class="mut" style="display:block">Best ${S.best}</small></div><div class="mut" style="font-size:13px">≈ ${stepKcal(d).toLocaleString()} cal burned${D.stepsAddBack?` · +${stepCredit(d)} added`:''}</div>
  <div class="row" style="margin-top:6px"><button class="add" data-sp="1000">+1,000</button><button class="add" data-sp="5000">+5,000</button></div>
  <div class="row"><input id="sp_n" type="number" inputmode="numeric" placeholder="Exact steps" style="flex:1;min-width:0"><button class="add" id="sp_set">Set</button></div></div></div>
  <div class="wkbars">${days.map(x=>{const v=D.steps[x]||0;return`<div><i style="height:${Math.min(100,v/g*80)}%;background:${v>=g?'var(--ok)':'var(--steps)'}"></i><small>${new Date(x+'T12:00').toLocaleDateString(undefined,{weekday:'narrow'})}</small></div>`}).join('')}</div>
  <label class="tog"><input type="checkbox" id="sp_ab" ${D.stepsAddBack?'checked':''}> Add step calories to my budget (skips walks/runs already logged)</label>
  <p class="mut" style="font-size:12px;margin:4px 0 0">Enter steps from your phone's health app; automatic counting will come with the app version.</p></div>`}
-function bindSteps(re){const d=cur,set=v=>{const was=(D.steps[d]||0)>=D.stepGoal;D.steps[d]=Math.max(0,Math.round(v));save();re();if(!was&&D.steps[d]>=D.stepGoal)toast('Step goal hit! 🎉')};
+function stepGoalSheet(after){const g=D.stepGoal||10000,P=[5000,7500,10000,12000,15000];sheet(`<h2>Daily step goal</h2><div class="seg sgp">${P.map(n=>`<button data-sg="${n}" class="${g===n?'on':''}">${n/1000}k</button>`).join('')}</div><label>Custom</label><div class="row"><input id="sg_n" type="number" inputmode="numeric" min="500" step="500" value="${g}"><button class="btn" id="sg_go" style="flex:none">Save</button></div>`);
+ const set=v=>{v=Math.round(+v);if(!(v>=100))return toast('Enter a goal of at least 100');D.stepGoal=v;save();close();(after||render)();toast('Step goal: '+v.toLocaleString())};
+ document.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>set(b.dataset.sg));$('#sg_go').onclick=()=>set($('#sg_n').value)}
+function bindSteps(re){V.querySelectorAll('.sgedit').forEach(e=>e.onclick=ev=>{ev.stopPropagation();stepGoalSheet()});const d=cur,set=v=>{const was=(D.steps[d]||0)>=D.stepGoal;D.steps[d]=Math.max(0,Math.round(v));save();re();if(!was&&D.steps[d]>=D.stepGoal)toast('Step goal hit! 🎉')};
  V.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>set((D.steps[d]||0)+ +b.dataset.sp));
  const sb=$('#sp_set');if(sb)sb.onclick=()=>{const v=+$('#sp_n').value;if($('#sp_n').value!==''&&v>=0)set(v)};
  const ab=$('#sp_ab');if(ab)ab.onchange=e=>{D.stepsAddBack=e.target.checked;save();re()}}
-function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBack?ex:0,net=t.kcal-exc,left=b-net,g=macroGoal(),L=dayLog(cur),X=exList(cur);
+function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,sy=window.scrollY;prevRA=soft?[...V.querySelectorAll('.ra')].map(r=>r.style.strokeDashoffset):null;lastView=view;const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBack?ex:0,net=t.kcal-exc,left=b-net,g=macroGoal(),L=dayLog(cur),X=exList(cur);
  const top=Object.values(D.stats).sort((a,b)=>b.count-a.count||b.last-a.last);
  V.innerHTML=nudges()+`<div class="card datebar"><button id="prev" aria-label="Previous day">‹</button><b id="dlabel" class="tap">${nice(cur)} ▾</b>${cur!==logicalToday()?'<button id="toToday" class="pill todayb">Today</button>':''}<button id="next" aria-label="Next day" ${cur>=logicalToday()?'disabled':''}>›</button></div>
  ${heroRings(t,b,exc,left)}
@@ -191,7 +201,7 @@ function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBac
  <div class="card meal"><h3><span>🏃 Exercise</span><span class="mut">${r0(ex)} cal</span></h3>
  ${X.map(e=>`<div class="item" ${e.gym?'':`data-ex="${e.id}"`}><div>${esc(e.name)}${e.min?`<small>${e.min} min</small>`:''}</div><b>${r0(e.kcal)}</b></div>`).join('')}<button class="add" id="exAdd">+ Add exercise</button></div>
  <div class="card"><label style="margin-top:0">📝 Notes for the day</label><textarea id="dayNote" rows="2" placeholder="How did today go?">${esc(D.notes[cur]||'')}</textarea><button class="btn alt" id="copyDay">📋 Copy yesterday's food to ${nice(cur)}</button></div>`;
- animRings();pageTitle();
+ V.classList.toggle('noanim',!!soft);animRings();pageTitle();if(soft)window.scrollTo(0,sy);
  $('#prev').onclick=()=>{cur=addDays(cur,-1);today()};$('#next').onclick=()=>{if(cur<logicalToday()){cur=addDays(cur,1);today()}};$('#toToday')&&($('#toToday').onclick=()=>{cur=logicalToday();today()});
  $('#dlabel').onclick=calPicker;bindDone();$('#goalsTap').onclick=goalsSheet;
  V.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openAdd(b.dataset.add));
@@ -200,8 +210,7 @@ function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBac
  V.querySelectorAll('[data-chip]').forEach(b=>b.onclick=()=>{const[m,...k]=b.dataset.chip.split('|'),st=D.stats[k.join('|')];if(!st)return;addEntry(m,entryFrom(st.food,st.ui,st.qty));render();toast('Added '+st.food.name)});
  V.querySelectorAll('[data-menu]').forEach(b=>b.onclick=()=>mealMenu(b.dataset.menu));
  V.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const[m,id]=b.dataset.edit.split('|');editEntry(m,id)});
- V.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const n=+b.dataset.w;D.water[cur]=(D.water[cur]||0)+n;waterStack.push([cur,n]);save();today();if(D.water[cur]>=D.waterGoal&&D.water[cur]-n<D.waterGoal)toast('Water goal hit! 💧')});
- $('#w_undo').onclick=()=>{const i=waterStack.map(x=>x[0]).lastIndexOf(cur),n=i>=0?waterStack.splice(i,1)[0][1]:8;D.water[cur]=Math.max(0,(D.water[cur]||0)-n);save();today()};
+ V.querySelectorAll('[data-cup]').forEach(b=>b.onclick=()=>waterTap(+b.dataset.cup));
  bindSteps(today);
  V.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>{const k=c.dataset.go;if(k==='gym')return go('gym');const el=k==='protein'?$('#goalsTap'):k==='water'?V.querySelector('.water'):V.querySelector('.stepsc');el&&el.scrollIntoView({behavior:'smooth',block:'center'})});
  $('#copyDay').onclick=()=>{const y=D.log[addDays(cur,-1)]||{};let n=0;Object.entries(y).forEach(([m,es])=>es.forEach(e=>{addEntry(m,{...e,id:uid()});n++}));if(!n)return toast('Nothing logged the day before');render();toast('Copied '+n+' item'+(n>1?'s':''))};
@@ -210,10 +219,10 @@ function today(){const t=dayTotal(cur),b=budget(),ex=exTotal(cur),exc=D.exAddBac
  V.querySelectorAll('[data-ex]').forEach(el=>el.onclick=()=>exSheet(el.dataset.ex))}
 function goalsSheet(){const g=macroGoal();sheet(`<h2>Daily goals</h2><p class="mut" style="margin-top:0">Defaults: 30/40/30 split of your calories, 28 g fiber, 64 oz water.</p>
  <div class="row"><div><label>Protein g</label><input id="gl_p" type="number" value="${r0(g.p)}"></div><div><label>Carbs g</label><input id="gl_c" type="number" value="${r0(g.c)}"></div><div><label>Fat g</label><input id="gl_f" type="number" value="${r0(g.f)}"></div></div>
- <div class="row"><div><label>Fiber g</label><input id="gl_fb" type="number" value="${D.fiberGoal}"></div><div><label>Water oz</label><input id="gl_w" type="number" value="${D.waterGoal}"></div></div>
+ <div class="row"><div><label>Fiber g</label><input id="gl_fb" type="number" value="${D.fiberGoal}"></div><div><label>Water oz</label><input id="gl_w" type="number" value="${D.waterGoal}"></div></div><label>Daily steps</label><input id="gl_st" type="number" inputmode="numeric" value="${D.stepGoal||10000}">
  <button class="btn" id="gl_go">Save goals</button><button class="btn alt" id="gl_rs">Reset to defaults</button><button class="btn alt" onclick="close()">Cancel</button>`);
- $('#gl_go').onclick=()=>{D.macroGrams={p:+$('#gl_p').value||0,c:+$('#gl_c').value||0,f:+$('#gl_f').value||0};D.fiberGoal=+$('#gl_fb').value||28;D.waterGoal=+$('#gl_w').value||64;save();close();render();toast('Goals saved')};
- $('#gl_rs').onclick=()=>{D.macroGrams=null;D.fiberGoal=28;D.waterGoal=64;save();close();render()}}
+ $('#gl_go').onclick=()=>{D.macroGrams={p:+$('#gl_p').value||0,c:+$('#gl_c').value||0,f:+$('#gl_f').value||0};D.fiberGoal=+$('#gl_fb').value||28;D.waterGoal=+$('#gl_w').value||64;D.stepGoal=Math.max(100,+$('#gl_st').value||10000);save();close();render();toast('Goals saved')};
+ $('#gl_rs').onclick=()=>{D.macroGrams=null;D.fiberGoal=28;D.waterGoal=64;D.stepGoal=10000;save();close();render()}}
 const MET=[['Walking',3.5],['Running',9.8],['Cycling',7.5],['Weight lifting',5],['Elliptical',5],['Swimming',7],['HIIT / class',8],['Yard or house work',4],['Other',5]];
 const curLb=()=>D.weights.length?[...D.weights].sort((a,b)=>a.date<b.date?-1:1).pop().lb:(D.profile?.weight||180);
 const estKcal=(met,min)=>r0(met*3.5*curLb()*0.453592/200*min);
@@ -396,7 +405,8 @@ function settings(){const m=D.macroPct;
  <button class="btn alt" id="st_prof">Calorie Budget</button>
  <label class="tog"><input type="checkbox" id="st_ex" ${D.exAddBack?'checked':''}> Add exercise calories back to my budget</label>
  <label>Macro split (% of calories): protein / carbs / fat</label><div class="row"><input id="st_p" type="number" value="${m.p}"><input id="st_c" type="number" value="${m.c}"><input id="st_f" type="number" value="${m.f}"></div></div>
- <div class="card"><h2>Meals</h2><label>Meals a day</label><div class="seg" id="st_mc">${[2,3].map(n=>`<button data-mc="${n}" class="${D.mealCount===n?'on':''}">${n} meals</button>`).join('')}</div>
+ <div class="card"><h2>Goals</h2><div class="item tap" id="st_sg"><div>Daily step goal<small>Tap to change</small></div><b>${(D.stepGoal||10000).toLocaleString()}</b></div><div class="item tap" id="st_gl"><div>Nutrition &amp; water goals</div><b>›</b></div></div>
+ <div class="card"><h2>Meals</h2><label>Meals a day</label><div class="seg" id="st_mc">${[1,2,3,4].map(n=>`<button data-mc="${n}" class="${D.mealCount===n?'on':''}">${n}</button>`).join('')}</div>
  <p class="mut" style="margin-top:0;font-size:13px">Name your meals however your day runs — e.g. night shift: "Lunch", "Dinner", "Breakfast (after shift)". Snacks always show.</p>
  ${D.meals.map((x,i)=>`<div class="row" style="margin-bottom:6px;align-items:center"><input data-mn="${i}" value="${esc(x.name)}"><button class="btn sm alt" data-up="${i}" style="flex:none">↑</button><button class="btn sm alt" data-dn="${i}" style="flex:none">↓</button></div>`).join('')}
  <label>New day starts at</label><select id="st_roll">${[...Array(13)].map((_,h)=>`<option value="${h}">${h===0?'Midnight (default)':(h<12?h+':00 AM':'Noon')}</option>`).join('')}</select>
@@ -411,6 +421,7 @@ function settings(){const m=D.macroPct;
  <p class="mut" style="text-align:center;font-size:12px">Food data: USDA FoodData Central & Open Food Facts. No accounts, no fees.</p>`;
  $('#st_prof').onclick=budgetHome;document.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{localStorage.setItem('mhh-theme',b.dataset.th);document.documentElement.dataset.theme=b.dataset.th;document.querySelector('meta[name=theme-color]').content=b.dataset.th==='light'?'#f2f2f7':'#0b0b0f';render()});$('#st_ex').onchange=e=>{D.exAddBack=e.target.checked;save()};$('#st_key').onchange=e=>{D.usdaKey=e.target.value.trim();save()};
  ['p','c','f'].forEach(k=>$('#st_'+k).onchange=e=>{D.macroPct[k]=+e.target.value||0;save()});
+ $('#st_sg').onclick=()=>stepGoalSheet(settings);$('#st_gl').onclick=goalsSheet;
  V.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{D.mealCount=+b.dataset.mc;save();settings()});
  V.querySelectorAll('[data-mn]').forEach(i=>i.onchange=()=>{D.meals[+i.dataset.mn].name=i.value.trim()||D.meals[+i.dataset.mn].name;save()});
  const mv=(i,j)=>{if(j<0||j>=D.meals.length)return;[D.meals[i],D.meals[j]]=[D.meals[j],D.meals[i]];save();settings()};
