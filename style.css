@@ -254,3 +254,11 @@ main{padding:8px 14px 12px}
 .stchip{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600;background:rgba(63,227,255,.14);color:#7fe9ff;vertical-align:1px}.stchip.cond{background:rgba(255,122,47,.15);color:#ffa66e}
 .nomatch{margin:8px 0 2px;padding:12px;border-radius:14px;background:rgba(255,122,47,.08);border:1px solid rgba(255,122,47,.25);font-size:14px}.nomatch small{display:block;opacity:.65;font-size:12.5px;margin-top:2px}.nomatch .row{margin-top:10px;gap:8px}.nomatch .btn{margin:0;flex:1}
 .chkhint{margin:8px 2px 0;padding:8px 10px;border-radius:10px;background:rgba(255,200,0,.1);color:#ffd36b;font-size:12.5px;line-height:1.35}
+.vf{position:relative;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.vf video{width:100%;height:100%;object-fit:cover;display:block}
+.vf-box{position:absolute;left:10%;right:10%;top:28%;bottom:28%;border:2px solid rgba(255,255,255,.9);border-radius:14px;box-shadow:0 0 0 999px rgba(0,0,0,.5);transition:border-color .2s,box-shadow .2s;overflow:hidden}
+.vf-laser{position:absolute;left:4%;right:4%;height:2px;top:10%;background:#ff3b30;box-shadow:0 0 8px 2px rgba(255,59,48,.7);border-radius:2px;animation:vfl 2.2s ease-in-out infinite alternate}
+@keyframes vfl{from{top:10%}to{top:88%}}
+.vf.ok .vf-box{border-color:#30d158;box-shadow:0 0 0 999px rgba(0,0,0,.5),inset 0 0 0 3px #30d158}.vf.ok .vf-laser{animation:none;background:#30d158;top:50%}
+@media (prefers-reduced-motion:reduce){.vf-laser{animation:none;top:50%}}
+.res .emo{display:inline-block;width:26px;font-size:18px}

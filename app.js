@@ -5,7 +5,7 @@ const $=s=>document.querySelector(s),V=$('#view'),KEY='ct-data-v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const r0=n=>Math.round(n||0),r1=n=>Math.round((n||0)*10)/10,uid=()=>Math.random().toString(36).slice(2,10);
 const APP_USDA_KEY='DT9zrJmwr7F7qwrrM76T9MnHq6BW8HcMMNzgMgBq'; // built-in api.data.gov key (public, client-side by design)
-const tfetch=(u,ms=8000)=>{const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t))};
+const tfetch=(u,ms=8000,sig)=>{const c=new AbortController();if(sig)sig.addEventListener('abort',()=>c.abort());const t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t))};
 const def=()=>({profile:null,budget:null,macroPct:{p:30,c:40,f:30},meals:[{id:'b',name:'Meal 1'},{id:'l',name:'Meal 2'},{id:'d',name:'Meal 3'},{id:'m4',name:'Meal 4'},{id:'s',name:'Snacks'}],mealCount:3,fiberGoal:28,water:{},waterGoal:64,notes:{},workouts:[],wtemplates:[],fav:[],shareOFF:false,rollover:0,usdaKey:'',stepsAddBack:false,exercise:{},exAddBack:false,budgetMode:'manual',macroGrams:null,gym:{},gymGoal:4,steps:{},stepGoal:10000,log:{},custom:[],saved:[],stats:{},weights:[],done:{}});
 /* Storage adapter: swap Store.backend for a cloud sync backend later (same load/save shape). */
 const Store={backend:{load:()=>JSON.parse(localStorage.getItem(KEY)||'{}'),save:d=>localStorage.setItem(KEY,JSON.stringify(d))},
@@ -349,10 +349,13 @@ function openAdd(mid){sheet(`<h2>Add to ${esc(D.meals.find(m=>m.id===mid).name)}
  <div id="s_res"></div><button class="btn alt" id="s_new">+ Create a custom food</button><button class="btn alt" onclick="close()">Done</button>`);
  const showTab=()=>{$('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===addTab));listLocal(mid)};
  $('#s_tabs').onclick=e=>{if(e.target.dataset.t){addTab=e.target.dataset.t;showTab()}};
- let tmo;$('#s_q').oninput=e=>{clearTimeout(tmo);const q=e.target.value.trim();if(!q)return showTab();tmo=setTimeout(()=>search(q,mid),800)};
+ let tmo;$('#s_q').oninput=e=>{clearTimeout(tmo);const q=e.target.value.trim();if(!q)return showTab();instant(q,mid);tmo=setTimeout(()=>search(q,mid),300)};
  $('#s_q').onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tmo);search(e.target.value.trim(),mid)}};
  $('#s_st').onclick=e=>{const b=e.target.closest('[data-st]');if(!b)return;const s=STORES.find(x=>x.k===b.dataset.st);storeSel=storeSel===s?null:s;$('#s_st').querySelectorAll('button').forEach(x=>x.classList.toggle('on',storeSel?.k===x.dataset.st));const q=$('#s_q').value.trim();if(q||storeSel)search(q,mid);else showTab()};$('#s_scan').onclick=()=>scan(mid);$('#s_new').onclick=()=>customFood(mid);showTab()}
-const resRow=(f,extra='')=>{const st=storeOf(f),u0=unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res" data-i>${esc(f.name)} ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}<br><small>${f.brand?esc(f.brand)+' · ':''}${r0(f.n.kcal*u0.mult)} cal per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div>`};
+function instant(q,mid){const R=$('#s_res'),ws=qWords(q);if(!ws.length)return;const pool=[...STORELIB,...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food),...Object.values(SC).flat()],seen=new Set();
+ const L=pool.filter(f=>{const k=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k))return false;seen.add(k);return(!storeSel||storeOf(f)===storeSel)&&fMatch(f,ws)}).map(f=>[f,relScore(f,ws,storeSel)]).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
+ $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));if(!L.length){if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';return}R.innerHTML=L.map(f=>resRow(f)).join('')+'<p class="mut" style="font-size:13px" id="s_more">Searching online…</p>';bindRes(L,mid,f=>pick(f,mid))}
+const resRow=(f,extra='')=>{const st=storeOf(f),u0=unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res" data-i><span class="emo">${emoOf(f)}</span>${esc(f.name)} ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}<br><small>${f.brand?esc(f.brand)+' · ':''}${r0(f.n.kcal*u0.mult)} cal per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div>`};
 function bindRes(list,mid,onpick){$('#s_res').querySelectorAll('[data-i]').forEach((el,i)=>el.onclick=()=>onpick(list[i]))}
 function listLocal(mid){let html='',list=[];const S=Object.values(D.stats);
  if(addTab==='recent'||addTab==='freq'){list=S.sort((a,b)=>addTab==='recent'?b.last-a.last:b.count-a.count).slice(0,30);
@@ -392,36 +395,44 @@ const STORES=[
  {k:'kr',bn:"Kroger",lbl:'Kroger',sub:'Simple Truth',re:/\b(kroger|simple\s+truth|private\s+selection)\b/i,m:/kroger|simple truth|private selection/i,usda:['+brandOwner:kroger'],ob:['kroger','simple-truth','private-selection'],os:'kroger'}];
 let storeSel=null;
 const storeOf=f=>{const s=[f.brand,f.owner,...(f.stores||[])].filter(Boolean).join(' ');return STORES.find(x=>x.m.test(s))};
-const qWords=q=>q.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1&&!/^(and|with|the|of)$/.test(w));
+const SYN=[[/\b(mac(aroni)?|shells?)\s*(and|&|n|'n')\s*chee(se|z)e?\b/g,'maccheese'],[/\bmac\s*cheese\b/g,'maccheese'],[/\bpb\b|\bpeanut butter\b/g,'peanutbutter'],[/\bhot ?dogs?\b|\bfranks?\b/g,'hotdog'],[/\bsoda\b|\bpop\b/g,'soda']];
+const norm=t=>{t=(t||'').toLowerCase().replace(/&amp;/g,'&');SYN.forEach(([r,v])=>t=t.replace(r,' '+v+' '));return t};
+const lev=(a,b)=>{if(Math.abs(a.length-b.length)>2)return 9;let p=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){const c=[i];for(let j=1;j<=b.length;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[b.length]};
+const ftoks=f=>{if(!f._tk)Object.defineProperty(f,'_tk',{value:norm((f.name||'')+' '+(f.brand||'')).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(Boolean).map(stem),enumerable:false});return f._tk};
+const wHit=(w,tk,last)=>{w=stem(w);if(tk.includes(w))return 3;if(tk.some(t=>t.startsWith(w)&&(last||w.length>=3)))return 2;if(w.length>=4&&tk.some(t=>lev(w,t.slice(0,Math.max(w.length,t.length>w.length+2?w.length:t.length)))<=(w.length>=7?2:1)))return 1;return 0};
+const fMatch=(f,ws)=>ws.length&&ws.every((w,i)=>wHit(w,ftoks(f),i===ws.length-1));
+const EMO=[[/maccheese|pasta|spaghetti|noodle/,'🍝'],[/chicken|turkey/,'🍗'],[/beef|steak|burger/,'🥩'],[/pork|bacon|ham|sausage|hotdog/,'🥓'],[/fish|salmon|tuna|shrimp/,'🐟'],[/egg/,'🥚'],[/cheese|queso|velveeta/,'🧀'],[/milk|yogurt/,'🥛'],[/bread|bagel|tortilla|toast/,'🍞'],[/banana/,'🍌'],[/apple/,'🍎'],[/orange|mandarin/,'🍊'],[/berr/,'🍓'],[/lettuce|salad|spinach|kale/,'🥬'],[/potato|fries/,'🥔'],[/rice/,'🍚'],[/pizza/,'🍕'],[/cookie/,'🍪'],[/chocolate|candy/,'🍫'],[/ice cream/,'🍨'],[/cake|muffin|donut/,'🧁'],[/ketchup|tomato/,'🍅'],[/mustard|mayo|sauce|dressing|condiment/,'🥫'],[/coffee/,'☕'],[/soda|juice|drink/,'🥤'],[/nut|almond|peanut/,'🥜'],[/cereal|oat/,'🥣'],[/bean/,'🫘'],[/corn/,'🌽'],[/avocado/,'🥑'],[/carrot/,'🥕'],[/broccoli/,'🥦']];
+const emoOf=f=>{const t=norm(f.name+' '+(f.brand||''));return(EMO.find(([r])=>r.test(t))||[0,'🍽️'])[1]};
+const qWords=q=>norm(q).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1&&!/^(and|with|the|of)$/.test(w));
 const stem=w=>w.replace(/(ies)$/,'y').replace(/(es|s)$/,'');
 function relScore(f,ws,store){const nm=(f.name||'').toLowerCase(),seg=nm.split(',')[0].trim(),toks=nm.replace(/[^a-z0-9 ]/g,' ').split(/\s+/).map(stem);let s=0;
- ws.forEach(w=>{if(toks.includes(stem(w)))s+=10;else if(nm.includes(stem(w)))s+=4;else s-=6});
+ const tk=ftoks(f),bt=norm(f.brand||'').split(/[^a-z0-9]+/).map(stem);let hitAll=ws.length>0,bq=0;ws.forEach((w,i)=>{const h=wHit(w,tk,i===ws.length-1);if(h===3)s+=10;else if(h===2)s+=7;else if(h===1)s+=5;else{s-=6;hitAll=false}if(bt.includes(stem(w)))bq=1});if(hitAll)s+=15;
  if(ws.length&&stem(seg)===stem(ws.join(' ')))s+=8;if(/\braw\b/.test(nm))s+=3;if(/dehydrated|powder|babyfood|chips|candied|canned in heavy|frozen dessert/.test(nm))s-=4;
  if(f.cond)s+=6;if(f.dt==='SR Legacy')s+=2;if(f.src==='custom')s+=6;
- if(f.cur)s+=40;if(store){if(storeOf(f)===store)s+=25;else s-=30}else if(f.branded||f.src==='off')s-=12;
+ if(f.cur)s+=40;if(store){if(storeOf(f)===store)s+=25;else s-=30}else if((f.branded||f.src==='off')&&!bq)s-=12;else if(bq&&/box|dinner|as packaged|maccheese/.test(norm(nm)))s+=4;
  return s-Math.min(nm.length,120)/40}
-async function usdaQ(q,types){const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=30&dataType='+encodeURIComponent(types)+'&query='+encodeURIComponent(q));
+async function usdaQ(q,types){const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=30&dataType='+encodeURIComponent(types)+'&query='+encodeURIComponent(q),8000,SIG?.signal);
  if(!r.ok)throw new Error(r.status===429?'limit':'usda');const j=await r.json();return(j.foods||[]).map(usdaFood).filter(f=>f.n.kcal||f.n.p)}
 async function offQ(q,tag){const F='code,product_name,brands,stores,nutriments,serving_size,serving_quantity',map=j=>(j.products||j.hits||[]).filter(p=>p.product_name).map(offFood).filter(f=>f.n.kcal);
  const us=['https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=24&fields='+F+'&search_terms='+encodeURIComponent(q)+(tag?'&tagtype_0='+tag[0]+'&tag_contains_0=contains&tag_0='+encodeURIComponent(tag[1]):'')];
- for(const u of us){try{const r=await tfetch(u,7000);if(!r.ok)continue;return map(await r.json())}catch(e){}}return null}
-const SC={};
+ for(const u of us){try{const r=await tfetch(u,7000,SIG?.signal);if(!r.ok)continue;return map(await r.json())}catch(e){}}return null}
+const SC={};let SIG=null;const expQ=q=>{const n=norm(q);if(!/maccheese/.test(n))return[];return['shells cheese','macaroni cheese'].map(x=>n.replace(/maccheese/,x).replace(/\s+/g,' ').trim())};
 async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STORES.find(s=>s.re.test(q))||storeSel;if(!q&&!st0)return;
  const rest=q.replace(st0?new RegExp(st0.re.source,'gi'):/$^/,' ').replace(/\s+/g,' ').trim(),ws=qWords(rest);
- if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';
+ if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';if(!SC[(st0?.k||'')+':'+rest.toLowerCase()]){SIG?.abort();SIG=new AbortController()}
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));
- const lq=rest.toLowerCase(),loc=st0?STORELIB.filter(f=>storeOf(f)===st0&&ws.length&&ws.every(w=>f.name.toLowerCase().includes(stem(w)))):[...STORELIB,...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>ws.length&&ws.every(w=>f.name.toLowerCase().includes(stem(w))));
+ const lq=rest.toLowerCase(),loc=st0?STORELIB.filter(f=>storeOf(f)===st0&&fMatch(f,ws)):[...STORELIB,...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>fMatch(f,ws));
  const ck=(st0?.k||'')+':'+lq;let list=[],err='';
  if(SC[ck])list=SC[ck];else{
   const jobs=[];
   if(st0){const req=ws.map(w=>'+'+w).join(' ');st0.usda.forEach(b=>jobs.push(usdaQ(b+' '+req,'Branded').then(r=>r.length||!ws.length?r:usdaQ(b+' '+rest,'Branded')).catch(e=>{err+=e.message;return[]})));
    0}
-  else{jobs.push(usdaQ(rest,'Foundation,SR Legacy').catch(e=>{err+=e.message;return[]}),usdaQ(rest,'Branded').catch(e=>{err+=e.message;return[]}))}
+  else{jobs.push(usdaQ(rest,'Foundation,SR Legacy').catch(e=>{err+=e.message;return[]}),usdaQ(rest,'Branded').catch(e=>{err+=e.message;return[]}),...expQ(rest).map(x=>usdaQ(x,'Branded').catch(()=>[])))}
   list=(await Promise.all(jobs)).flat();if(list.filter(f=>!st0||storeOf(f)===st0).length<8){const oj=st0?[...st0.ob.slice(0,2).map(b=>offQ(rest,['brands',b])),offQ(rest,['stores',st0.os])]:[offQ(rest)];list=list.concat(...(await Promise.all(oj)).map(x=>x||[]))}if(list.length)SC[ck]=list}
  if(($('#s_q')?.value.trim()||'')!==q)return;
  const seen=new Set();let all=[...loc,...list].filter(f=>{const k=fkey(f),k2=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k)||seen.has(k2))return false;seen.add(k);seen.add(k2);return true});
- const hits=f=>{const nm=f.name.toLowerCase();return ws.filter(w=>nm.includes(stem(w))).length};
- all=all.map(f=>[f,relScore(f,ws,st0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,40);
+ const hits=f=>ws.filter((w,i)=>wHit(w,ftoks(f),i===ws.length-1)).length;
+ const lset=new Set(loc);all=all.map(f=>[f,relScore(f,ws,st0)+(lset.has(f)?1000:0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,40);
  let note='';if(st0&&!all.length&&ws.length){note=`<div class="nomatch"><div>No ${esc(st0.lbl)} match for “${esc(rest)}” yet.<small>Add it once from the label and it stays in My Foods.</small></div><div class="row"><button class="btn sm" id="nm_scan">📷 Scan it</button><button class="btn sm alt" id="nm_add">+ Add it</button></div></div><p class="mut" style="font-size:13px;margin:10px 2px 4px">General results</p>`;
   const gk=':'+lq;let g=SC[gk];if(!g){g=(await Promise.all([usdaQ(rest,'Foundation,SR Legacy').catch(()=>[]),usdaQ(rest,'Branded').catch(()=>[])])).flat();SC[gk]=g}
   if(($('#s_q')?.value.trim()||'')!==q)return;all=g.map(f=>[f,relScore(f,ws,null)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,30)}
@@ -520,10 +531,10 @@ async function shareOFF(f){if(!navigator.onLine)return toast('Offline — saved 
  try{await fetch('https://world.openfoodfacts.org/cgi/product_jqm2.pl',{method:'POST',mode:'no-cors',body:b});toast('Thanks! Shared to Open Food Facts')}catch(e){toast('Could not share right now — saved on this device')}}
 let stream=null,scanLoop=null,zx=null;
 function stopScan(){if(scanLoop)cancelAnimationFrame(scanLoop),scanLoop=null;if(zx){try{zx.reset()}catch(e){}zx=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
-async function scan(mid){sheet(`<h2>Scan a barcode</h2><video id="b_v" playsinline muted></video><p class="mut" id="b_s">Point the camera at the barcode…</p>
+async function scan(mid){sheet(`<h2>Scan a barcode</h2><div class="vf" id="b_vf"><video id="b_v" playsinline muted></video><div class="vf-box"><i class="vf-laser"></i></div></div><p class="mut" id="b_s">Line up the barcode inside the box</p>
  <div class="row"><input id="b_code" inputmode="numeric" placeholder="Or type the barcode number"><button class="btn sm" id="b_go" style="flex:none">Look up</button></div><button class="btn alt" onclick="close()">Cancel</button>`);
  $('#b_go').onclick=()=>lookup($('#b_code').value.trim(),mid);
- const found=c=>{stopScan();if(navigator.vibrate)navigator.vibrate(80);lookup(c,mid)};
+ const found=c=>{if(navigator.vibrate)navigator.vibrate(80);$('#b_vf')?.classList.add('ok');setTimeout(()=>{stopScan();lookup(c,mid)},350)};
  try{if('BarcodeDetector' in window){const fm=await BarcodeDetector.getSupportedFormats();
    if(fm.includes('ean_13')){stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});const v=$('#b_v');v.srcObject=stream;await v.play();
     const det=new BarcodeDetector({formats:fm.filter(f=>/ean|upc|code_128/.test(f))});
