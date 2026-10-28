@@ -375,17 +375,21 @@ function usdaFood(x){const g=id=>{const n=(x.foodNutrients||[]).find(n=>n.nutrie
  return{src:'usda',ref:x.fdcId,dt:x.dataType,branded:x.dataType==='Branded',owner:x.brandOwner||'',name:x.dataType==='Branded'?nm.replace(/\b\w/g,c=>c.toUpperCase()):x.description,brand:(x.brandName||x.brandOwner||'').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()).replace(/'S\b/g,"'s"),n,units}}
 function offFood(p){const N=p.nutriments||{};const kcal=N['energy-kcal_100g']??(N.energy_100g?N.energy_100g/4.184:0);
  const n={kcal:+kcal||0,p:+N.proteins_100g||0,c:+N.carbohydrates_100g||0,f:+N.fat_100g||0,fb:+N.fiber_100g||0};const units=[];
- const sq=parseFloat(p.serving_quantity)||(N['energy-kcal_serving']&&N['energy-kcal_100g']?Math.round(N['energy-kcal_serving']/N['energy-kcal_100g']*1000)/10:0);if(sq)units.push({label:p.serving_size?p.serving_size:sq+' g',mult:sq/100});
+ const sq=parseFloat(p.serving_quantity)||(N['energy-kcal_serving']&&N['energy-kcal_100g']?Math.round(N['energy-kcal_serving']/N['energy-kcal_100g']*1000)/10:0);const ss=String(p.serving_size||''),lg=parseFloat((ss.match(/(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i)||[])[1]?.replace(',','.'));let chk='';
+ if(sq&&sq<10&&!/tsp|tbsp|teaspoon|tablespoon|drop|spray|gum|mint|packet|sachet|stick/i.test(ss+' '+(p.product_name||''))&&(N['energy-kcal_100g']||0)>150)chk='The label data says one serving is '+(ss||sq+' g')+', which looks too small.';
+ else if(sq&&lg&&Math.abs(lg-sq)/Math.max(lg,sq)>.2)chk='The serving text ('+ss+') and weight ('+sq+' g) don’t match.';
+ if(sq&&!chk)units.push({label:ss?ss:sq+' g',mult:sq/100});
+ else if(chk){const cm=ss.match(/^(\d+(?:\.\d+)?)\s+[a-z][a-z -]*\((\d+(?:\.\d+)?)\s*g\)/i);if(cm&&+cm[2]>=10)units.push({label:ss,mult:cm[2]/100})}
  units.push({label:'100 g',mult:1},{label:'1 oz',mult:.2835},{label:'1 g',mult:.01});
- return{src:'off',ref:p.code,barcode:p.code,name:p.product_name||'Unnamed product',brand:(Array.isArray(p.brands)?p.brands[0]||'':(p.brands||'').split(',')[0]).trim(),stores:Array.isArray(p.stores)?p.stores:String(p.stores||'').split(','),n,units}}
+ return{src:'off',chk:chk||undefined,ref:p.code,barcode:p.code,name:p.product_name||'Unnamed product',brand:(Array.isArray(p.brands)?p.brands[0]||'':(p.brands||'').split(',')[0]).trim(),stores:Array.isArray(p.stores)?p.stores:String(p.stores||'').split(','),n,units}}
 /* ---------- store brands ---------- */
 const STORES=[
- {k:'costco',lbl:'Costco',re:/\b(costco|kirkland(\s+signature)?)\b/i,m:/kirkland|costco/i,usda:['+brandOwner:costco'],ob:['kirkland-signature','kirkland','costco'],os:'costco'},
- {k:'tj',lbl:"Trader Joe's",re:/\b(trader\s*joe'?s?|tj'?s)\b/i,m:/trader\s*joe/i,usda:['+brandName:trader','+brandOwner:trader'],ob:['trader-joe-s'],os:'trader-joe-s'},
- {k:'wf',lbl:'Whole Foods',re:/\b(whole\s*foods(\s+market)?|365)\b/i,m:/whole foods|365/i,usda:['+brandOwner:whole'],ob:['365-by-whole-foods-market','365-everyday-value','whole-foods-market'],os:'whole-foods'},
- {k:'wm',lbl:'Walmart',sub:'Great Value',re:/\b(walmart|great\s+value)\b/i,m:/walmart|great value/i,usda:['+brandOwner:walmart','+brandName:great'],ob:['great-value'],os:'walmart'},
- {k:'tg',lbl:'Target',sub:'Good & Gather',re:/\b(target|good\s*(&|and)\s*gather|market\s+pantry)\b/i,m:/target|good\s*&\s*gather|market pantry/i,usda:['+brandOwner:target'],ob:['good-gather','market-pantry'],os:'target'},
- {k:'kr',lbl:'Kroger',sub:'Simple Truth',re:/\b(kroger|simple\s+truth|private\s+selection)\b/i,m:/kroger|simple truth|private selection/i,usda:['+brandOwner:kroger'],ob:['kroger','simple-truth','private-selection'],os:'kroger'}];
+ {k:'costco',bn:"Kirkland Signature",lbl:'Costco',re:/\b(costco|kirkland(\s+signature)?)\b/i,m:/kirkland|costco/i,usda:['+brandOwner:costco'],ob:['kirkland-signature','kirkland','costco'],os:'costco'},
+ {k:'tj',bn:"Trader Joe's",lbl:"Trader Joe's",re:/\b(trader\s*joe'?s?|tj'?s)\b/i,m:/trader\s*joe/i,usda:['+brandName:trader','+brandOwner:trader'],ob:['trader-joe-s'],os:'trader-joe-s'},
+ {k:'wf',bn:"365 by Whole Foods Market",lbl:'Whole Foods',re:/\b(whole\s*foods(\s+market)?|365)\b/i,m:/whole foods|365/i,usda:['+brandOwner:whole'],ob:['365-by-whole-foods-market','365-everyday-value','whole-foods-market'],os:'whole-foods'},
+ {k:'wm',bn:"Great Value",lbl:'Walmart',sub:'Great Value',re:/\b(walmart|great\s+value)\b/i,m:/walmart|great value/i,usda:['+brandOwner:walmart','+brandName:great'],ob:['great-value'],os:'walmart'},
+ {k:'tg',bn:"Good & Gather",lbl:'Target',sub:'Good & Gather',re:/\b(target|good\s*(&|and)\s*gather|market\s+pantry)\b/i,m:/target|good\s*&\s*gather|market pantry/i,usda:['+brandOwner:target'],ob:['good-gather','market-pantry'],os:'target'},
+ {k:'kr',bn:"Kroger",lbl:'Kroger',sub:'Simple Truth',re:/\b(kroger|simple\s+truth|private\s+selection)\b/i,m:/kroger|simple truth|private selection/i,usda:['+brandOwner:kroger'],ob:['kroger','simple-truth','private-selection'],os:'kroger'}];
 let storeSel=null;
 const storeOf=f=>{const s=[f.brand,f.owner,...(f.stores||[])].filter(Boolean).join(' ');return STORES.find(x=>x.m.test(s))};
 const qWords=q=>q.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1&&!/^(and|with|the|of)$/.test(w));
@@ -418,11 +422,19 @@ async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STOR
  const seen=new Set();let all=[...loc,...list].filter(f=>{const k=fkey(f),k2=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k)||seen.has(k2))return false;seen.add(k);seen.add(k2);return true});
  const hits=f=>{const nm=f.name.toLowerCase();return ws.filter(w=>nm.includes(stem(w))).length};
  all=all.map(f=>[f,relScore(f,ws,st0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,40);
- let note='';if(st0&&!all.length&&ws.length){note=`<p class="mut" style="font-size:13px">No ${esc(st0.lbl)} match for “${esc(rest)}” in the food databases yet. Showing general results — or create it as a custom food from the label.</p>`;
+ let note='';if(st0&&!all.length&&ws.length){note=`<div class="nomatch"><div>No ${esc(st0.lbl)} match for “${esc(rest)}” yet.<small>Add it once from the label and it stays in My Foods.</small></div><div class="row"><button class="btn sm" id="nm_scan">📷 Scan it</button><button class="btn sm alt" id="nm_add">+ Add it</button></div></div><p class="mut" style="font-size:13px;margin:10px 2px 4px">General results</p>`;
   const gk=':'+lq;let g=SC[gk];if(!g){g=(await Promise.all([usdaQ(rest,'Foundation,SR Legacy').catch(()=>[]),usdaQ(rest,'Branded').catch(()=>[])])).flat();SC[gk]=g}
   if(($('#s_q')?.value.trim()||'')!==q)return;all=g.map(f=>[f,relScore(f,ws,null)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,30)}
  R.innerHTML=note+all.map(f=>resRow(f)).join('')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a minute.':'No results'+(st0?' at '+st0.lbl:'')+'.'}</p>`;
- bindRes(all,mid,f=>pick(f,mid))}
+ bindRes(all,mid,f=>pick(f,mid));
+ if(note){$('#nm_scan').onclick=()=>scan(mid);$('#nm_add').onclick=()=>customFood(mid,null,{name:rest.replace(/\b\w/g,c=>c.toUpperCase()),brand:st0.bn})}
+ lazyPortions(all,q)}
+const prefUnit=L=>L.find(u=>u.kind==='n'&&/^medium\b/.test(u.label))||L.find(u=>u.kind==='s'&&u.note!=='100 g')||L.find(u=>u.kind==='n'&&!/head|package|container/.test(u.label))||L.find(u=>u.kind==='n');
+async function lazyPortions(all,q){const rows=$('#s_res').querySelectorAll('.res[data-i]');
+ for(let i=0;i<Math.min(all.length,10);i++){const f=all[i];if(f.src!=='usda'||f.branded||f.pz)continue;const P=await usdaPortions(f);
+  if(!P||($('#s_q')?.value.trim()||'')!==q||!document.body.contains(rows[i]))return;
+  const L=unitsFor({...f,pz:1,units:[...(P.sv?[{label:'serving',mult:P.sv/100,kind:'s',note:Math.round(P.sv)+' g'}]:[]),...P.units]}),u=prefUnit(L);if(!u)continue;
+  const sm=rows[i].querySelector('small');if(sm){delete sm.dataset.kj;sm.textContent=(u.kind==='s'?'1 serving ('+u.note+')':'1 '+u.label)+' · '+r0(f.n.kcal*u.mult)+' cal'}}}
 /* ---------- amounts: units + parsing ---------- */
 const parseAmt=s=>{s=String(s||'').trim().replace(',','.').replace(/[½¼¾⅓⅔]/g,c=>({'½':' 1/2','¼':' 1/4','¾':' 3/4','⅓':' 1/3','⅔':' 2/3'})[c]).trim();if(!s)return 0;
  let m=s.match(/^(\d+)\s+(\d+)\/(\d+)$/);if(m)return +m[1]+m[2]/m[3];m=s.match(/^(\d*\.?\d+)\/(\d+)$/);if(m)return m[1]/m[2];return /^\d*\.?\d+$/.test(s)?+s:NaN};
@@ -458,7 +470,7 @@ function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=f
  sheet(`<h2>${esc(f.name)}</h2>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
  <div class="amtbox"><input id="v_q" class="amtin" inputmode="decimal" autocomplete="off" value="${fmtAmt(qty).replace('½',' 1/2').replace('¼',' 1/4').replace('¾',' 3/4').trim()}" aria-label="Amount"><div class="uchips" id="v_u">${L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('')}</div></div>
  <div class="qchips">${[['1/2','½'],['1','1'],['1.5','1½'],['2','2']].map(([v,t])=>`<button data-q="${v}">${t}</button>`).join('')}</div>
- <div class="mut" id="v_note" style="font-size:13px;margin:2px 2px 0;min-height:16px">${sv&&sv.note?'1 serving = '+esc(sv.note):''}</div>
+ ${f.chk?`<div class="chkhint">⚠️ Check serving: ${esc(f.chk)} Compare with your package or use grams.</div>`:''}<div class="mut" id="v_note" style="font-size:13px;margin:2px 2px 0;min-height:16px">${sv&&sv.note?'1 serving = '+esc(sv.note):''}</div>
  <div class="nutbox"><div><b id="v_k">0</b><span>cal</span></div><div><b id="v_p">0</b><span>protein</span></div><div><b id="v_c">0</b><span>carbs</span></div><div><b id="v_fb">0</b><span>fiber</span></div><div><b id="v_f">0</b><span>fat</span></div></div>
  <div class="row"><div style="flex:1"><label>Meal</label><select id="v_meal">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div>
  <button class="btn" id="v_go">${onDel?'Save':'Add'}</button>${onDel?'<button class="btn alt" id="v_del" style="color:var(--bad)">Remove</button>':''}
@@ -480,7 +492,7 @@ function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=f
  if(f.src==='usda'&&!f.pz)usdaPortions(f).then(P=>{if(!P||!document.body.contains($('#v_u'))||$('#sheet h2')?.textContent!==f.name)return;
   const base=(f.units||[]).filter(u=>!OLDGEN.test(u.label));const nu=[];if(P.sv&&!base.length)nu.push({label:'serving',mult:P.sv/100,kind:'s',note:Math.round(P.sv)+' g'});
   const f3={...f,pz:1,units:[...nu,...base,...P.units]};L=unitsFor(f3);f2={...f3,units:L};
-  if(!touched&&!D.stats[fkey(f)]){const pref=L.find(u=>u.kind==='n'&&/^medium\b/.test(u.label))||L.find(u=>u.kind==='s'&&u.note!=='100 g')||L.find(u=>u.kind==='n'&&!/head|package|container/.test(u.label))||L.find(u=>u.kind==='n');if(pref){lbl=pref.label;$('#v_q').value='1'}}
+  if(!touched&&!D.stats[fkey(f)]){const pref=prefUnit(L);if(pref){lbl=pref.label;$('#v_q').value='1'}}
   if(!L.some(u=>u.label===lbl))lbl=L[0].label;
   $('#v_u').innerHTML=L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('');
   const sv=L.find(u=>u.kind==='s');let nt=$('#v_note');if(nt)nt.textContent=sv&&sv.note?'1 serving = '+sv.note:'';upd()})}
