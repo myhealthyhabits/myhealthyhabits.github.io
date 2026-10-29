@@ -88,7 +88,7 @@ function wizard(i){if(i===0&&!W0)W0=Object.assign({goalType:'lose',sex:'m',age:'
  if(st==='weight')body=`<h2>⚖️ What's your current weight?</h2><label>${wl}</label><input id="w_w" type="number" step="0.1" inputmode="decimal" class="bigin" value="${kgv(p.weight)}">`;
  if(st==='goalw')body=`<h2>🎯 What's your goal weight?</h2><label>${wl}</label><input id="w_g" type="number" step="0.1" inputmode="decimal" class="bigin" value="${kgv(p.goal)}">`;
  if(st==='act')body=`<h2>How active are you?</h2><p class="mut">Not counting workouts you'll log separately.</p>${ACT.map(([v,t,d])=>opt('act',v,t,d)).join('')}`;
- if(st==='pace')body=`<h2>How fast do you want to ${p.goalType==='gain'?'gain':'lose'}?</h2>${[[0.5,'Slow and steady'],[1,'Recommended'],[1.5,'Faster'],[2,'Aggressive']].map(([v,d])=>opt('rate',v,v+' lb per week',d)).join('')}`;
+ if(st==='pace')body=`<h2>How fast do you want to ${p.goalType==='gain'?'gain':'lose'}?</h2>${(wU()==='kg'?[[0.25,'Slow and steady'],[0.5,'Recommended'],[0.75,'Faster'],[1,'Aggressive']]:[[0.5,'Slow and steady'],[1,'Recommended'],[1.5,'Faster'],[2,'Aggressive']]).map(([v,d])=>opt('rate',wU()==='kg'?+(v/0.453592).toFixed(3):v,v+(wU()==='kg'?' kg':' lb')+' per week',d)).join('')}`;
  const n=vis.length,pos=vis.indexOf(st);
  V.innerHTML=`<div class="dots">${[...Array(n)].map((_,j)=>`<i class="${j<=pos?'on':''}"></i>`).join('')}</div><div class="card wiz">${body}</div>
  <div class="row wnav"><button class="btn alt" id="w_back">Back</button><button class="btn" id="w_next">${i===lastI?'See my budget':'Next'}</button></div>`;
@@ -97,7 +97,7 @@ function wizard(i){if(i===0&&!W0)W0=Object.assign({goalType:'lose',sex:'m',age:'
  if($('#w_bd'))$('#w_bd').onchange=e=>{const d=new Date(e.target.value);if(!isNaN(d)){p.bday=e.target.value;$('#w_age').value=Math.floor((Date.now()-d)/(365.25*864e5))}};
  function read(){const v=id=>$(id)?.value;if(st==='age')p.age=+v('#w_age');if(st==='height'){if(p.hUnit==='ft'){p.ft=+v('#w_ft');p.inch=+v('#w_in')||0}else p.cm=+v('#w_cm')}
   if(st==='weight')p.weight=toLb(+v('#w_w'));if(st==='goalw')p.goal=toLb(+v('#w_g'));
-  if(st==='units'){D.units=p.us==='met'?{w:'kg',e:'cal',h:'cm',d:'km',l:'ml'}:{w:'lb',e:'cal',h:'ft',d:'mi',l:'oz'};p.hUnit=p.us==='met'?'cm':'ft'}}
+  if(st==='units'){D.units=p.us==='met'?{w:'kg',e:'cal',h:'cm',d:'km',l:'ml'}:{w:'lb',e:'cal',h:'ft',d:'mi',l:'oz'};p.hUnit=p.us==='met'?'cm':'ft';if(p.us==='met'&&[0.5,1,1.5,2].includes(p.rate))p.rate=+({0.5:0.551,1:1.102,1.5:1.653,2:2.205})[p.rate];if(p.us!=='met'&&[0.551,1.102,1.653,2.205].includes(p.rate))p.rate=({0.551:0.5,1.102:1,1.653:1.5,2.205:2})[p.rate]}}
  const ok=()=>{if(st==='age'&&!(p.age>=13&&p.age<=110))return'Enter your age';if(st==='height'&&!(heightCm(p)>100&&heightCm(p)<250))return'Enter your height';
   if(st==='weight'&&!(p.weight>60))return'Enter your weight';if(st==='goalw'){if(!(p.goal>60))return'Enter a goal weight';if(p.goalType==='lose'&&p.goal>=p.weight)return'Goal should be below your current weight';if(p.goalType==='gain'&&p.goal<=p.weight)return'Goal should be above your current weight'}};
  $('#w_back').onclick=()=>{read();wizard.dir=-1;i?wizard(i-1):(W0=null,budgetHome())};
@@ -109,7 +109,7 @@ function summary(){const p=W0;if(p.goalType==='maintain')p.goal=p.weight;const c
  <div class="card"><h3 style="margin-top:0">How we got this</h3>
  <div class="item"><div>Resting burn (Mifflin-St Jeor)</div><b>${c.bmr.toLocaleString()}</b></div>
  <div class="item"><div>× activity (${ACT.find(a=>a[0]==p.act)[1].toLowerCase()})<small>Maintenance calories</small></div><b>${c.tdee.toLocaleString()}</b></div>
- ${c.adj?`<div class="item"><div>${c.adj<0?'Deficit':'Surplus'} for ${p.rate} lb/week<small>500 cal/day per lb/week</small></div><b>${c.adj>0?'+':''}${c.adj.toLocaleString()}</b></div>`:''}
+ ${c.adj?`<div class="item"><div>${c.adj<0?'Deficit':'Surplus'} for ${wU()==='kg'?r1(p.rate*0.453592)+' kg':p.rate+' lb'}/week<small>${wU()==='kg'?'≈1,100 cal/day per kg/week':'500 cal/day per lb/week'}</small></div><b>${c.adj>0?'+':''}${c.adj.toLocaleString()}</b></div>`:''}
  ${c.capped?`<div class="item"><div>Safety floor applied</div><b>${c.floor.toLocaleString()}</b></div>`:''}
  <div class="item"><div><b>Daily budget</b></div><b>${c.final.toLocaleString()}</b></div></div>
  <button class="btn" id="s_use">Use this budget</button><button class="btn alt" id="s_adj">Adjust</button>`;
