@@ -338,8 +338,20 @@ function mealMenu(mid){const m=D.meals.find(x=>x.id===mid);sheet(`<h2>${esc(m.na
  $('#mm_clr').onclick=()=>{if(confirm('Clear '+m.name+'?')){delete dayLog(cur)[mid];save();close();render()}}}
 function editEntry(mid,id){const es=dayLog(cur)[mid],e=es.find(x=>x.id===id);
  servingSheet(e.food,e.ui,e.qty,mid,(ne,newMeal)=>{es.splice(es.indexOf(e),1);ne.id=e.id;(dayLog(cur)[newMeal]=dayLog(cur)[newMeal]||[]).push(ne);save();render()},
-  ()=>{es.splice(es.indexOf(e),1);save();close();render()})}
+  ()=>{es.splice(es.indexOf(e),1);save();close();render()},{entry:{mid,id,date:cur}})}
 
+/* ---------- edit any food (scanned / online) -> user's custom version ---------- */
+function toFill(f){if(f.src==='custom')return null;const L=unitsFor(f),gk=f.src==='quick'?0:100,u=L.find(x=>x.kind==='s')||L.find(x=>x.kind==='n')||L[0]||{label:'serving',mult:1},m=u.mult||1,n=f.n||{},r=v=>v==null||v===''?'':Math.round(v*m*10)/10;
+ return{kcal:r(n.kcal),p:r(n.p),c:r(n.c),f:r(n.f),fb:r(n.fb),sf:r(n.sf),na:r(n.na),sg:r(n.sg),g:gk?Math.round(m*gk*10)/10:'',ss:u.note&&u.label==='serving'?u.note:u.label!=='serving'?'1 '+u.label:'',unit:u.kind==='n'?u.label:'serving'}}
+function editFood(f,mid,ctx={}){const mine=f.src==='custom'&&D.custom.includes(f)?f:(f.barcode||(f.src==='off'&&f.ref))?D.custom.find(x=>x.barcode===(f.barcode||f.ref)):D.custom.find(x=>x.base===fkey(f));
+ if(mine)return customFood(mid,mine,{ctx});
+ if(f.src==='custom')return customFood(mid,null,{ctx,name:f.name,brand:f.brand,barcode:f.barcode,fill:{...f.n,g:f.gpS||'',spc:f.spc||'',ss:f.ssText||'',unit:(f.units[0]?.label||'serving').replace(/^1\s+/,'')}});
+ customFood(mid,null,{ctx,name:f.name,brand:f.brand,barcode:f.barcode||(f.src==='off'?f.ref:undefined),base:fkey(f),fill:toFill(f)})}
+
+function resaveEntry(E,nf,kept){const es=(D.log[E.date]||{})[E.mid]||[],e=es.find(x=>x.id===E.id);if(!e){close();return render()}
+ const oL=unitsFor(e.food),gk=e.food.src==='custom'?(e.food.gpS||0):(e.food.src==='quick'?0:100),ou=oL[e.ui]||oL[0],grams=gk&&ou?ou.mult*e.qty*gk:0;
+ const f2={...nf,units:unitsFor(nf)},q=grams&&nf.gpS?Math.round(grams/nf.gpS*100)/100:(ou&&ou.kind==='w'?1:e.qty),ne=entryFrom(f2,0,q);ne.id=e.id;es[es.indexOf(e)]=ne;
+ if(kept){const k=fkey(nf),s=D.stats[k]||{count:0};D.stats[k]={...s,food:nf,last:Date.now(),ui:0,qty:q}}save();render();editEntry(E.mid,E.id);toast(kept?'Entry and saved food updated':'Entry updated')}
 /* ---------- add food / search ---------- */
 let addTab='recent';
 const myFoods=()=>{const m=new Map();Object.values(D.stats).forEach(s=>m.set(fkey(s.food),{food:s.food,count:s.count,last:s.last,ui:s.ui,qty:s.qty}));D.custom.forEach(f=>{const k=fkey(f);if(!m.has(k))m.set(k,{food:f,count:0,last:0,ui:0,qty:1})});return[...m.values()].sort((a,b)=>b.count-a.count||b.last-a.last)};
@@ -474,12 +486,12 @@ async function usdaPortions(f){if(f.src!=='usda'||f.pz)return null;if(PZ[f.ref])
    let lb=(un&&un!=='undetermined'?un+(md?', '+md.toLowerCase():''):md).replace(/\s*\(approx\.?\s*([^)]*?)\s*dia\)/i,' $1').replace(/\s*\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
    if(lb&&!U2.some(u=>u.label===lb))U2.push({label:lb,mult:gw/am/100,kind:'n'})});
   const res={units:U2.slice(0,8),sv};PZ[f.ref]=res;return res}catch(e){return null}}
-function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=false;let lbl=(f.units[ui]||f.units[0]||{}).label;
+function servingSheet(f,ui,qty,mid,onSave,onDel,ctx){let L=unitsFor(f);let touched=false;let lbl=(f.units[ui]||f.units[0]||{}).label;
  if(!onDel){const st=D.stats[fkey(f)];if(st&&st.food.units[st.ui]){lbl=st.food.units[st.ui].label;qty=st.qty}}
  if(OLDGEN.test(lbl||''))lbl={'100 g':'g','1 oz':'oz','1 g':'g'}[lbl],qty=lbl==='g'&&(f.units[ui]||{}).label==='100 g'?qty*100:qty;
  if(!L.some(u=>u.label===lbl))lbl=L[0].label==='serving'?'serving':L[0].label;
  const sv=L.find(u=>u.kind==='s');
- sheet(`<h2>${esc(f.name)}</h2>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
+ sheet(`<div class="vhd"><h2>${esc(f.name)}</h2>${f.src!=='quick'?'<button class="edbtn" id="v_ed" aria-label="Edit food">✏️ Edit</button>':''}</div>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
  <div class="amtbox"><input id="v_q" class="amtin" inputmode="decimal" autocomplete="off" value="${fmtAmt(qty).replace('½',' 1/2').replace('¼',' 1/4').replace('¾',' 3/4').trim()}" aria-label="Amount"><div class="uchips" id="v_u">${L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('')}</div></div>
  <div class="qchips">${[['1/2','½'],['1','1'],['1.5','1½'],['2','2']].map(([v,t])=>`<button data-q="${v}">${t}</button>`).join('')}</div>
  ${f.chk?`<div class="chkhint">⚠️ Check serving: ${esc(f.chk)} Compare with your package or use grams.</div>`:''}<div class="mut" id="v_note" style="font-size:13px;margin:2px 2px 0;min-height:16px">${sv&&sv.note?'1 serving = '+esc(sv.note):''}</div>${f.url?`<div class="mut" style="font-size:12px;margin:2px">Label data: <a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:inherit">source</a></div>`:''}
@@ -487,7 +499,7 @@ function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=f
  <div class="row"><div style="flex:1"><label>Meal</label><select id="v_meal">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select></div></div>
  <button class="btn" id="v_go">${onDel?'Save':'Add'}</button>${onDel?'<button class="btn alt" id="v_del" style="color:var(--bad)">Remove</button>':''}
  <button class="btn alt sm" id="v_fav" style="width:100%">${D.fav.includes(fkey(f))?'★ Favorite':'☆ Add to favorites'}</button><button class="btn alt" id="v_x">Cancel</button>`);
- $('#v_x').onclick=close;$('#v_meal').value=mid;
+ $('#v_x').onclick=close;$('#v_meal').value=mid;if($('#v_ed'))$('#v_ed').onclick=()=>editFood(f,$('#v_meal').value,ctx||{});
  $('#v_fav').onclick=()=>{const k=fkey(f),i=D.fav.indexOf(k);if(i<0){D.fav.push(k);if(!D.stats[k])D.stats[k]={food:{...f,units:L},count:0,last:Date.now(),ui:0,qty:1}}else D.fav.splice(i,1);save();$('#v_fav').textContent=D.fav.includes(k)?'★ Favorite':'☆ Add to favorites'};
  let f2={...f,units:L};const ix=()=>Math.max(0,L.findIndex(u=>u.label===lbl)),q=()=>parseAmt($('#v_q').value);
  const upd=()=>{$('#v_u').querySelectorAll('.uchip').forEach(b=>b.classList.toggle('on',b.dataset.l===lbl));const a=q(),e=entryFrom(f2,ix(),a>0?a:0);
@@ -508,23 +520,23 @@ function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=f
   if(!L.some(u=>u.label===lbl))lbl=L[0].label;
   $('#v_u').innerHTML=L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('');
   const sv=L.find(u=>u.kind==='s');let nt=$('#v_note');if(nt)nt.textContent=sv&&sv.note?'1 serving = '+sv.note:'';upd()})}
-function customFood(mid,edit,pre={}){const LV=pre.lab?.v||{},LC=pre.lab?.conf||{},lv=k=>LV[k]??'';const f=(pre.lab&&edit?{...edit,units:[{label:'serving',mult:1}]}:edit)&&!pre.lab?edit:{...(edit||{}),barcode:pre.barcode||edit?.barcode,name:pre.name||edit?.name||'',brand:pre.brand||edit?.brand||'',n:{kcal:lv('kcal'),p:lv('p'),c:lv('c'),f:lv('f'),fb:lv('fb'),sf:lv('sf'),na:lv('na'),sg:lv('sg')},units:[{label:'serving',mult:1}],gpS:LV.g||'',spc:LV.spc||'',ssText:LV.ss||''};
+function customFood(mid,edit,pre={}){const LV=pre.lab?.v||pre.fill||{},LC=pre.lab?.conf||{},lv=k=>LV[k]??'';const f=edit&&!pre.lab?edit:{...(edit||{}),barcode:pre.barcode||edit?.barcode,name:pre.name||edit?.name||'',brand:pre.brand||edit?.brand||'',n:{kcal:lv('kcal'),p:lv('p'),c:lv('c'),f:lv('f'),fb:lv('fb'),sf:lv('sf'),na:lv('na'),sg:lv('sg')},units:[{label:LV.unit||(edit?.units?.[0]?.label)||'serving',mult:1}],gpS:LV.g||'',spc:LV.spc||'',ssText:LV.ss||''};
  const hl=k=>pre.lab&&LC[k]&&LC[k]!=='ok'?' class="lowc"':'',fv=k=>f.n[k]??'';
  const un=(f.units[0].label||'serving').replace(/^1\s+/,'');
- sheet(`<h2>${edit?'Edit':'New'} custom food</h2>${pre.lab?`<p class="labnote">✓ Filled from your label photo. ${Object.values(LC).some(x=>x!=='ok')?'Check the <span class="lowc">highlighted</span> fields.':'Give it a quick check.'}</p>`:`<button class="btn ${f.barcode&&!edit?'':'alt'} sm" id="c_lab" style="width:100%;margin-bottom:6px">📷 Scan Nutrition Facts label${f.barcode&&!edit?' to fill this in':''}</button>`}<label>Name</label><input id="c_n" value="${esc(f.name)}" placeholder="e.g. Flour tortilla"><label>Brand (optional)</label><input id="c_b" value="${esc(f.brand)}">
+ sheet(`<h2>${edit||pre.fill?'Edit food':'New custom food'}</h2>${pre.fill&&!edit?'<p class="mut" style="font-size:13px;margin:-4px 0 8px">Fix anything that doesn\'t match your package. Saving makes it your version'+(pre.barcode?' for this barcode, used first on future scans.':'.')+'</p>':''}${pre.lab?`<p class="labnote">✓ Filled from your label photo. ${Object.values(LC).some(x=>x!=='ok')?'Check the <span class="lowc">highlighted</span> fields.':'Give it a quick check.'}</p>`:`<button class="btn ${f.barcode&&!edit?'':'alt'} sm" id="c_lab" style="width:100%;margin-bottom:6px">📷 Scan Nutrition Facts label${f.barcode&&!edit?' to fill this in':''}</button>`}<label>Name</label><input id="c_n" value="${esc(f.name)}" placeholder="e.g. Flour tortilla"><label>Brand (optional)</label><input id="c_b" value="${esc(f.brand)}">
  <label>Unit</label><div class="cunit">1 <input id="c_s" value="${esc(un)}" placeholder="serving, tortilla, cookie…"> = <input id="c_g"${hl('g')} type="number" inputmode="decimal" value="${f.gpS||''}" placeholder="g"> g <span class="mut">(optional)</span></div>
  <label id="c_kl">${eU()==='kJ'?'Kilojoules':'Calories'} per 1 ${esc(un)}</label><input id="c_k"${hl('kcal')} type="number" inputmode="decimal" value="${f.n.kcal===''?'':eU()==='kJ'?Math.round(f.n.kcal*4.184):f.n.kcal}">
  <div class="row"><div><label>Protein g</label><input id="c_p"${hl('p')} type="number" inputmode="decimal" value="${fv('p')}"></div><div><label>Carbs g</label><input id="c_c"${hl('c')} type="number" inputmode="decimal" value="${fv('c')}"></div><div><label>Fat g</label><input id="c_f"${hl('f')} type="number" inputmode="decimal" value="${fv('f')}"></div><div><label>Fiber g</label><input id="c_fb"${hl('fb')} type="number" inputmode="decimal" value="${fv('fb')}"></div></div>
  <div class="row"><div><label>Sat fat g</label><input id="c_sf"${hl('sf')} type="number" inputmode="decimal" value="${fv('sf')}"></div><div><label>Sodium mg</label><input id="c_na"${hl('na')} type="number" inputmode="decimal" value="${fv('na')}"></div><div><label>Sugars g</label><input id="c_sg"${hl('sg')} type="number" inputmode="decimal" value="${fv('sg')}"></div><div><label>Servings/pkg</label><input id="c_spc"${hl('spc')} type="number" inputmode="decimal" value="${f.spc||''}"></div></div>${f.ssText?`<p class="mut" style="font-size:12px;margin:4px 0 0">Label serving size: ${esc(f.ssText)}</p>`:''}
  ${f.barcode?`<p class="mut" style="font-size:13px">UPC ${esc(f.barcode)} — saved on this device so the next scan finds it instantly.</p><label class="tog"><input type="checkbox" id="c_share" ${D.shareOFF?'checked':''}> Also share to Open Food Facts so it helps everyone</label>`:''}
- <button class="btn" id="c_go">Save</button>${edit?'<button class="btn alt" id="c_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" id="c_x">Cancel</button>`);
- $('#c_x').onclick=close;if($('#c_lab'))$('#c_lab').onclick=()=>labelScan(mid,{name:$('#c_n').value.trim()||f.name,brand:$('#c_b').value.trim()||f.brand,barcode:f.barcode,edit});$('#c_s').oninput=()=>{$('#c_kl').textContent=(eU()==='kJ'?'Kilojoules':'Calories')+' per 1 '+($('#c_s').value.trim()||'serving')};
+ ${pre.ctx?.entry?`<label class="tog"><input type="checkbox" id="c_also" checked> Also update my saved food${f.barcode?" (used on future scans)":""}</label>`:''}<button class="btn" id="c_go">Save</button>${edit?'<button class="btn alt" id="c_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" id="c_x">Cancel</button>`);
+ $('#c_x').onclick=close;if($('#c_lab'))$('#c_lab').onclick=()=>labelScan(mid,{name:$('#c_n').value.trim()||f.name,brand:$('#c_b').value.trim()||f.brand,barcode:f.barcode,edit,ctx:pre.ctx,base:pre.base});$('#c_s').oninput=()=>{$('#c_kl').textContent=(eU()==='kJ'?'Kilojoules':'Calories')+' per 1 '+($('#c_s').value.trim()||'serving')};
  $('#c_go').onclick=()=>{const n=$('#c_n').value.trim();if(!n||$('#c_k').value==='')return toast('Name and calories are required');
   const u=$('#c_s').value.trim().replace(/^1\s+/,'')||'serving',g=+$('#c_g').value||0;
-  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:eU()==='kJ'?Math.round(+$('#c_k').value/4.184*10)/10:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0,...['sf','na','sg'].reduce((o,k)=>($('#c_'+k).value!==''&&(o[k]=+$('#c_'+k).value),o),{})},units:[{label:u,mult:1}],...(g?{gpS:g}:{}),...(+$('#c_spc').value?{spc:+$('#c_spc').value}:{}),...(f.ssText?{ssText:f.ssText}:{}),...(pre.lab||edit?.fromLabel?{fromLabel:1}:{}),upd:Date.now()};
+  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:eU()==='kJ'?Math.round(+$('#c_k').value/4.184*10)/10:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0,...['sf','na','sg'].reduce((o,k)=>($('#c_'+k).value!==''&&(o[k]=+$('#c_'+k).value),o),{})},units:[{label:u,mult:1}],...(g?{gpS:g}:{}),...(+$('#c_spc').value?{spc:+$('#c_spc').value}:{}),...(f.ssText?{ssText:f.ssText}:{}),...(pre.lab||edit?.fromLabel?{fromLabel:1}:{}),...(pre.base||edit?.base?{base:pre.base||edit.base}:{}),upd:Date.now()};
   if(f.barcode&&$('#c_share')?.checked){D.shareOFF=true;shareOFF({...nf,units:[{label:'1 '+u+(g?` (${g} g)`:''),mult:1}]})}else if($('#c_share'))D.shareOFF=false;
-  const same=!edit&&f.barcode?D.custom.findIndex(x=>x.barcode===f.barcode):-1;if(edit&&D.custom.includes(edit))D.custom[D.custom.indexOf(edit)]=nf;else if(same>=0){nf.ref=D.custom[same].ref;D.custom[same]=nf}else D.custom.push(nf);save();if(f.barcode)toast('Saved — scans of this barcode now use your version');
-  if(mid)pick(nf,mid);else{close();render()}};
+  const E=pre.ctx?.entry,keep=!E||$('#c_also')?.checked;if(keep){const same=!edit&&f.barcode?D.custom.findIndex(x=>x.barcode===f.barcode):-1;if(edit&&D.custom.includes(edit))D.custom[D.custom.indexOf(edit)]=nf;else if(same>=0){nf.ref=D.custom[same].ref;D.custom[same]=nf}else D.custom.push(nf);save();if(f.barcode&&!E)toast('Saved — scans of this barcode now use your version')}
+  if(E)return resaveEntry(E,nf,keep);if(mid)pick(nf,mid);else{close();render()}};
  if(edit)$('#c_del').onclick=()=>{D.custom.splice(D.custom.indexOf(edit),1);save();close();render()}}
 
 /* ---------- barcode ---------- */
