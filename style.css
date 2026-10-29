@@ -376,3 +376,10 @@ details.nd[open]>summary .mut{opacity:.6}
 .kofi b{display:block;font-size:15px}.kofi small{display:block;opacity:.75;font-size:12.5px;margin-top:2px}
 .kofi-cup{font-size:22px;width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,rgba(234,179,8,.25),rgba(249,115,22,.25))}
 .kofi-go{margin-left:auto;font-size:22px;opacity:.5}
+/* + stepper on food rows */
+.res.qpr{display:flex;align-items:center;gap:8px}.res.qpr .rtx{flex:1;min-width:0}
+.qp{display:flex;align-items:center;gap:6px;flex:none}
+.qpb{width:44px;height:44px;border-radius:50%;border:0;background:linear-gradient(135deg,#ff9f0a,#ff6b6b);color:#fff;font-size:24px;font-weight:800;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.qpb.qm{background:rgba(255,255,255,.1);color:var(--tx);border:1px solid var(--ln);box-shadow:none}
+.qpn{min-width:22px;text-align:center;color:#30d158;font-size:16px}
+.qchip button[data-n]::after{content:'×' attr(data-n);color:#30d158;font-weight:800;margin-left:3px}
