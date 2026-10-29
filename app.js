@@ -380,7 +380,7 @@ function openAdd(mid){sheet(`<h2>Add to ${esc(D.meals.find(m=>m.id===mid).name)}
  let tmo;$('#s_q').oninput=e=>{clearTimeout(tmo);const q=e.target.value.trim();if(!q)return showTab();instant(q,mid);tmo=setTimeout(()=>search(q,mid),300)};
  $('#s_q').onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tmo);search(e.target.value.trim(),mid)}};
  $('#s_st').onclick=e=>{const b=e.target.closest('[data-st]');if(!b)return;const s=STORES.find(x=>x.k===b.dataset.st);storeSel=storeSel===s?null:s;$('#s_st').querySelectorAll('button').forEach(x=>x.classList.toggle('on',storeSel?.k===x.dataset.st));const q=$('#s_q').value.trim();if(q||storeSel)search(q,mid);else showTab()};$('#s_scan').onclick=()=>scan(mid);$('#s_new').onclick=()=>customFood(mid);showTab()}
-function instant(q,mid){const R=$('#s_res'),ws=qWords(q);if(!ws.length)return;const pool=[...STORELIB,...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food),...Object.values(SC).flat()],seen=new Set();
+function instant(q,mid){const R=$('#s_res'),ws=qWords(q);if(!ws.length)return;const pool=[...STORELIB,...CONDLIB,...(typeof FOODLIB!=="undefined"?FOODLIB:[]),...D.custom,...Object.values(D.stats).map(s=>s.food),...Object.values(SC).flat()],seen=new Set();
  const L=pool.filter(f=>{const k=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k))return false;seen.add(k);return(!storeSel||storeOf(f)===storeSel)&&fMatch(f,ws)}).map(f=>[f,relScore(f,ws,storeSel)]).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));if(!L.length){if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';return}R.innerHTML=L.map(f=>resRow(f)).join('')+'<p class="mut" style="font-size:13px" id="s_more">Searching online…</p>';bindRes(L,mid,f=>pick(f,mid))}
 const resRow=(f,extra='')=>{const st=storeOf(f),u0=unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res" data-i><span class="emo">${emoOf(f)}</span>${esc(f.name)} ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}<br><small>${f.brand?esc(f.brand)+' · ':''}${r0(f.n.kcal*u0.mult)} cal per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div>`};
@@ -449,7 +449,7 @@ async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STOR
  const rest=q.replace(st0?new RegExp(st0.re.source,'gi'):/$^/,' ').replace(/\s+/g,' ').trim(),ws=qWords(rest);
  if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';if(!SC[(st0?.k||'')+':'+rest.toLowerCase()]){SIG?.abort();SIG=new AbortController()}
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));
- const lq=rest.toLowerCase(),loc=st0?STORELIB.filter(f=>storeOf(f)===st0&&fMatch(f,ws)):[...STORELIB,...CONDLIB,...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>fMatch(f,ws));
+ const lq=rest.toLowerCase(),loc=st0?STORELIB.filter(f=>storeOf(f)===st0&&fMatch(f,ws)):[...STORELIB,...CONDLIB,...(typeof FOODLIB!=="undefined"?FOODLIB:[]),...D.custom,...Object.values(D.stats).map(s=>s.food)].filter(f=>fMatch(f,ws));
  const ck=(st0?.k||'')+':'+lq;let list=[],err='';
  if(SC[ck])list=SC[ck];else{
   const jobs=[];
