@@ -508,20 +508,22 @@ function servingSheet(f,ui,qty,mid,onSave,onDel){let L=unitsFor(f);let touched=f
   if(!L.some(u=>u.label===lbl))lbl=L[0].label;
   $('#v_u').innerHTML=L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('');
   const sv=L.find(u=>u.kind==='s');let nt=$('#v_note');if(nt)nt.textContent=sv&&sv.note?'1 serving = '+sv.note:'';upd()})}
-function customFood(mid,edit,pre={}){const f=edit||{barcode:pre.barcode,name:pre.name||'',brand:pre.brand||'',n:{kcal:'',p:'',c:'',f:''},units:[{label:'serving',mult:1}]};
+function customFood(mid,edit,pre={}){const LV=pre.lab?.v||{},LC=pre.lab?.conf||{},lv=k=>LV[k]??'';const f=(pre.lab&&edit?{...edit,units:[{label:'serving',mult:1}]}:edit)&&!pre.lab?edit:{...(edit||{}),barcode:pre.barcode||edit?.barcode,name:pre.name||edit?.name||'',brand:pre.brand||edit?.brand||'',n:{kcal:lv('kcal'),p:lv('p'),c:lv('c'),f:lv('f'),fb:lv('fb'),sf:lv('sf'),na:lv('na'),sg:lv('sg')},units:[{label:'serving',mult:1}],gpS:LV.g||'',spc:LV.spc||'',ssText:LV.ss||''};
+ const hl=k=>pre.lab&&LC[k]&&LC[k]!=='ok'?' class="lowc"':'',fv=k=>f.n[k]??'';
  const un=(f.units[0].label||'serving').replace(/^1\s+/,'');
- sheet(`<h2>${edit?'Edit':'New'} custom food</h2><label>Name</label><input id="c_n" value="${esc(f.name)}" placeholder="e.g. Flour tortilla"><label>Brand (optional)</label><input id="c_b" value="${esc(f.brand)}">
- <label>Unit</label><div class="cunit">1 <input id="c_s" value="${esc(un)}" placeholder="serving, tortilla, cookie…"> = <input id="c_g" type="number" inputmode="decimal" value="${f.gpS||''}" placeholder="g"> g <span class="mut">(optional)</span></div>
- <label id="c_kl">${eU()==='kJ'?'Kilojoules':'Calories'} per 1 ${esc(un)}</label><input id="c_k" type="number" inputmode="decimal" value="${f.n.kcal===''?'':eU()==='kJ'?Math.round(f.n.kcal*4.184):f.n.kcal}">
- <div class="row"><div><label>Protein g</label><input id="c_p" type="number" value="${f.n.p}"></div><div><label>Carbs g</label><input id="c_c" type="number" value="${f.n.c}"></div><div><label>Fat g</label><input id="c_f" type="number" value="${f.n.f}"></div><div><label>Fiber g</label><input id="c_fb" type="number" value="${f.n.fb??''}"></div></div>
+ sheet(`<h2>${edit?'Edit':'New'} custom food</h2>${pre.lab?`<p class="labnote">✓ Filled from your label photo. ${Object.values(LC).some(x=>x!=='ok')?'Check the <span class="lowc">highlighted</span> fields.':'Give it a quick check.'}</p>`:`<button class="btn ${f.barcode&&!edit?'':'alt'} sm" id="c_lab" style="width:100%;margin-bottom:6px">📷 Scan Nutrition Facts label${f.barcode&&!edit?' to fill this in':''}</button>`}<label>Name</label><input id="c_n" value="${esc(f.name)}" placeholder="e.g. Flour tortilla"><label>Brand (optional)</label><input id="c_b" value="${esc(f.brand)}">
+ <label>Unit</label><div class="cunit">1 <input id="c_s" value="${esc(un)}" placeholder="serving, tortilla, cookie…"> = <input id="c_g"${hl('g')} type="number" inputmode="decimal" value="${f.gpS||''}" placeholder="g"> g <span class="mut">(optional)</span></div>
+ <label id="c_kl">${eU()==='kJ'?'Kilojoules':'Calories'} per 1 ${esc(un)}</label><input id="c_k"${hl('kcal')} type="number" inputmode="decimal" value="${f.n.kcal===''?'':eU()==='kJ'?Math.round(f.n.kcal*4.184):f.n.kcal}">
+ <div class="row"><div><label>Protein g</label><input id="c_p"${hl('p')} type="number" inputmode="decimal" value="${fv('p')}"></div><div><label>Carbs g</label><input id="c_c"${hl('c')} type="number" inputmode="decimal" value="${fv('c')}"></div><div><label>Fat g</label><input id="c_f"${hl('f')} type="number" inputmode="decimal" value="${fv('f')}"></div><div><label>Fiber g</label><input id="c_fb"${hl('fb')} type="number" inputmode="decimal" value="${fv('fb')}"></div></div>
+ <div class="row"><div><label>Sat fat g</label><input id="c_sf"${hl('sf')} type="number" inputmode="decimal" value="${fv('sf')}"></div><div><label>Sodium mg</label><input id="c_na"${hl('na')} type="number" inputmode="decimal" value="${fv('na')}"></div><div><label>Sugars g</label><input id="c_sg"${hl('sg')} type="number" inputmode="decimal" value="${fv('sg')}"></div><div><label>Servings/pkg</label><input id="c_spc"${hl('spc')} type="number" inputmode="decimal" value="${f.spc||''}"></div></div>${f.ssText?`<p class="mut" style="font-size:12px;margin:4px 0 0">Label serving size: ${esc(f.ssText)}</p>`:''}
  ${f.barcode?`<p class="mut" style="font-size:13px">UPC ${esc(f.barcode)} — saved on this device so the next scan finds it instantly.</p><label class="tog"><input type="checkbox" id="c_share" ${D.shareOFF?'checked':''}> Also share to Open Food Facts so it helps everyone</label>`:''}
  <button class="btn" id="c_go">Save</button>${edit?'<button class="btn alt" id="c_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" id="c_x">Cancel</button>`);
- $('#c_x').onclick=close;$('#c_s').oninput=()=>{$('#c_kl').textContent=(eU()==='kJ'?'Kilojoules':'Calories')+' per 1 '+($('#c_s').value.trim()||'serving')};
+ $('#c_x').onclick=close;if($('#c_lab'))$('#c_lab').onclick=()=>labelScan(mid,{name:$('#c_n').value.trim()||f.name,brand:$('#c_b').value.trim()||f.brand,barcode:f.barcode,edit});$('#c_s').oninput=()=>{$('#c_kl').textContent=(eU()==='kJ'?'Kilojoules':'Calories')+' per 1 '+($('#c_s').value.trim()||'serving')};
  $('#c_go').onclick=()=>{const n=$('#c_n').value.trim();if(!n||$('#c_k').value==='')return toast('Name and calories are required');
   const u=$('#c_s').value.trim().replace(/^1\s+/,'')||'serving',g=+$('#c_g').value||0;
-  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:eU()==='kJ'?Math.round(+$('#c_k').value/4.184*10)/10:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0},units:[{label:u,mult:1}],...(g?{gpS:g}:{})};
+  const nf={src:'custom',ref:edit?.ref||uid(),barcode:f.barcode,name:n,brand:$('#c_b').value.trim(),n:{kcal:eU()==='kJ'?Math.round(+$('#c_k').value/4.184*10)/10:+$('#c_k').value,p:+$('#c_p').value||0,c:+$('#c_c').value||0,f:+$('#c_f').value||0,fb:+$('#c_fb').value||0,...['sf','na','sg'].reduce((o,k)=>($('#c_'+k).value!==''&&(o[k]=+$('#c_'+k).value),o),{})},units:[{label:u,mult:1}],...(g?{gpS:g}:{}),...(+$('#c_spc').value?{spc:+$('#c_spc').value}:{}),...(f.ssText?{ssText:f.ssText}:{}),...(pre.lab||edit?.fromLabel?{fromLabel:1}:{}),upd:Date.now()};
   if(f.barcode&&$('#c_share')?.checked){D.shareOFF=true;shareOFF({...nf,units:[{label:'1 '+u+(g?` (${g} g)`:''),mult:1}]})}else if($('#c_share'))D.shareOFF=false;
-  if(edit)D.custom[D.custom.indexOf(edit)]=nf;else D.custom.push(nf);save();
+  const same=!edit&&f.barcode?D.custom.findIndex(x=>x.barcode===f.barcode):-1;if(edit&&D.custom.includes(edit))D.custom[D.custom.indexOf(edit)]=nf;else if(same>=0){nf.ref=D.custom[same].ref;D.custom[same]=nf}else D.custom.push(nf);save();if(f.barcode)toast('Saved — scans of this barcode now use your version');
   if(mid)pick(nf,mid);else{close();render()}};
  if(edit)$('#c_del').onclick=()=>{D.custom.splice(D.custom.indexOf(edit),1);save();close();render()}}
 
@@ -547,8 +549,28 @@ const loadZX=()=>window.ZXing?Promise.resolve():new Promise((ok,no)=>{const s=do
 async function lookup(code,mid){if(!code)return;const s=$('#b_s');if(s)s.textContent='Looking up '+code+'…';
  const mine=D.custom.find(f=>f.barcode===code)||Object.values(D.stats).map(s=>s.food).find(f=>f.barcode===code);if(mine)return pick(mine,mid);
  try{const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json?fields=code,product_name,brands,nutriments,serving_size,serving_quantity');
-  const j=await r.json();if(j.status===1&&j.product){const f=offFood(j.product);if(f.n.kcal)return pick(f,mid);toast('Found “'+f.name+'” but it has no nutrition info — add it below');return customFood(mid,null,{name:f.name,brand:f.brand,barcode:code})}}catch(e){}
- toast('Not found — add it as a custom food');customFood(mid,null,{barcode:code})}
+  const j=await r.json();if(j.status===1&&j.product){const f=offFood(j.product);if(f.n.kcal){pick(f,mid);const sb=$('#sheetBody');if(sb){sb.insertAdjacentHTML('afterbegin',`<button class="fixlab" id="fixlab">Doesn't match the package? <b>📷 Scan label to fix</b></button>`);$('#fixlab').onclick=()=>labelScan(mid,{name:f.name,brand:f.brand,barcode:code})}return}toast('Found “'+f.name+'” but it has no nutrition info — add it below');return customFood(mid,null,{name:f.name,brand:f.brand,barcode:code})}}catch(e){}
+ toast('Not found — scan the label or type it in');customFood(mid,null,{barcode:code})}
+
+/* ---------- nutrition label OCR (Tesseract.js, lazy-loaded, on-device) ---------- */
+const loadJS=(src,test)=>test()?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+let ocrW=null;
+function labelScan(mid,pre={}){stopScan();sheet(`<h2>Scan nutrition label</h2><p class="mut" style="margin-top:0">Take a clear, straight-on photo of the <b>Nutrition Facts</b> panel in good light. It's read on your phone. Nothing is uploaded.</p>
+ <label class="btn" style="display:block;text-align:center">📷 Take photo<input type="file" accept="image/*" capture="environment" id="l_cam" hidden></label>
+ <label class="btn alt" style="display:block;text-align:center">🖼️ Choose photo<input type="file" accept="image/*" id="l_pick" hidden></label>
+ <div id="l_st" class="mut" style="text-align:center;min-height:22px"></div><div class="bar" id="l_bar" style="display:none;margin:6px 0"><i style="width:0;background:var(--p);transition:width .3s"></i></div>
+ <button class="btn alt" id="l_x">Cancel</button>`);
+ $('#l_x').onclick=()=>pre.barcode||pre.edit?customFood(mid,pre.edit||null,pre):close();
+ const go=async file=>{if(!file)return;const st=$('#l_st'),bar=$('#l_bar');st.textContent='Preparing photo…';bar.style.display='block';
+  try{const img=await prepImg(file);st.textContent='Loading the label reader (first time only)…';
+   await loadJS('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
+   if(!ocrW)ocrW=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'&&$('#l_bar')){$('#l_bar i').style.width=Math.round(m.progress*100)+'%';$('#l_st').textContent='Reading label… '+Math.round(m.progress*100)+'%'}}});
+   const r=await ocrW.recognize(img);const lab=parseLabel(r.data.text),n=Object.keys(lab.v).length;
+   if(!$('#l_st'))return;if(lab.v.kcal==null&&n<3){st.textContent="Couldn't read that label. Try again closer, flatter and with less glare.";bar.style.display='none';return}
+   customFood(mid,pre.edit||null,{...pre,lab})}catch(e){if($('#l_st')){$('#l_st').textContent=navigator.onLine?'Label reader failed to load. Try again.':'The label reader needs internet the first time.';bar.style.display='none'}}};
+ $('#l_cam').onchange=e=>go(e.target.files[0]);$('#l_pick').onchange=e=>go(e.target.files[0])}
+async function prepImg(file){const bm=await createImageBitmap(file),M=Math.max(bm.width,bm.height),k=M<1200?1400/M:M>2400?2400/M:1,c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
+ const x=c.getContext('2d');x.drawImage(bm,0,0,c.width,c.height);return c}
 
 /* ---------- history ---------- */
 function progress(){weight();const keep=V.innerHTML;history();const h=V.innerHTML;weight();V.insertAdjacentHTML('beforeend',h);V.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{cur=el.dataset.d;go('today')});V.insertAdjacentHTML('afterbegin',programCard());bindProgram()}
