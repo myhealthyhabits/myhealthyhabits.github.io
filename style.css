@@ -371,3 +371,8 @@ details.nd[open]>summary .mut{opacity:.6}
 .wiz{background:radial-gradient(120% 70% at 100% 0%,rgba(47,212,200,.10),transparent 60%),var(--card);animation:wpop .25s ease-out both}
 .choice.on{border-color:#2fd4c8!important;background:linear-gradient(135deg,rgba(48,209,88,.16),rgba(255,214,10,.10))!important;box-shadow:0 0 12px rgba(47,212,200,.25)}
 .wskip{display:block;margin:14px auto 0;color:var(--mut)}
+
+.kofi{display:flex;align-items:center;gap:12px;margin:14px 0 10px;padding:12px 14px;border-radius:16px;text-decoration:none;color:inherit;background:linear-gradient(var(--card,#fff),var(--card,#fff)) padding-box,linear-gradient(90deg,#22c55e,#14b8a6,#eab308,#f97316) border-box;border:2px solid transparent}
+.kofi b{display:block;font-size:15px}.kofi small{display:block;opacity:.75;font-size:12.5px;margin-top:2px}
+.kofi-cup{font-size:22px;width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,rgba(234,179,8,.25),rgba(249,115,22,.25))}
+.kofi-go{margin-left:auto;font-size:22px;opacity:.5}
