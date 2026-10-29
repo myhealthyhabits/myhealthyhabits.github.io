@@ -56,9 +56,10 @@ function addEntry(mealId,e,date=cur){(dayLog(date)[mealId]=dayLog(date)[mealId]|
 const nb=()=>{$('.tabs').classList.toggle('hidden',!D.profile&&!D.budget)};
 function budgetHome(){nb();const has=!!D.budget;
  V.innerHTML=`<div class="card hero"><div class="mut">${has?'Your daily calorie budget':'Welcome to '+esc(APP_NAME)}</div>${has?`<div class="big">${budget().toLocaleString()}</div><div class="mut">${D.budgetMode==='guided'?'Recommended from your profile':'Set by you'}</div>`:'<h2 style="margin-top:6px">How do you want to set your calorie budget?</h2>'}</div>
- <button class="choice" id="b_guide"><b>🧭 Guide me</b><span>Answer a few quick questions and get a recommended budget and goal date.</span></button>
+ ${has?'':'<div class="welc"><span>🥗</span><span>💪</span><span>👟</span><span>🔥</span></div><p class="mut" style="text-align:center;margin:-4px 0 12px">Free · no account needed · your data stays on this device</p>'}<button class="choice" id="b_guide"><b>🧭 Guide me</b><span>Answer a few quick questions and get a recommended budget and goal date.</span></button>
  <button class="choice" id="b_own"><b>✏️ Set my own calories</b><span>Type in a daily calorie number, with optional macro goals.</span></button>
- ${has?'<button class="btn alt" id="b_back">Back</button>':''}`;
+ ${has?'<button class="btn alt" id="b_back">Back</button>':'<button class="linkbtn wskip" id="b_skip">Skip for now — start at 2,000 cal</button>'}`;
+ if(!has)$('#b_skip').onclick=()=>{D.budget=2000;D.budgetMode='manual';save();go('today');toast('You can set up your budget anytime in Progress')};
  $('#b_guide').onclick=()=>wizard(0);$('#b_own').onclick=manual;if(has)$('#b_back').onclick=()=>go('today')}
 function manual(){const g=D.macroGrams||{};
  V.innerHTML=`<div class="card"><h2>Set my own calories</h2><label>Daily calorie budget</label><input id="m_k" type="number" inputmode="numeric" class="bigin" value="${D.budget||''}" placeholder="e.g. 1800">
@@ -70,35 +71,40 @@ function manual(){const g=D.macroGrams||{};
   const P=+$('#m_p').value,C=+$('#m_c').value,F=+$('#m_f').value;D.macroGrams=(P||C||F)?{p:P,c:C,f:F}:null;
   D.budget=k;D.budgetMode='manual';D.profile=D.profile||{manual:true};save();nb();go('today');toast('Budget set to '+k.toLocaleString())}}
 let W0=null;
-const STEPS=['goal','sex','age','height','weight','goalw','act','pace'];
-function wizard(i){if(i===0&&!W0)W0=Object.assign({goalType:'lose',sex:'m',age:'',hUnit:U().h==='cm'?'cm':'ft',ft:'',inch:'',cm:'',weight:'',goal:'',act:1.375,rate:1},D.profile&&!D.profile.manual?D.profile:{});
+const STEPS=['goal','units','sex','age','height','weight','goalw','act','pace','meals'];
+const wzSkip=(s,p)=>(p.goalType==='maintain'&&(s==='goalw'||s==='pace'))||((s==='units'||s==='meals')&&!!D.budget);
+function wizard(i){if(i===0&&!W0)W0=Object.assign({goalType:'lose',sex:'m',age:'',hUnit:U().h==='cm'?'cm':'ft',ft:'',inch:'',cm:'',weight:'',goal:'',act:1.375,rate:1,mc:D.mealCount||3,us:U().w==='kg'?'met':'us'},D.profile&&!D.profile.manual?D.profile:{});
  const p=W0,st=STEPS[i],opt=(k,v,t,d='')=>`<button class="choice ${p[k]==v?'on':''}" data-k="${k}" data-v="${v}"><b>${t}</b>${d?`<span>${d}</span>`:''}</button>`;
- if(p.goalType==='maintain'&&st==='goalw')return wizard(i+(wizard.dir||1));if(p.goalType==='maintain'&&st==='pace')return i<STEPS.length-1?0:summary();
+ if(i>=STEPS.length)return summary();if(wzSkip(st,p))return wizard(i+(wizard.dir||1));const vis=STEPS.filter(s=>!wzSkip(s,p)),lastI=STEPS.lastIndexOf(vis[vis.length-1]);
  let body='';
  if(st==='goal')body=`<h2>What's your goal?</h2>${opt('goalType','lose','Lose weight')}${opt('goalType','maintain','Maintain my weight')}${opt('goalType','gain','Gain weight')}`;
  if(st==='sex')body=`<h2>What's your sex?</h2><p class="mut">Used to estimate how many calories your body burns.</p>${opt('sex','m','Male')}${opt('sex','f','Female')}`;
  if(st==='age')body=`<h2>How old are you?</h2><label>Age</label><input id="w_age" type="number" inputmode="numeric" class="bigin" value="${p.age}"><label>…or your birthday</label><input id="w_bd" type="date" value="${p.bday||''}">`;
  if(st==='height')body=`<h2>How tall are you?</h2><div class="seg"><button data-hu="ft" class="${p.hUnit==='ft'?'on':''}">ft / in</button><button data-hu="cm" class="${p.hUnit==='cm'?'on':''}">cm</button></div>
   ${p.hUnit==='ft'?`<div class="row"><div><label>Feet</label><input id="w_ft" type="number" class="bigin" value="${p.ft}"></div><div><label>Inches</label><input id="w_in" type="number" class="bigin" value="${p.inch}"></div></div>`:`<label>Centimeters</label><input id="w_cm" type="number" class="bigin" value="${p.cm}">`}`;
- if(st==='weight')body=`<h2>What's your current weight?</h2><label>Pounds</label><input id="w_w" type="number" step="0.1" inputmode="decimal" class="bigin" value="${p.weight}">`;
- if(st==='goalw')body=`<h2>What's your goal weight?</h2><label>Pounds</label><input id="w_g" type="number" step="0.1" inputmode="decimal" class="bigin" value="${p.goal}">`;
+ const kgv=v=>v&&wU()==='kg'?r1(v*0.453592):v,wl=wU()==='kg'?'Kilograms':'Pounds';
+ if(st==='units')body=`<h2>📏 Which units?</h2><p class="mut">You can fine-tune each one later in Settings.</p>${opt('us','us','🇺🇸 US','lb · ft/in · miles · fl oz')}${opt('us','met','🌍 Metric','kg · cm · km · ml')}`;
+ if(st==='meals')body=`<h2>🍽️ Meals a day?</h2><p class="mut">Named Meal 1–${p.mc||3}, plus Snacks. Change anytime.</p>${[1,2,3,4].map(n=>opt('mc',n,`${n} meal${n>1?'s':''}`,[...Array(n)].map((_,j)=>'Meal '+(j+1)).join(' · '))).join('')}`;
+ if(st==='weight')body=`<h2>⚖️ What's your current weight?</h2><label>${wl}</label><input id="w_w" type="number" step="0.1" inputmode="decimal" class="bigin" value="${kgv(p.weight)}">`;
+ if(st==='goalw')body=`<h2>🎯 What's your goal weight?</h2><label>${wl}</label><input id="w_g" type="number" step="0.1" inputmode="decimal" class="bigin" value="${kgv(p.goal)}">`;
  if(st==='act')body=`<h2>How active are you?</h2><p class="mut">Not counting workouts you'll log separately.</p>${ACT.map(([v,t,d])=>opt('act',v,t,d)).join('')}`;
  if(st==='pace')body=`<h2>How fast do you want to ${p.goalType==='gain'?'gain':'lose'}?</h2>${[[0.5,'Slow and steady'],[1,'Recommended'],[1.5,'Faster'],[2,'Aggressive']].map(([v,d])=>opt('rate',v,v+' lb per week',d)).join('')}`;
- const n=p.goalType==='maintain'?6:8,pos=p.goalType==='maintain'&&i>5?5:i;
+ const n=vis.length,pos=vis.indexOf(st);
  V.innerHTML=`<div class="dots">${[...Array(n)].map((_,j)=>`<i class="${j<=pos?'on':''}"></i>`).join('')}</div><div class="card wiz">${body}</div>
- <div class="row wnav"><button class="btn alt" id="w_back">Back</button><button class="btn" id="w_next">${i===STEPS.length-1?'See my budget':'Next'}</button></div>`;
+ <div class="row wnav"><button class="btn alt" id="w_back">Back</button><button class="btn" id="w_next">${i===lastI?'See my budget':'Next'}</button></div>`;
  V.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k;p[k]=isNaN(+b.dataset.v)?b.dataset.v:+b.dataset.v;V.querySelectorAll(`[data-k="${k}"]`).forEach(x=>x.classList.toggle('on',x===b))});
  V.querySelectorAll('[data-hu]').forEach(b=>b.onclick=()=>{read();p.hUnit=b.dataset.hu;wizard(i)});
  if($('#w_bd'))$('#w_bd').onchange=e=>{const d=new Date(e.target.value);if(!isNaN(d)){p.bday=e.target.value;$('#w_age').value=Math.floor((Date.now()-d)/(365.25*864e5))}};
  function read(){const v=id=>$(id)?.value;if(st==='age')p.age=+v('#w_age');if(st==='height'){if(p.hUnit==='ft'){p.ft=+v('#w_ft');p.inch=+v('#w_in')||0}else p.cm=+v('#w_cm')}
-  if(st==='weight')p.weight=+v('#w_w');if(st==='goalw')p.goal=+v('#w_g')}
+  if(st==='weight')p.weight=toLb(+v('#w_w'));if(st==='goalw')p.goal=toLb(+v('#w_g'));
+  if(st==='units'){D.units=p.us==='met'?{w:'kg',e:'cal',h:'cm',d:'km',l:'ml'}:{w:'lb',e:'cal',h:'ft',d:'mi',l:'oz'};p.hUnit=p.us==='met'?'cm':'ft'}}
  const ok=()=>{if(st==='age'&&!(p.age>=13&&p.age<=110))return'Enter your age';if(st==='height'&&!(heightCm(p)>100&&heightCm(p)<250))return'Enter your height';
   if(st==='weight'&&!(p.weight>60))return'Enter your weight';if(st==='goalw'){if(!(p.goal>60))return'Enter a goal weight';if(p.goalType==='lose'&&p.goal>=p.weight)return'Goal should be below your current weight';if(p.goalType==='gain'&&p.goal<=p.weight)return'Goal should be above your current weight'}};
  $('#w_back').onclick=()=>{read();wizard.dir=-1;i?wizard(i-1):(W0=null,budgetHome())};
- $('#w_next').onclick=()=>{read();const e=ok();if(e)return toast(e);wizard.dir=1;i<STEPS.length-1?wizard(i+1):summary()}}
+ $('#w_next').onclick=()=>{read();const e=ok();if(e)return toast(e);wizard.dir=1;i<lastI?wizard(i+1):summary()}}
 function summary(){const p=W0;if(p.goalType==='maintain')p.goal=p.weight;const c=calc(p);
  V.innerHTML=`<div class="card hero"><div class="mut">Your recommended daily budget</div><div class="big">${c.final.toLocaleString()}</div><div class="mut">calories per day</div>
- ${c.eta&&p.goalType!=='maintain'?`<div class="eta">🎯 Reach <b>${p.goal} lb</b> by <b>${c.eta.toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'})}</b></div>`:''}</div>
+ ${c.eta&&p.goalType!=='maintain'?`<div class="eta">🎯 Reach <b>${fW(p.goal)}</b> by <b>${c.eta.toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'})}</b></div>`:''}</div>
  ${c.capped?`<div class="card nudge">⚠️ Your pace would put you below ${c.floor.toLocaleString()} calories a day, the safe minimum for ${p.sex==='m'?'men':'women'}. Your budget is held at ${c.floor.toLocaleString()}, so you'll reach your goal a bit later.</div>`:''}
  <div class="card"><h3 style="margin-top:0">How we got this</h3>
  <div class="item"><div>Resting burn (Mifflin-St Jeor)</div><b>${c.bmr.toLocaleString()}</b></div>
@@ -107,7 +113,7 @@ function summary(){const p=W0;if(p.goalType==='maintain')p.goal=p.weight;const c
  ${c.capped?`<div class="item"><div>Safety floor applied</div><b>${c.floor.toLocaleString()}</b></div>`:''}
  <div class="item"><div><b>Daily budget</b></div><b>${c.final.toLocaleString()}</b></div></div>
  <button class="btn" id="s_use">Use this budget</button><button class="btn alt" id="s_adj">Adjust</button>`;
- const commit=k=>{const first=!D.weights.length;D.profile={...p};D.budget=k;D.budgetMode=k===c.final?'guided':'manual';D.macroGrams=null;
+ const commit=k=>{const first=!D.weights.length;if(!D.budget&&p.mc)D.mealCount=p.mc;D.profile={...p};D.budget=k;D.budgetMode=k===c.final?'guided':'manual';D.macroGrams=null;
   if(first)D.weights.push({date:logicalToday(),lb:p.weight});W0=null;save();nb();go('today');toast('Budget set to '+k.toLocaleString())};
  $('#s_use').onclick=()=>commit(c.final);
  $('#s_adj').onclick=()=>{sheet(`<h2>Adjust budget</h2><input id="a_k" type="number" class="bigin" value="${c.final}"><button class="btn" id="a_go">Save</button><button class="btn alt" onclick="close()">Cancel</button>`);
@@ -247,7 +253,7 @@ function exScore(x,q){const n=x.name.toLowerCase();if(!q)return 1;if(n===q)retur
  if(!s&&q.length>=2){let i=0;for(const ch of n)if(ch===q[i])i++;if(i===q.length)s=200-n.length;}
  if(!s&&q.length>=3){const ws=n.split(/\s+/);const lev=(A,B)=>{const d=[...Array(B.length+1).keys()];for(let i=1;i<=A.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=B.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(A[i-1]===B[j-1]?0:1));p=t}}return d[B.length]};if(ws.some(w=>lev(q,w.slice(0,q.length+1))<=1))s=150}
  return s+((D.exFav||[]).includes(x.name)?40:0)+((D.exRecent||[]).includes(x.name)?20:0)}
-const EXEMO=[[/treadmill/i,'🏃'],[/ellip/i,'⛷️'],[/stair|step/i,'🪜'],[/row(ing)? machine|canoe|kayak|paddle/i,'🚣'],[/bike|cycl|spin/i,'🚴'],[/hik/i,'🥾'],[/walk/i,'🚶'],[/run|jog/i,'🏃'],[/swim|water/i,'🏊'],[/yoga|stretch|pilates|barre/i,'🧘'],[/dance|zumba/i,'💃'],[/box/i,'🥊'],[/climb/i,'🧗'],[/golf/i,'⛳'],[/tennis|pickle/i,'🎾'],[/basket/i,'🏀'],[/soccer/i,'⚽'],[/volley/i,'🏐'],[/snowboard/i,'🏂'],[/ski/i,'⛷️'],[/skate/i,'🛹'],[/surf/i,'🏄'],[/fish/i,'🎣'],[/yard|mow|garden|shovel/i,'🌿'],[/push-up|pull-up|\bchin|\bdips?\b|plank|burpee|crunch|sit-up|squats|jumping|mountain climb|lunge|bridge|raise|wall sit/i,'🤸'],[/hiit|crossfit|bootcamp/i,'🔥']];
+const EXEMO=[[/leg press|leg ext|leg curl|hack squat|smith machine squat|calf raise machine|abductor|adductor|glute kickback/i,'🦵'],[/tricep pushdown|bicep curl|preacher|dip machine/i,'💪'],[/ab crunch|torso rotation/i,'🎯'],[/chest press|pec deck|chest fly|crossover|smith machine bench|lat pulldown|seated row|assisted pull|pullover|shoulder press|rear delt|back extension/i,'🏋️'],[/treadmill/i,'🏃'],[/ellip/i,'⛷️'],[/stair|step/i,'🪜'],[/row(ing)? machine|canoe|kayak|paddle/i,'🚣'],[/bike|cycl|spin/i,'🚴'],[/hik/i,'🥾'],[/walk/i,'🚶'],[/run|jog/i,'🏃'],[/swim|water/i,'🏊'],[/yoga|stretch|pilates|barre/i,'🧘'],[/dance|zumba/i,'💃'],[/box/i,'🥊'],[/climb/i,'🧗'],[/golf/i,'⛳'],[/tennis|pickle/i,'🎾'],[/basket/i,'🏀'],[/soccer/i,'⚽'],[/volley/i,'🏐'],[/snowboard/i,'🏂'],[/ski/i,'⛷️'],[/skate/i,'🛹'],[/surf/i,'🏄'],[/fish/i,'🎣'],[/yard|mow|garden|shovel/i,'🌿'],[/push-up|pull-up|\bchin|\bdips?\b|plank|burpee|crunch|sit-up|squats|jumping|mountain climb|lunge|bridge|raise|wall sit/i,'🤸'],[/hiit|crossfit|bootcamp/i,'🔥']];
 const exEmoji=x=>{if(!x)return null;const m=EXEMO.find(r=>r[0].test(x.name));return m?m[1]:x.cat==='mach'?null:x.cat==='free'?'🏋️':null};
 const exIcon=(x,sz)=>{const e=exEmoji(x);if(!e)return exIco(x&&x.cat,sz);const c=EXCATS.find(c=>c.id===(x&&x.cat))||{col:'#8e8e93'};return `<span class="exico emo" style="--c:${c.col}${sz?';width:'+sz+'px;height:'+sz+'px':''}">${e}</span>`};
 const myEx=()=>{const s=new Set([...(D.exCustom||[]).map(x=>x.name),...(D.exFav||[]),...(D.exRecent||[])]);Object.values(D.exercise||{}).forEach(a=>a.forEach(e=>s.add(e.name)));(D.workouts||[]).forEach(w=>w.items.forEach(i=>s.add(i.name)));return[...s].map(findEx).filter(Boolean).sort((p,q)=>p.name.localeCompare(q.name))};
