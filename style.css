@@ -295,3 +295,33 @@ input.lowc,span.lowc{background:rgba(255,159,10,.14)!important;box-shadow:inset 
 .fixlab{display:block;width:100%;border:0;border-radius:12px;padding:10px;margin:0 0 10px;background:rgba(255,159,10,.14);color:var(--tx);font-size:13px;text-align:center}.fixlab b{color:#ff9f0a}
 .vhd{display:flex;align-items:flex-start;gap:10px;justify-content:space-between}.vhd h2{margin-right:auto}
 .edbtn{flex:none;border:0;border-radius:999px;padding:7px 12px;margin-top:2px;background:rgba(255,159,10,.15);color:#ff9f0a;font-weight:700;font-size:13px}
+/* v29 vibrant gauge */
+.rhero.gh{background:radial-gradient(120% 70% at 15% 0%,rgba(48,209,88,.13),transparent 60%),radial-gradient(90% 60% at 100% 10%,rgba(255,159,10,.14),transparent 60%),radial-gradient(80% 60% at 50% 100%,rgba(47,212,200,.08),transparent 70%),var(--card)}
+.rhero.gh.over{background:radial-gradient(110% 70% at 50% 0%,rgba(255,55,95,.16),transparent 60%),var(--card)}
+.glead{opacity:0;transition:opacity .4s ease;filter:drop-shadow(0 0 4px var(--gc)) drop-shadow(0 0 8px var(--gc))}.glead.on{opacity:1}
+.gin b{background:linear-gradient(180deg,#fff,#d8d8de);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gpb i{background:linear-gradient(90deg,var(--c),var(--c2,var(--c)));box-shadow:0 0 8px color-mix(in srgb,var(--c) 45%,transparent)}
+/* v29 compact meals */
+.mc{padding:12px 14px}.mch{display:flex;align-items:center;gap:8px;min-height:40px}
+.mct{flex:1;min-width:0;display:flex;align-items:center;gap:8px}.mct b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mstack{display:flex;flex:none}.mstack i{font-style:normal;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;background:var(--card2,#2c2c2e);border:2px solid var(--card);margin-left:-7px}.mstack i:first-child{margin-left:0}
+.mck{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.mck small{font-size:11px;color:#8e8e93;font-weight:600}
+.mch .x{flex:none;background:none;border:0;color:#8e8e93;font-size:18px;padding:4px 6px}
+.mplus{flex:none;width:38px;height:38px;border-radius:50%;border:0;font-size:24px;font-weight:600;line-height:1;color:#111;background:linear-gradient(135deg,#ffb340,#ff7a1a);box-shadow:0 3px 10px rgba(255,122,26,.35);transition:transform .15s}.mplus:active{transform:scale(.9)}
+.mlist{margin-top:6px}.mi{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--ln)}.mie{width:24px;text-align:center;font-size:17px;flex:none}
+.min{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}.min small{display:block;font-size:12px;color:#8e8e93;overflow:hidden;text-overflow:ellipsis}
+.mi .kc{font-variant-numeric:tabular-nums;font-size:15px}
+.mmore{display:block;width:100%;border:0;background:none;color:#ff9f0a;font-weight:700;font-size:13px;padding:8px 0 2px;text-align:left}
+.qchip{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin:8px -2px 0;padding:2px}.qchip::-webkit-scrollbar{display:none}
+.qchip button{flex:none;display:flex;align-items:center;gap:5px;border:1px solid var(--ln);background:rgba(255,255,255,.04);color:var(--tx);border-radius:99px;padding:6px 11px 6px 8px;font-size:13px;font-weight:600;white-space:nowrap}
+.qchip button span{font-size:15px}.qchip button::before{content:'+';color:#ff9f0a;font-weight:800;margin-right:1px}
+.qchip button.pop{animation:qpop .35s ease}.qchip button.done{border-color:#30d158;background:rgba(48,209,88,.12)}.qchip button.done::before{content:'✓';color:#30d158}
+@keyframes qpop{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+.mempty{display:block;width:100%;margin-top:8px;border:1px dashed var(--ln);background:none;color:#8e8e93;border-radius:12px;padding:10px;font-size:13px}
+.mc.empty .mch{min-height:38px}
+.sq{margin:10px 0 2px}
+.moreb{border:0;background:none;color:#8e8e93;font-size:13px;font-weight:600;padding:6px 2px}
+.res{display:block}.res .emo{vertical-align:-2px}
+@media (prefers-reduced-motion:reduce){.qchip button.pop{animation:none}.glead{transition:none}}
+details.nd>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:16px;cursor:pointer}details.nd>summary::-webkit-details-marker{display:none}details.nd>summary .mut{font-size:13px;font-weight:600}
+details.nd[open]>summary .mut{opacity:.6}
