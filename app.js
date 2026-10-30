@@ -770,13 +770,13 @@ function activity(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInW
 
 function myfoods(){const L=myFoods();
  V.innerHTML=`<div class="card"><h2>My Foods</h2><p class="mut" style="margin-top:0">Your meals, snacks and scanned items, most used first. Tap + to add in one tap.</p>
- <div class="row"><button class="btn sm" id="mf_scan" style="flex:1">📷 Scan barcode</button><button class="btn sm alt" id="mf_new" style="flex:1">+ Custom food</button></div></div>
+ <button class="fabsnap" id="mf_snap" style="margin:10px 0 8px"><span>📷</span><b>Snap meal</b><small>Photo → AI calorie estimate</small></button><div class="row"><button class="btn sm" id="mf_scan" style="flex:1">▦ Scan barcode</button><button class="btn sm alt" id="mf_new" style="flex:1">+ Custom food</button></div></div>
  <div class="card">${L.map((x,i)=>`<div class="item"><div>${D.fav.includes(fkey(x.food))?'★ ':''}${esc(x.food.name)}<small>${r0(x.food.n.kcal*x.food.units[x.ui||0].mult*(x.qty||1))} cal · used ${x.count}×${x.food.barcode?' · UPC '+esc(x.food.barcode):''}</small></div><button class="btn sm" data-mf="${i}" style="flex:none">+</button></div>`).join('')||'<p class="mut">Nothing yet. Log, scan or create a food and it shows up here.</p>'}
  ${D.saved.map((m,i)=>`<div class="item"><div>🍱 ${esc(m.name)}<small>Saved meal · ${r0(sumEntries(m.items).kcal)} cal</small></div><button class="btn sm" data-ms="${i}" style="flex:none">+</button></div>`).join('')}</div>`;
  const mealNow=()=>{const vm=visMeals(logicalToday()).filter(m=>m.id!=='s'),L0=D.log[logicalToday()]||{};return(vm.find(m=>!(L0[m.id]||[]).length)||vm[vm.length-1]).id};
  V.querySelectorAll('[data-mf]').forEach(b=>b.onclick=()=>{cur=logicalToday();const x=L[+b.dataset.mf];pick(x.food,mealNow(),x.ui||0,x.qty||1)});
  V.querySelectorAll('[data-ms]').forEach(b=>b.onclick=()=>{cur=logicalToday();const m=D.saved[+b.dataset.ms],mm=mealNow();m.items.forEach(e=>addEntry(mm,{...e,id:uid()}));toast('Added '+m.name)});
- $('#mf_scan').onclick=()=>{cur=logicalToday();scan(mealNow())};$('#mf_new').onclick=()=>customFood(null)}
+ $('#mf_scan').onclick=()=>{cur=logicalToday();scan(mealNow())};$('#mf_snap').onclick=()=>{cur=logicalToday();mealScan(msAutoMeal(),1)};$('#mf_new').onclick=()=>customFood(null)}
 /* ---------- gym & workouts ---------- */
 const WTYPES=['Strength','Cardio','Full body','Upper body','Lower body','Class','Swim','Other'];
 const isCardio=t=>/Cardio|Swim/.test(t);
