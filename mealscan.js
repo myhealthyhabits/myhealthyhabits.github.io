@@ -90,6 +90,6 @@ function msReview(mid,items){const pick=!!window.msPick,mn=()=>(D.meals.find(m=>
   const sq=$('#ms_swq');if(sq){sq.oninput=()=>{swq=sq.value;swFind()};sq.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();if(swR[0]&&qWords(swq).length)sq.blur();else if(swq.trim())swUse(items[sw])}}}
   $('#ms_re').onclick=()=>mealScan(mid);
   document.querySelectorAll('[data-mp]').forEach(b=>b.onclick=()=>{mid=b.dataset.mp;draw()});
-  $('#ms_log').onclick=()=>{const ph=window.msThumb&&!D.noThumbs?uid():null;if(ph&&window.phPut)phPut(ph,window.msThumb);items.forEach(it=>{const food={src:'photo',ref:uid(),name:it.lib?it.lib.name:it.name,brand:it.lib?'':'AI estimate',n:{...msN(it)},units:[{label:'g',mult:.01}]};const e=entryFrom(food,0,r0(it.g));e.est=1;if(ph)e.ph=ph;addEntry(mid,e)});
+  $('#ms_log').onclick=()=>{window._fxMeal=items.length>1;window._fxSnap=1;const ph=window.msThumb&&!D.noThumbs?uid():null;if(ph&&window.phPut)phPut(ph,window.msThumb);items.forEach(it=>{const food={src:'photo',ref:uid(),name:it.lib?it.lib.name:it.name,brand:it.lib?'':'AI estimate',n:{...msN(it)},units:[{label:'g',mult:.01}]};const e=entryFrom(food,0,r0(it.g));e.est=1;if(ph)e.ph=ph;addEntry(mid,e)});
    close();render();toast(`Logged ${items.length} item${items.length===1?'':'s'} to ${mn()} · estimate`)}};
  draw()}
