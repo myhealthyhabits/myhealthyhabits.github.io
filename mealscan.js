@@ -8,12 +8,12 @@ function mealScan(mid,pick){if(pick!==undefined)window.msPick=!!pick;stopScan();
  <button class="btn" id="ms_take">📸 Take photo</button><button class="btn alt" id="ms_pick">🖼️ Upload a photo</button><button class="btn alt" id="ms_back">Back</button>`);
  $('#ms_take').onclick=()=>$('#ms_cam').click();$('#ms_pick').onclick=()=>$('#ms_up').click();$('#ms_back').onclick=()=>window.msPick?close():openAdd(mid);
  const go=e=>{const f=e.target.files&&e.target.files[0];if(f)msRun(mid,f)};$('#ms_cam').onchange=go;$('#ms_up').onchange=go}
-function msShrink(file,max=1024){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.8))};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};im.src=u})}
+function msShrink(file,max=1024,q=.8){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',q))};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};im.src=u})}
 async function msCall(body){let tok='';try{tok=(JSON.parse(localStorage.getItem('mhh-sb')||'null')||{}).at||''}catch(e){}
  const r=await fetch(window.MS_MOCK||MS_URL,{method:'POST',headers:{'Content-Type':'application/json',apikey:MS_AK,Authorization:'Bearer '+(tok||MS_AK)},body:JSON.stringify(body)});return[r,await r.json().catch(()=>({}))]}
 function msErr(mid,emo,title,msg){sheet(`<h2>${title}</h2><div class="ms-hero">${emo}</div><p class="mut" style="text-align:center">${msg}</p><button class="btn" id="ms_again">Try another photo</button><button class="btn alt" id="ms_srch">Search foods instead</button>`);$('#ms_again').onclick=()=>mealScan(mid);$('#ms_srch').onclick=()=>openAdd(mid)}
 async function msRun(mid,file){sheet(`<h2>📷 Snap meal</h2><div class="ms-hero">🔎</div><p class="mut" style="text-align:center">Looking at your meal… this takes a few seconds.</p>`);
- let img;try{img=await msShrink(file)}catch(e){return msErr(mid,'🖼️','Couldn’t open that photo','Try a different photo (JPG or PNG).')}
+ let img;window.msThumb=null;try{img=await msShrink(file);if(!D.noThumbs)window.msThumb=await msShrink(file,200,.7).catch(()=>null)}catch(e){return msErr(mid,'🖼️','Couldn’t open that photo','Try a different photo (JPG or PNG).')}
  let r,j={};try{[r,j]=await msCall({image:img})}
  catch(e){return msErr(mid,'📶','No connection','Meal scan needs internet. Check your signal and try again, or search foods instead.')}
  if(r.status===429)return msErr(mid,'⏳','Daily limit reached',j.error==='user_limit'?`You've used all ${j.cap||10} meal scans for today. They reset at midnight (Pacific). You can still search or quick-add foods.`:'Meal scan is extra busy today and hit its daily limit. Please try again tomorrow, or search foods instead.');
@@ -21,8 +21,12 @@ async function msRun(mid,file){sheet(`<h2>📷 Snap meal</h2><div class="ms-hero
  const items=(j.items||[]).filter(x=>x&&x.name&&+x.grams>0);
  if(!items.length)return msErr(mid,'🤔','Couldn’t recognize food','We couldn’t spot any food in that photo. Try a closer, brighter shot from above.');
  msReview(mid,items.map(msItem))}
-function msMatch(name){const ws=qWords(name),has=w=>ws.some(x=>x===w||x===w+'s'||w===x+'s'||x===w+'es');if(!ws.length||typeof FOODLIB==='undefined')return null;let best=null,bs=0;
- for(const f of FOODLIB){const core=qWords(f.name.split(',')[0]).filter(w=>!/^\d/.test(w)),rest=qWords(f.name.split(',').slice(1).join(' '));if(!core.length||!core.every(has))continue;const s=core.length*2+rest.filter(has).length;if(s>bs){bs=s;best=f}}
+const msTk=t=>norm(t).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w&&!/^(and|with|the|of|a|on|in|fresh|plain|homemade|style|nfs)$/.test(w)).map(stem);
+const MS_MOD0=['grill','steam','bake','fry','fri','roast','boil','cook','larg','small','medium','slice','side','regular','mini','hot','warm','cold','homemad','restaurant','fast','food','order','piece','bowl','plate','serving','sauce','syrup','topping','dress'];let _msm;const msMod=()=>_msm||(_msm=MS_MOD0.map(stem));
+function msMatch(name){const ws=msTk(name);if(!ws.length||typeof FOODLIB==='undefined')return null;let best=null,bs=0;
+ for(const f of FOODLIB){const nm=msTk(f.name),core=msTk(f.name.split(',')[0]).filter(w=>!/^\d/.test(w));
+  for(const c of [core,...(f.syn||[]).map(msTk)]){if(!c.length||!c.every(w=>ws.includes(w)))continue;if(c!==core&&ws.some(w=>!c.includes(w)&&!nm.includes(w)&&!msMod().includes(w)))continue;
+   const sc=c.length*3+nm.filter(w=>ws.includes(w)).length+(c===core?1:0)-nm.filter(w=>!ws.includes(w)).length*.2;if(sc>bs){bs=sc;best=f}}}
  return best}
 const msCap=t=>{t=String(t||'').trim();return t?t[0].toUpperCase()+t.slice(1):t};
 function msUnits(it){const U=[],add=(l,g)=>{if(g>0&&!U.some(u=>u.l===l))U.push({l,g})},au=String(it.unit||'').toLowerCase().replace(/s$/,'');
@@ -86,6 +90,6 @@ function msReview(mid,items){const pick=!!window.msPick,mn=()=>(D.meals.find(m=>
   const sq=$('#ms_swq');if(sq){sq.oninput=()=>{swq=sq.value;swFind()};sq.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();if(swR[0]&&qWords(swq).length)sq.blur();else if(swq.trim())swUse(items[sw])}}}
   $('#ms_re').onclick=()=>mealScan(mid);
   document.querySelectorAll('[data-mp]').forEach(b=>b.onclick=()=>{mid=b.dataset.mp;draw()});
-  $('#ms_log').onclick=()=>{items.forEach(it=>{const food={src:'photo',ref:uid(),name:it.lib?it.lib.name:it.name,brand:it.lib?'':'AI estimate',n:{...msN(it)},units:[{label:'g',mult:.01}]};const e=entryFrom(food,0,r0(it.g));e.est=1;addEntry(mid,e)});
+  $('#ms_log').onclick=()=>{const ph=window.msThumb&&!D.noThumbs?uid():null;if(ph&&window.phPut)phPut(ph,window.msThumb);items.forEach(it=>{const food={src:'photo',ref:uid(),name:it.lib?it.lib.name:it.name,brand:it.lib?'':'AI estimate',n:{...msN(it)},units:[{label:'g',mult:.01}]};const e=entryFrom(food,0,r0(it.g));e.est=1;if(ph)e.ph=ph;addEntry(mid,e)});
    close();render();toast(`Logged ${items.length} item${items.length===1?'':'s'} to ${mn()} · estimate`)}};
  draw()}
