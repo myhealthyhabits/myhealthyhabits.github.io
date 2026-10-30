@@ -404,3 +404,7 @@ details.nd[open]>summary .mut{opacity:.6}
 .ms-sw{padding:0 12px}.ms-sw:empty{display:none}.ms-sw input{margin:0 0 6px}.ms-sr{display:flex;flex-direction:column;gap:6px;padding-bottom:12px}.ms-sr button{text-align:left;min-height:44px;padding:8px 10px;border-radius:10px;border:1px solid var(--ln);background:var(--card);color:var(--tx);font-size:15px}
 .ms-foot{position:sticky;bottom:-16px;z-index:2;background:var(--card);margin:0 -16px -16px;padding:8px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--ln)}.ms-foot .btn{margin-top:0;font-size:17px;min-height:52px}
 .ms-re{width:100%;background:none;border:0;color:var(--mut);font-weight:600;font-size:15px;padding:10px;min-height:44px}
+.ms-sw{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}.ms-swl{font-size:13px;font-weight:700;color:var(--mut);margin:0}.ms-sw input{margin:0;font-size:17px;min-height:48px}
+.ms-sr button{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}.ms-sr button b{flex:1;font-weight:600}.ms-sr button small{flex:1 0 100%;color:var(--mut);font-size:12px;padding-left:28px}
+.ms-sr .ms-use{border-color:#a78bfa;background:#a78bfa22;font-weight:700}.ms-sr .ms-use small{padding-left:0;font-weight:500}
+.ms-nm b[data-n]{cursor:pointer}

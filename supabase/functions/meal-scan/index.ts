@@ -36,10 +36,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
   if (req.method !== "POST") return out(405, { error: "method" });
   if (!KEY) return out(503, { error: "not_configured" });
-  let body: { image?: string };
+  let body: { image?: string; text?: string; grams?: number };
   try { body = await req.json(); } catch { return out(400, { error: "bad_request" }); }
+  const txt = String(body.text ?? "").trim().slice(0, 80);
   const img = (body.image ?? "").replace(/^data:image\/\w+;base64,/, "");
-  if (!img || img.length > 2_000_000) return out(413, { error: "too_big" });
+  if (!txt && (!img || img.length > 2_000_000)) return out(413, { error: "too_big" });
   // who: signed-in user id if the JWT is a real user, else hashed IP
   let who = "ip:" + await sha((req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim());
   const auth = req.headers.get("authorization") ?? "";
@@ -59,7 +60,9 @@ Deno.serve(async (req) => {
   const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
     method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: "image/jpeg", data: img } }] }],
+      contents: [{ parts: txt
+        ? [{ text: `Give typical nutrition for one item: "${txt.replace(/"/g, "'")}", portion about ${Math.max(1, Math.min(2000, +(body.grams ?? 100)))} g. Return JSON {"items":[...]} with exactly that one item, grams set to that portion.` }]
+        : [{ text: PROMPT }, { inline_data: { mime_type: "image/jpeg", data: img } }] }],
       generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.2 },
     }),
   });
