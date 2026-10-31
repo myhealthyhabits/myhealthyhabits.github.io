@@ -40,27 +40,27 @@ const sheetOpen=()=>{const s=document.getElementById('sheet');return s&&!s.class
 function fxAfter(){if(window._fxSnap&&!fxOn()){window._fxSnap=0;setTimeout(snapReward,300)}if(!_fxQ.length)return;if(window._fxMeal){_fxQ.meal=1;window._fxMeal=0}if(window._fxSnap){_fxQ.snap=1;window._fxSnap=0}
  if(tab!=='today'){if(!sheetOpen())_fxQ.length=0;return}
  if(sheetOpen()){clearTimeout(window._fxT);window._fxT=setTimeout(()=>{if(!sheetOpen())fxPlay();else fxAfter()},250);return}fxPlay()}
-function fxPlay(){const prev=_fxQ.prev||0,meal=_fxQ.meal,snap=_fxQ.snap;_fxQ.snap=0;_fxQ.meal=0;const Q=_fxQ.splice(0);if(!Q.length)return;if(snap)setTimeout(snapReward,meal?1000:800);
+function fxPlay(){const prev=_fxQ.prev||0,meal=_fxQ.meal,snap=_fxQ.snap;_fxQ.snap=0;_fxQ.meal=0;const Q=_fxQ.splice(0);if(!Q.length)return;if(snap)setTimeout(snapReward,meal?2200:1700);
  const now=dayTotal(cur).kcal,add=Q.reduce((s,x)=>s+x.kcal,0),rm=fxRM(),mids=[...new Set(Q.map(x=>x.mid))];
  try{navigator.vibrate&&navigator.vibrate(10)}catch(e){}
  const card=m=>{const b=document.querySelector(`.mch [data-add="${m}"]`);return b&&b.closest('.meal')};
  // new rows
- Q.forEach((x,i)=>{const r=document.querySelector(`.mi[data-edit="${x.mid}|${x.id}"]`);if(r){r.classList.add(rm?'fxfade':'fxland');r.style.animationDelay=(rm?0:450+i*60)+'ms'}});
+ Q.forEach((x,i)=>{const r=document.querySelector(`.mi[data-edit="${x.mid}|${x.id}"]`);if(r){r.classList.add(rm?'fxfade':'fxland');r.style.animationDelay=(rm?0:1100+i*100)+'ms'}});
  // calorie gauge
  const g=document.querySelector('.gwrap'),nb=g&&g.querySelector('.gin b'),bud=budget();
  if(g){if(!rm){g.classList.remove('fxglow');void g.offsetWidth;g.classList.add('fxglow');
-   const N=g.querySelectorAll('.gtr line').length||1,L=g.querySelectorAll('.gfl line'),k0=Math.round(Math.min(1,prev/bud)*N);L.forEach((l,i)=>{if(i>=k0){l.style.opacity=0;l.animate([{opacity:0},{opacity:1}],{duration:260,delay:250+(i-k0)*Math.min(40,600/Math.max(1,L.length-k0)),fill:'forwards',easing:'ease-out'})}});
-   if(nb){const left0=Math.round(bud-prev),left1=Math.round(bud-now),t0=performance.now(),fmt=v=>Math.abs(v).toLocaleString();(function st(t){const p=Math.min(1,(t-t0)/800),e=1-Math.pow(1-p,3);nb.textContent=fmt(Math.round(left0+(left1-left0)*e));if(p<1)requestAnimationFrame(st)})(t0)}}
-  const r=(nb||g).getBoundingClientRect(),c=document.createElement('div');c.className='fxchip'+(rm?' rm':'');c.textContent=`+${Math.round(add).toLocaleString()} cal`;c.style.left=(r.left+r.width/2)+'px';c.style.top=(r.top-6)+'px';document.body.appendChild(c);setTimeout(()=>c.remove(),1300)}
+   const N=g.querySelectorAll('.gtr line').length||1,L=g.querySelectorAll('.gfl line'),k0=Math.round(Math.min(1,prev/bud)*N);const kOn=[...L].filter(l=>l.dataset.on==='1').length;L.forEach((l,i)=>{const on=l.dataset.on==='1'?'1':'0';if(i>=k0&&on==='1'){l.style.transition='none';l.style.opacity='0';const a=l.animate([{opacity:0},{opacity:1}],{duration:500,delay:300+(i-k0)*Math.min(90,1000/Math.max(1,kOn-k0)),fill:'backwards',easing:'ease-out'});l.style.opacity='1';a.onfinish=()=>{l.style.transition=''}}else if(i>=k0){l.style.opacity='0'}});
+   if(nb){const left0=Math.round(bud-prev),left1=Math.round(bud-now),t0=performance.now(),fmt=v=>Math.abs(v).toLocaleString();(function st(t){const p=Math.min(1,(t-t0)/1500),e=1-Math.pow(1-p,3);nb.textContent=fmt(Math.round(left0+(left1-left0)*e));if(p<1)requestAnimationFrame(st)})(t0)}}
+  const r=(nb||g).getBoundingClientRect(),c=document.createElement('div');c.className='fxchip'+(rm?' rm':'');c.textContent=`+${Math.round(add).toLocaleString()} cal`;c.style.left=(r.left+r.width/2)+'px';c.style.top=(r.top-6)+'px';document.body.appendChild(c);setTimeout(()=>c.remove(),2100)}
  // flying emojis
  if(!rm)Q.slice(0,6).forEach((x,i)=>{const m=card(x.mid);if(!m)return;const tr=m.querySelector('.mch').getBoundingClientRect(),s=document.createElement('span');s.className='fxfly';s.textContent=x.emo;document.body.appendChild(s);
    const sx=innerWidth/2,sy=innerHeight*.78,tx=tr.left+40,ty=tr.top+tr.height/2,mx=(sx+tx)/2+(i%2?40:-40),my=Math.min(sy,ty)-80;
-   s.animate([{transform:`translate(${sx}px,${sy}px) scale(.6)`,opacity:0},{transform:`translate(${mx}px,${my}px) scale(1.3)`,opacity:1,offset:.45},{transform:`translate(${tx}px,${ty}px) scale(.8)`,opacity:.9}],{duration:700,delay:i*70,easing:'cubic-bezier(.3,.7,.4,1)',fill:'forwards'}).onfinish=()=>s.remove()});
+   s.animate([{transform:`translate(${sx}px,${sy}px) scale(.6)`,opacity:0},{transform:`translate(${mx}px,${my}px) scale(1.3)`,opacity:1,offset:.45},{transform:`translate(${tx}px,${ty}px) scale(.8)`,opacity:.9}],{duration:1350,delay:i*120,easing:'cubic-bezier(.3,.7,.4,1)',fill:'forwards'}).onfinish=()=>s.remove()});
  // whole meal moment
  if(meal)mids.forEach(mi=>{const m=card(mi);if(!m)return;const h=m.querySelector('.mch'),ck=document.createElement('span');ck.className='fxck'+(rm?' rm':'');ck.textContent='✓';h.querySelector('.mct').appendChild(ck);setTimeout(()=>ck.remove(),1600);
   if(rm)return;setTimeout(()=>{h.classList.remove('fxwig');void h.offsetWidth;h.classList.add('fxwig');const hr=h.getBoundingClientRect(),cx=hr.left+60,cy=hr.top+hr.height/2,em=Q.filter(x=>x.mid===mi).map(x=>x.emo);
    for(let i=0;i<7;i++){const s=document.createElement('span');s.className='fxfly';s.textContent=em[i%em.length];document.body.appendChild(s);const a=i/7*6.28-1.57,R=55+i%3*12;
-    s.animate([{transform:`translate(${cx}px,${cy}px) scale(.4)`,opacity:1},{transform:`translate(${cx+Math.cos(a)*R}px,${cy+Math.sin(a)*R}px) scale(1)`,opacity:0}],{duration:800,easing:'ease-out',fill:'forwards'}).onfinish=()=>s.remove()}},650)})}
+    s.animate([{transform:`translate(${cx}px,${cy}px) scale(.4)`,opacity:1},{transform:`translate(${cx+Math.cos(a)*R}px,${cy+Math.sin(a)*R}px) scale(1)`,opacity:0}],{duration:1400,easing:'ease-out',fill:'forwards'}).onfinish=()=>s.remove()}},1300)})}
 /* ---------- v45: Snap streak ---------- */
 const snapDay=d=>Object.values(D.log[d]||{}).some(a=>(a||[]).some(e=>e.food&&e.food.src==='photo'));
 const SNAP_MS=[[3,'📸','Shutterbug Chef'],[7,'🍳','Snap Sous-Chef'],[14,'🌟','Plate Paparazzo'],[30,'🏅','Meal Snap Master'],[60,'👑','Food Photo Royalty'],[100,'🏆','Legendary Lens Chef']];
