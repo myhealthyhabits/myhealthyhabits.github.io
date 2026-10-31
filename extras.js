@@ -25,10 +25,10 @@ function goalCheck(){if(tab!=='today'||cur!==logicalToday())return;const L=D.log
  const hit=[];if(g.p&&t.p>=g.p)hit.push(['p','💪 Protein goal hit!']);if((D.water[cur]||0)>=(D.waterGoal||64))hit.push(['w','💧 Water goal hit!']);if(t.kcal>=b*.9&&t.kcal<=b)hit.push(['k','🎯 Calories in range!']);
  const nw=hit.filter(([k])=>!st.h.includes(k));if(!nw.length)return;st.h.push(...nw.map(x=>x[0]));localStorage.setItem(GH,JSON.stringify(st));goalParty(nw.map(x=>x[1]).join('  '))}
 function goalParty(msg){const old=document.getElementById('gbadge');if(old)old.remove();const w=document.createElement('div');w.id='gbadge';w.className='gbadge';w.setAttribute('role','status');w.innerHTML=`<b>Goal hit!</b><span>${esc(msg)}</span>`;document.body.appendChild(w);setTimeout(()=>w.classList.add('out'),3800);setTimeout(()=>w.remove(),4400);
- if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const c=document.createElement('canvas');c.className="gconf";c.width=innerWidth;c.height=innerHeight;document.body.appendChild(c);const x=c.getContext('2d'),C=['#22c55e','#f97316','#ec4899','#3b82f6','#eab308','#a78bfa'];
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches||D.noFx)return;const c=document.createElement('canvas');c.className="gconf";c.width=innerWidth;c.height=innerHeight;document.body.appendChild(c);const x=c.getContext('2d'),C=['#22c55e','#f97316','#ec4899','#3b82f6','#eab308','#a78bfa'];
  const P=Array.from({length:90},()=>({x:innerWidth/2+(Math.random()-.5)*80,y:innerHeight*.35,vx:(Math.random()-.5)*7,vy:-Math.random()*7-3,r:Math.random()*6.28,s:5+Math.random()*5,c:C[Math.random()*C.length|0]}));let f=0;
  (function step(){x.clearRect(0,0,c.width,c.height);P.forEach(p=>{p.vy+=.18;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=.08;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.globalAlpha=Math.max(0,1-f/150);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);x.restore()});if(++f<150)requestAnimationFrame(step);else c.remove()})()}
-function afterRender(){phFill();fxAfter();snapTab();setTimeout(goalCheck,(window._fxQ&&_fxQ.length)?1300:250)}
+function afterRender(){phFill();fxAfter();snapTab();setTimeout(goalCheck,(window._fxQ&&_fxQ.length)?1300:250);if(typeof chCheck==='function')setTimeout(chCheck,(window._fxQ&&_fxQ.length)?2600:900)}
 
 /* ---------- v45: fun log animations ---------- */
 const fxOn=()=>!D.noFx,fxRM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
