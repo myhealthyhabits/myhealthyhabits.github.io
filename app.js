@@ -31,7 +31,7 @@ const sheet=h=>{_xpBack=null;$('#sheet').classList.remove('xpfull');$('#sheetBod
 let _shBack=0,_xpBack=null;const shOpen=()=>!$('#sheet').classList.contains('hidden');
 const close=()=>{stopScan();$('#sheet').classList.add('hidden');if(history.state&&history.state.sh){_shBack=1;history.back()}};
 addEventListener('popstate',()=>{if(_shBack){_shBack=0;if(shOpen()&&!(history.state&&history.state.sh))history.pushState({sh:1},'');return}if(shOpen()&&_xpBack){const f=_xpBack;_xpBack=null;f();return}if(shOpen()){stopScan();$('#sheet').classList.add('hidden')}});
-$('#sheet').onclick=e=>{if(e.target.id==='sheet')close()};
+$('#sheet').onclick=e=>{if(e.target.id==='sheet'||e.target.closest('[data-close]'))close()};
 
 /* ---------- calculations ---------- */
 const ACT=[[1.2,'Sedentary','Desk job or mostly sitting, little or no exercise'],[1.375,'Lightly active','On your feet some of the day, or light exercise 1–3 days a week'],[1.55,'Moderately active','On your feet most of a shift, or exercise 3–5 days a week'],[1.725,'Very active','Physical job all shift, or hard exercise 6–7 days a week'],[1.9,'Extremely active','Heavy labor plus daily training']];
@@ -118,7 +118,7 @@ function summary(){const p=W0;if(p.goalType==='maintain')p.goal=p.weight;const c
  const commit=k=>{const first=!D.weights.length;if(!D.budget&&p.mc)D.mealCount=p.mc;D.profile={...p};D.budget=k;D.budgetMode=k===c.final?'guided':'manual';D.macroGrams=null;
   if(first)D.weights.push({date:logicalToday(),lb:p.weight});W0=null;save();nb();go('today');toast('Budget set to '+k.toLocaleString())};
  $('#s_use').onclick=()=>commit(c.final);
- $('#s_adj').onclick=()=>{sheet(`<h2>Adjust budget</h2><input id="a_k" type="number" class="bigin" value="${c.final}"><button class="btn" id="a_go">Save</button><button class="btn alt" onclick="close()">Cancel</button>`);
+ $('#s_adj').onclick=()=>{sheet(`<h2>Adjust budget</h2><input id="a_k" type="number" class="bigin" value="${c.final}"><button class="btn" id="a_go">Save</button><button class="btn alt" data-close="1">Cancel</button>`);
   $('#a_go').onclick=()=>{const k=+$('#a_k').value;if(!(k>=800))return toast('Enter a budget');close();commit(k)}}}
 const onboarding=budgetHome;
 
@@ -236,7 +236,7 @@ function today(){const view=tab+'|'+cur,soft=lastView===view&&V.children.length,
 function goalsSheet(){const g=macroGoal();sheet(`<h2>Daily goals</h2><p class="mut" style="margin-top:0">Defaults: 30/40/30 split of your calories, 28 g fiber, 64 oz water.</p>
  <div class="row"><div><label>Protein g</label><input id="gl_p" type="number" value="${r0(g.p)}"></div><div><label>Carbs g</label><input id="gl_c" type="number" value="${r0(g.c)}"></div><div><label>Fat g</label><input id="gl_f" type="number" value="${r0(g.f)}"></div></div>
  <div class="row"><div><label>Fiber g</label><input id="gl_fb" type="number" value="${D.fiberGoal}"></div><div><label>Water oz</label><input id="gl_w" type="number" value="${D.waterGoal}"></div></div><label>Daily steps</label><input id="gl_st" type="number" inputmode="numeric" value="${D.stepGoal||10000}">
- <button class="btn" id="gl_go">Save goals</button><button class="btn alt" id="gl_rs">Reset to defaults</button><button class="btn alt" onclick="close()">Cancel</button>`);
+ <button class="btn" id="gl_go">Save goals</button><button class="btn alt" id="gl_rs">Reset to defaults</button><button class="btn alt" data-close="1">Cancel</button>`);
  $('#gl_go').onclick=()=>{D.macroGrams={p:+$('#gl_p').value||0,c:+$('#gl_c').value||0,f:+$('#gl_f').value||0};D.fiberGoal=+$('#gl_fb').value||28;D.waterGoal=+$('#gl_w').value||64;D.stepGoal=Math.max(100,+$('#gl_st').value||10000);save();close();render();toast('Goals saved')};
  $('#gl_rs').onclick=()=>{D.macroGrams=null;D.fiberGoal=28;D.waterGoal=64;D.stepGoal=10000;save();close();render()}}
 const MET=[['Other',5]];
@@ -336,14 +336,14 @@ function gymLog(day,ne,old){let w=D.workouts.find(x=>x.date===day&&x.quick);if(!
 function quickAdd(mealId){sheet(`<h2>Quick add</h2><label>Meal</label><select id="q_m">${visMeals().map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
  <label>Name (optional)</label><input id="q_n" placeholder="Quick add"><label>${eU()==='kJ'?'Kilojoules':'Calories'}</label><input id="q_k" type="number" inputmode="numeric" class="bigin" autofocus>
  <div class="row"><div><label>Protein g</label><input id="q_p" type="number"></div><div><label>Carbs g</label><input id="q_c" type="number"></div><div><label>Fat g</label><input id="q_f" type="number"></div><div><label>Fiber g</label><input id="q_fb" type="number"></div></div>
- <button class="btn" id="q_go">Add</button><button class="btn alt" onclick="close()">Cancel</button>`);
+ <button class="btn" id="q_go">Add</button><button class="btn alt" data-close="1">Cancel</button>`);
  if(mealId)$('#q_m').value=mealId;
  $('#q_go').onclick=()=>{const k=eU()==='kJ'?Math.round(+$('#q_k').value/4.184):+$('#q_k').value;if(!k)return toast('Enter calories');
   const f={src:'quick',name:$('#q_n').value||'Quick add',n:{kcal:k,p:+$('#q_p').value||0,c:+$('#q_c').value||0,f:+$('#q_f').value||0,fb:+$('#q_fb').value||0},units:[{label:'serving',mult:1}]};
   f.ref=uid();addEntry($('#q_m').value,entryFrom(f,0,1));close();render()};setTimeout(()=>$('#q_k')?.focus(),50)}
 function mealMenu(mid){const m=D.meals.find(x=>x.id===mid);sheet(`<h2>${esc(m.name)}</h2>
  <button class="btn alt" id="mm_copy">Copy yesterday's ${esc(m.name)}</button><button class="btn alt" id="mm_save">Save this meal for later</button>
- <button class="btn alt" id="mm_scan">📷 Scan a barcode</button><button class="btn alt" id="mm_q">⚡ Quick add calories</button><button class="btn alt" id="mm_clr">Clear this meal</button><button class="btn alt" onclick="close()">Cancel</button>`);
+ <button class="btn alt" id="mm_scan">📷 Scan a barcode</button><button class="btn alt" id="mm_q">⚡ Quick add calories</button><button class="btn alt" id="mm_clr">Clear this meal</button><button class="btn alt" data-close="1">Cancel</button>`);
  $('#mm_scan').onclick=()=>scan(mid);$('#mm_copy').onclick=()=>{const y=(D.log[addDays(cur,-1)]||{})[mid]||[];if(!y.length)return toast('Nothing logged yesterday');
   y.forEach(e=>addEntry(mid,{...e,id:uid()}));close();render();toast('Copied '+y.length+(y.length>1?' items':' item'))};
  $('#mm_save').onclick=()=>{const es=dayLog(cur)[mid]||[];if(!es.length)return toast('Nothing to save');const n=prompt('Name this meal',m.name);if(!n)return;
@@ -377,7 +377,7 @@ function openAdd(mid){window.curMid=mid;sheet(`<h2>Add to ${esc(D.meals.find(m=>
  ${(()=>{const T=Object.values(D.stats).filter(s=>s.food&&s.food.src!=='quick').sort((x,y)=>(D.fav.includes(fkey(y.food))-D.fav.includes(fkey(x.food)))||y.last-x.last).slice(0,8);return T.length?`<div class="qchip sq" id="s_qc">${T.map(s=>`<button data-qk="${esc(fkey(s.food))}"><span>${emoOf(s.food)}</span>${esc(s.food.name.length>20?s.food.name.slice(0,19)+'…':s.food.name)}</button>`).join('')}</div>`:''})()}
  ${window.rmHtml?rmHtml(mid):''}<div class="seg" id="s_tabs">${[['recent','Recent'],['fav','★ Favorites'],['my','My Foods'],['meals','Saved meals'],['cond','Condiments & sauces']].map(([k,v])=>`<button data-t="${k}" class="${k===addTab?'on':''}">${v}</button>`).join('')}</div>
  <button class="moreb" id="s_more" aria-expanded="${storeSel?'true':'false'}">🏬 Store brands ${storeSel?'· '+esc(storeSel.lbl):''} ▾</button><div class="stores${storeSel?'':' hidden'}" id="s_st">${STORES.map(s=>`<button data-st="${s.k}" class="${storeSel?.k===s.k?'on':''}">${esc(s.lbl)}${s.sub?`<small>${esc(s.sub)}</small>`:''}</button>`).join('')}</div>
- <div id="s_res"></div><button class="btn alt" id="s_new">+ Create a custom food</button><button class="btn alt" onclick="close()">Done</button>`);
+ <div id="s_res"></div><button class="btn alt" id="s_new">+ Create a custom food</button><button class="btn alt" data-close="1">Done</button>`);
  $('#s_more').onclick=()=>{const s=$('#s_st'),h=s.classList.toggle('hidden');$('#s_more').setAttribute('aria-expanded',!h)};
  if($('#s_qc'))$('#s_qc').onclick=e=>{const b=e.target.closest('[data-qk]');if(!b)return;const st=D.stats[b.dataset.qk];if(!st)return;const n=qpAdd(mid,st.food,1,st.ui);b.classList.add('done');b.dataset.n=fmtAmt(n);render(1);const r=$('#s_res');if(r&&!$('#s_q').value.trim())listLocal(mid);toast(`Added ${fmtAmt(n)} × ${st.food.name} in ${(D.meals.find(m=>m.id===mid)||{}).name}`)};
  const showTab=()=>{$('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===addTab));listLocal(mid)};
@@ -574,7 +574,7 @@ async function shareOFF(f){if(!navigator.onLine)return toast('Offline — saved 
 let stream=null,scanLoop=null,zx=null;
 function stopScan(){if(scanLoop)cancelAnimationFrame(scanLoop),scanLoop=null;if(zx){try{zx.reset()}catch(e){}zx=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
 async function scan(mid){sheet(`<h2>Scan a barcode</h2><div class="vf" id="b_vf"><video id="b_v" playsinline muted></video><div class="vf-box"><i class="vf-laser"></i></div></div><p class="mut" id="b_s">Line up the barcode inside the box</p>
- <div class="row"><input id="b_code" inputmode="numeric" placeholder="Or type the barcode number"><button class="btn sm" id="b_go" style="flex:none">Look up</button></div><button class="btn alt" onclick="close()">Cancel</button>`);
+ <div class="row"><input id="b_code" inputmode="numeric" placeholder="Or type the barcode number"><button class="btn sm" id="b_go" style="flex:none">Look up</button></div><button class="btn alt" data-close="1">Cancel</button>`);
  $('#b_go').onclick=()=>lookup($('#b_code').value.trim(),mid);
  const found=c=>{if(navigator.vibrate)navigator.vibrate(80);$('#b_vf')?.classList.add('ok');setTimeout(()=>{stopScan();lookup(c,mid)},350)};
  try{if('BarcodeDetector' in window){const fm=await BarcodeDetector.getSupportedFormats();
@@ -631,8 +631,8 @@ function weight(){const W=[...D.weights].sort((a,b)=>a.date<b.date?-1:1),goal=D.
  V.innerHTML=wgCard(W,goal)+wgJourney(W,goal)+`<details class="card pg nd"${D.wlOpen?' open':''} data-k="wlOpen"><summary><span>🗓️ Weigh-ins</span><span class="mut">${W.length} logged ›</span></summary>${W.slice().reverse().map(w=>`<div class="item"><div>${nice(w.date)}</div><span><b>${fW(w.lb)}</b> <button class="x" data-del="${w.date}">✕</button></span></div>`).join('')||'<p class="mut">No weigh-ins yet.</p>'}</details>`;
  const rec=()=>{const v=toLb(+$('#w_v').value),d=$('#w_d').value;if(!v||!d)return toast('Enter a weight');close();D.weights=D.weights.filter(w=>w.date!==d);D.weights.push({date:d,lb:v});
   const latest=d>=W.reduce((m,w)=>w.date>m?w.date:m,'');if(D.profile&&latest)D.profile.weight=v;save();progress();toast('Weight recorded ⚖️');
-  if(latest&&D.profile&&D.profile.sex){const c=calc(D.profile);if(c.final!==D.budget){sheet(`<h2>Update your budget?</h2><p>At ${v} lb your recommended budget is <b>${c.final.toLocaleString()}</b> calories a day (now ${budget().toLocaleString()}).</p>${c.capped?'<p class="mut">Held at the safe minimum.</p>':''}<button class="btn" id="rc_y">Update to ${c.final.toLocaleString()}</button><button class="btn alt" onclick="close()">Keep ${budget().toLocaleString()}</button>`);$('#rc_y').onclick=()=>{D.budget=c.final;D.budgetMode='guided';save();close();toast('Budget updated')}}}};
- $('#wg_rec').onclick=()=>{const l=W[W.length-1];sheet(`<h2>⚖️ Record weight</h2><label>Date</label><input id="w_d" type="date" value="${logicalToday()}"><label>Weight (${wU()})</label><input id="w_v" class="bigin" type="number" step="0.1" inputmode="decimal" placeholder="${l?r1(wgDisp(l.lb)):wU()}"><button class="btn" id="w_go">Save</button><button class="btn alt" onclick="close()">Cancel</button>`);$('#w_go').onclick=rec;setTimeout(()=>$('#w_v')&&$('#w_v').focus(),50)};
+  if(latest&&D.profile&&D.profile.sex){const c=calc(D.profile);if(c.final!==D.budget){sheet(`<h2>Update your budget?</h2><p>At ${v} lb your recommended budget is <b>${c.final.toLocaleString()}</b> calories a day (now ${budget().toLocaleString()}).</p>${c.capped?'<p class="mut">Held at the safe minimum.</p>':''}<button class="btn" id="rc_y">Update to ${c.final.toLocaleString()}</button><button class="btn alt" data-close="1">Keep ${budget().toLocaleString()}</button>`);$('#rc_y').onclick=()=>{D.budget=c.final;D.budgetMode='guided';save();close();toast('Budget updated')}}}};
+ $('#wg_rec').onclick=()=>{const l=W[W.length-1];sheet(`<h2>⚖️ Record weight</h2><label>Date</label><input id="w_d" type="date" value="${logicalToday()}"><label>Weight (${wU()})</label><input id="w_v" class="bigin" type="number" step="0.1" inputmode="decimal" placeholder="${l?r1(wgDisp(l.lb)):wU()}"><button class="btn" id="w_go">Save</button><button class="btn alt" data-close="1">Cancel</button>`);$('#w_go').onclick=rec;setTimeout(()=>$('#w_v')&&$('#w_v').focus(),50)};
  V.querySelectorAll('[data-wr]').forEach(b=>b.onclick=()=>{localStorage.setItem('mhh-wrange',b.dataset.wr);V.querySelectorAll('[data-wr]').forEach(x=>x.classList.toggle('on',x===b));const c=wgCard(W,goal),tmp=document.createElement('div');tmp.innerHTML=c;$('.wgc .wghead').replaceWith(tmp.querySelector('.wghead'));wgDraw(W,goal)});
  V.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{D.weights=D.weights.filter(w=>w.date!==b.dataset.del);save();progress()});
  _wgW=[W,goal];wgDraw(W,goal)}
@@ -744,7 +744,7 @@ function recipe(){const items=[];const draw=()=>{const s=sumEntries(items);$('#r
  sheet(`<h2>Build a recipe / meal</h2><label>Name</label><input id="r_n" placeholder="e.g. Chicken rice bowl"><div id="r_list"></div>
  <label>Add ingredients from your foods</label><select id="r_pick"><option value="">Choose…</option>${[...D.custom,...Object.values(D.stats).map(s=>s.food)].map((f,i)=>`<option value="${i}">${esc(f.name)}</option>`).join('')}</select>
  <div class="row"><div><label>Amount</label><input id="r_q" type="number" value="1"></div></div><button class="btn alt" id="r_add">Add ingredient</button>
- <label>Servings this makes</label><input id="r_sv" type="number" value="1"><button class="btn" id="r_go">Save</button><button class="btn alt" onclick="close()">Cancel</button>`);
+ <label>Servings this makes</label><input id="r_sv" type="number" value="1"><button class="btn" id="r_go">Save</button><button class="btn alt" data-close="1">Cancel</button>`);
  const pool=[...D.custom,...Object.values(D.stats).map(s=>s.food)];draw();
  $('#r_add').onclick=()=>{const f=pool[+$('#r_pick').value];if(!f)return;items.push(entryFrom(f,0,+$('#r_q').value||1));draw()};
  $('#r_go').onclick=()=>{const n=$('#r_n').value.trim(),sv=+$('#r_sv').value||1;if(!n||!items.length)return toast('Add a name and ingredients');const s=sumEntries(items);
@@ -848,8 +848,8 @@ function gym(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInWeek(w
  $('#w_new').onclick=()=>exSheet(null,null,()=>toast('Workout saved 💪'),{gym:1,day:t});if(last)$('#w_rep').onclick=()=>workoutSheet({...last,id:null,date:t,notes:''});
  V.querySelectorAll('[data-tu]').forEach(b=>b.onclick=()=>workoutSheet({...D.wtemplates[+b.dataset.tu],id:null,date:t}));
  V.querySelectorAll('[data-td]').forEach(b=>b.onclick=()=>{D.wtemplates.splice(+b.dataset.td,1);save();gym()});
- V.querySelectorAll('[data-sx]').forEach(el=>el.onclick=()=>{const d=el.dataset.sx,A=D.exercise[d]||[];sheet(`<h2>${nice(d)} · Summary exercise</h2>${A.map(x=>`<div class="item tap" data-se="${x.id}"><div class="exli">${exIcon(findEx(x.name),30)}<div>${esc(x.name)}<small>${x.min?x.min+' min':''}${x.dist?' · '+fD(x.dist):''}</small></div></div><b>${kcalTxt(x)}</b></div>`).join('')}<button class="btn alt" onclick="close()">Done</button>`);document.querySelectorAll('[data-se]').forEach(r=>r.onclick=()=>exSheet(r.dataset.se,null,null,{day:d}))});
- V.querySelectorAll('[data-wo]').forEach(el=>el.onclick=()=>{const w=D.workouts.find(w=>w.id===el.dataset.wo);if(!w.quick)return workoutSheet(w);sheet(`<h2>${nice(w.date)} · Gym</h2>${w.items.map(x=>`<div class="item tap" data-qi="${x.id}"><div class="exli">${exIcon(findEx(x.name),30)}<div>${esc(x.name)}<small>${x.min} min · ${(INTS.find(k=>k[0]===x.int)||INTS[1])[1]}${x.sets?` · ${x.sets}×${x.reps||'?'}${x.wt?' @ '+x.wt+' lb':''}`:''}</small></div></div><b>${x.est?'~':''}${x.kcal} cal</b></div>`).join('')}<button class="btn" id="qi_add">+ Add another exercise</button><button class="btn alt" onclick="close()">Done</button>`);document.querySelectorAll('[data-qi]').forEach(r=>r.onclick=()=>exSheet(null,null,null,{gym:1,day:w.date,item:w.items.find(x=>x.id===r.dataset.qi)}));$('#qi_add').onclick=()=>exSheet(null,null,null,{gym:1,day:w.date})})}
+ V.querySelectorAll('[data-sx]').forEach(el=>el.onclick=()=>{const d=el.dataset.sx,A=D.exercise[d]||[];sheet(`<h2>${nice(d)} · Summary exercise</h2>${A.map(x=>`<div class="item tap" data-se="${x.id}"><div class="exli">${exIcon(findEx(x.name),30)}<div>${esc(x.name)}<small>${x.min?x.min+' min':''}${x.dist?' · '+fD(x.dist):''}</small></div></div><b>${kcalTxt(x)}</b></div>`).join('')}<button class="btn alt" data-close="1">Done</button>`);document.querySelectorAll('[data-se]').forEach(r=>r.onclick=()=>exSheet(r.dataset.se,null,null,{day:d}))});
+ V.querySelectorAll('[data-wo]').forEach(el=>el.onclick=()=>{const w=D.workouts.find(w=>w.id===el.dataset.wo);if(!w.quick)return workoutSheet(w);sheet(`<h2>${nice(w.date)} · Gym</h2>${w.items.map(x=>`<div class="item tap" data-qi="${x.id}"><div class="exli">${exIcon(findEx(x.name),30)}<div>${esc(x.name)}<small>${x.min} min · ${(INTS.find(k=>k[0]===x.int)||INTS[1])[1]}${x.sets?` · ${x.sets}×${x.reps||'?'}${x.wt?' @ '+x.wt+' lb':''}`:''}</small></div></div><b>${x.est?'~':''}${x.kcal} cal</b></div>`).join('')}<button class="btn" id="qi_add">+ Add another exercise</button><button class="btn alt" data-close="1">Done</button>`);document.querySelectorAll('[data-qi]').forEach(r=>r.onclick=()=>exSheet(null,null,null,{gym:1,day:w.date,item:w.items.find(x=>x.id===r.dataset.qi)}));$('#qi_add').onclick=()=>exSheet(null,null,null,{gym:1,day:w.date})})}
 /* merge Summary exercises (D.exercise) into Gym history by date, skipping ones already in a workout that day */
 function gymHist(H){const out=[...H];Object.keys(D.exercise||{}).forEach(d=>{const inW=new Set(H.filter(w=>w.date===d).flatMap(w=>(w.items||[]).map(x=>String(x.name).toLowerCase()+'|'+(x.min||0))));const items=(D.exercise[d]||[]).filter(x=>x&&x.name&&!inW.has(String(x.name).toLowerCase()+'|'+(x.min||0)));if(items.length)out.push({sum:1,date:d,ts:0,items,kcal:items.reduce((s,x)=>s+(+x.kcal||0),0)})});
  return out.sort((a,b)=>b.date<a.date?-1:b.date>a.date?1:(b.ts||0)-(a.ts||0))}
@@ -861,7 +861,7 @@ function workoutSheet(w0){const w=JSON.parse(JSON.stringify(w0||{type:'Strength'
  <datalist id="exdl">${allEx().map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist><button class="btn alt" id="wk_lib">+ Add from exercise library</button><div class="row"><button class="btn alt sm" id="wk_as">+ Sets/reps exercise</button><button class="btn alt sm" id="wk_ac">+ Cardio (time/distance)</button></div>
  <div class="row"><div><label>Total minutes (optional)</label><input id="wk_m" inputmode="numeric" type="number" value="${w.min||''}"></div><div><label>Calories (est.)</label><input id="wk_k" type="number" value="${w.kcal||''}"></div></div>
  <label>Notes</label><textarea id="wk_n" rows="2">${esc(w.notes)}</textarea>
- <button class="btn" id="wk_go">Save workout</button><button class="btn alt" id="wk_tp">Save as template</button>${w.id?'<button class="btn alt" id="wk_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" onclick="close()">Cancel</button>`);
+ <button class="btn" id="wk_go">Save workout</button><button class="btn alt" id="wk_tp">Save as template</button>${w.id?'<button class="btn alt" id="wk_del" style="color:var(--bad)">Delete</button>':''}<button class="btn alt" data-close="1">Cancel</button>`);
   $('#wk_t').value=w.type;
   const est=()=>{const named=w.items.filter(x=>String(x.name).trim()),auto=w.items.reduce((s,x)=>s+('min' in x?(+x.min||0):(+x.sets||0)*2),0),typedM=+$('#wk_m').value,m=typedM||auto;
    $('#wk_m').placeholder=auto?'~'+auto+' (est.)':'e.g. 45';
@@ -932,7 +932,7 @@ let deferred=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;if(standalone)$('#installBtn').classList.add('hidden');
 $('#installBtn').onclick=async()=>{if(deferred){deferred.prompt();await deferred.userChoice;deferred=null;return}
  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
- sheet(`<h2>Get the app</h2>${ios?'<ol><li>Tap the <b>Share</b> button (square with arrow) in Safari</li><li>Tap <b>Add to Home Screen</b></li><li>Tap <b>Add</b></li></ol>':'<p>Open your browser menu (⋮) and choose <b>Install app</b> or <b>Add to Home screen</b>.</p>'}<button class="btn" onclick="close()">Got it</button>`)};
+ sheet(`<h2>Get the app</h2>${ios?'<ol><li>Tap the <b>Share</b> button (square with arrow) in Safari</li><li>Tap <b>Add to Home Screen</b></li><li>Tap <b>Add</b></li></ol>':'<p>Open your browser menu (⋮) and choose <b>Install app</b> or <b>Add to Home screen</b>.</p>'}<button class="btn" data-close="1">Got it</button>`)};
 window.close=close;
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 let lastDay=logicalToday();setInterval(()=>{const t=logicalToday();if(t!==lastDay){if(cur===lastDay)cur=t;lastDay=t;if(tab==='today'&&$('#sheet').classList.contains('hidden'))render()}},60000);

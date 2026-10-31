@@ -17,7 +17,7 @@ async function phGet(id){try{const db=await PHDB();return await new Promise(ok=>
 async function phClear(maxAge){try{const db=await PHDB(),st=db.transaction('p','readwrite').objectStore('p'),c=st.openCursor(),lim=Date.now()-(maxAge||0);c.onsuccess=()=>{const k=c.result;if(!k)return;if(!maxAge||k.value.t<lim)k.delete();k.continue()}}catch(e){}}
 setTimeout(()=>phClear(60*864e5),3000);
 async function phFill(){for(const b of document.querySelectorAll('.mph[data-ph]:not(.ok)')){b.classList.add('ok');let img=null;for(const id of b.dataset.ph.split(' ')){img=await phGet(id);if(img)break}
- if(!img){b.remove();continue}b.style.backgroundImage=`url(${img})`;b.onclick=ev=>{ev.stopPropagation();sheet(`<h2>📷 Meal photo</h2><img src="${img}" class="phbig" alt="Meal photo"><p class="mut" style="font-size:13px">Saved only on this device. Turn off in Settings → Meals.</p><button class="btn alt" onclick="close()">Close</button>`)}}}
+ if(!img){b.remove();continue}b.style.backgroundImage=`url(${img})`;b.onclick=ev=>{ev.stopPropagation();sheet(`<h2>📷 Meal photo</h2><img src="${img}" class="phbig" alt="Meal photo"><p class="mut" style="font-size:13px">Saved only on this device. Turn off in Settings → Meals.</p><button class="btn alt" data-close="1">Close</button>`)}}}
 /* ---------- Goal celebrations ---------- */
 const GH='mhh-goalhit';
 function goalCheck(){if(tab!=='today'||cur!==logicalToday())return;const L=D.log[cur]||{},t=sumEntries(Object.values(L).flat()),g=macroGoal(),b=budget();
