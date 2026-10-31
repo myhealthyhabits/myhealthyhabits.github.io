@@ -489,3 +489,8 @@ details.nd[open]>summary .mut{opacity:.6}
 .item .x,.mswx,button.x{min-width:32px;min-height:32px}
 .sheet-body{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 @media(min-width:760px){body .top{padding-left:calc(50% - 300px);padding-right:calc(50% - 300px)}body nav.tabs{left:0;right:0;margin:0 auto;max-width:600px}body .fab{right:calc(50% - 300px)}.sheet.xpfull .sheet-body{max-width:640px;margin:0 auto}}
+
+/* v54: keep FAB off the last row; two columns on wide screens */
+main{padding-bottom:calc(170px + env(safe-area-inset-bottom))!important}
+@media(min-width:1100px){main{max-width:1240px;column-count:2;column-gap:18px}main>*{break-inside:avoid;-webkit-column-break-inside:avoid;display:inline-block;width:100%}
+body .top{padding-left:calc(50% - 610px);padding-right:calc(50% - 610px)}body nav.tabs{max-width:760px}body .fab{right:calc(50% - 610px)}}

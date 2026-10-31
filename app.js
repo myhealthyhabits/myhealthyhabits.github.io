@@ -27,10 +27,10 @@ const logicalToday=()=>iso(Date.now()-D.rollover*3600e3);
 const addDays=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return iso(d)};
 const nice=s=>{const t=logicalToday();if(s===t)return'Today';if(s===addDays(t,-1))return'Yesterday';return new Date(s+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})};
 let cur=logicalToday(),tab='today';
-const sheet=h=>{$('#sheet').classList.remove('xpfull');$('#sheetBody').innerHTML=h;$('#sheet').classList.remove('hidden');if(!_shBack&&!(history.state&&history.state.sh))history.pushState({sh:1},'')};
-let _shBack=0;const shOpen=()=>!$('#sheet').classList.contains('hidden');
+const sheet=h=>{_xpBack=null;$('#sheet').classList.remove('xpfull');$('#sheetBody').innerHTML=h;$('#sheet').classList.remove('hidden');if(!_shBack&&!(history.state&&history.state.sh))history.pushState({sh:1},'')};
+let _shBack=0,_xpBack=null;const shOpen=()=>!$('#sheet').classList.contains('hidden');
 const close=()=>{stopScan();$('#sheet').classList.add('hidden');if(history.state&&history.state.sh){_shBack=1;history.back()}};
-addEventListener('popstate',()=>{if(_shBack){_shBack=0;if(shOpen()&&!(history.state&&history.state.sh))history.pushState({sh:1},'');return}if(shOpen()){stopScan();$('#sheet').classList.add('hidden')}});
+addEventListener('popstate',()=>{if(_shBack){_shBack=0;if(shOpen()&&!(history.state&&history.state.sh))history.pushState({sh:1},'');return}if(shOpen()&&_xpBack){const f=_xpBack;_xpBack=null;f();return}if(shOpen()){stopScan();$('#sheet').classList.add('hidden')}});
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')close()};
 
 /* ---------- calculations ---------- */
@@ -147,7 +147,7 @@ function animRings(){const gt=[...V.querySelectorAll('.gt')];gt.forEach((g,i)=>{
 function spark(vals,goal,col){const m=Math.max(goal||0,...vals,1);return`<div class="spark">${vals.map((v,i)=>`<i style="height:${Math.max(4,v/m*100)}%;background:${col};opacity:${i===vals.length-1?1:.55}"></i>`).join('')}</div>`}
 function statGrid(){const days=[...Array(7)].map((_,i)=>addDays(cur,i-6)),S=streaks(),g=macroGoal(),t=dayTotal(cur);
  const card=(id,lbl,col,big,unit,ch)=>`<div class="scard" data-go="${id}"><small>${lbl}</small><b style="color:${col}">${big}<em>${unit}</em></b>${ch}</div>`;
- const gymDays=days.map(d=>D.gym[d]?1:0);
+ const gymDays=days.map(d=>gymDay(d)?1:0);
  return`<div class="sgrid">
  ${card('steps','Step Count','#a6ff3a',`<span class="stepnum" data-sd="${cur}" role="button" aria-label="Edit steps">${(D.steps[cur]||0).toLocaleString()}</span>`,'steps',spark(days.map(d=>D.steps[d]||0),D.stepGoal,'#8be22d'))}
  ${card('water','Water','#3fe3ff',lN(D.water[cur]||0),lU(),spark(days.map(d=>D.water[d]||0),D.waterGoal,'#2ec5ff'))}
@@ -263,7 +263,7 @@ function exPicker(cb,back){D.exFav=D.exFav||[];let cat='all',q='',top=null,ptab=
  sheet(`<div class="shhead"><button class="x" id="xp_bk" aria-label="Back">‹</button><h2>Exercise</h2><button class="linkbtn" id="xp_new2">Create</button></div><div class="seg xptabs" id="xp_t"><button data-pt="my">My Exercises</button><button data-pt="all">All Exercises</button></div>
  <div class="xpsearch"><input id="xp_q" type="search" enterkeyhint="go" placeholder="Search ${EXLIB.length}+ exercises — try bike, lat, walk" autocomplete="off" autocapitalize="off"></div>
  <div class="segscroll" id="xp_c" ${myEx().length?'style="display:none"':''}><button data-c="all" class="on">All</button>${EXCATS.map(c=>`<button data-c="${c.id}">${c.name}</button>`).join('')}<button data-c="custom">Custom</button></div>
- <div id="xp_l" class="xplist"></div><button class="btn alt" id="xp_new">+ Custom exercise</button>`);$('#sheet').classList.add('xpfull');$('#sheetBody').scrollTop=0;
+ <div id="xp_l" class="xplist"></div><button class="btn alt" id="xp_new">+ Custom exercise</button>`);$('#sheet').classList.add('xpfull');$('#sheetBody').scrollTop=0;_xpBack=back||null;
  const row=x=>`<div class="xprow" data-n="${esc(x.name)}">${exIcon(x)}<div class="xpn">${esc(x.name)}<small>${(EXCATS.find(c=>c.id===x.cat)||{name:'Custom'}).name}</small></div><button class="star ${D.exFav.includes(x.name)?'on':''}" data-st="${esc(x.name)}" aria-label="Favorite">★</button></div>`;
  const list=()=>{const qq=q.toLowerCase(),MY=myEx(),A=ptab==='my'&&!qq?MY:allEx(),myN=new Set(MY.map(x=>x.name));let h='';
   const az=L=>{let ltr='',o='';L.forEach(x=>{const c=x.name[0].toUpperCase();if(c!==ltr){ltr=c;o+=`<div class="xph">${c}</div>`}o+=row(x)});return o};const RC=(D.exRecent||[]).map(findEx).filter(Boolean).slice(0,6),rec=RC.length?`<div class="xph xpsec">Recent activities</div>${RC.map(row).join('')}`:'';
@@ -617,8 +617,8 @@ function historyView(){const t=logicalToday(),days=[...Array(30)].map((_,i)=>add
  const tot=days.map(d=>dayTotal(d)),logged=tot.filter(x=>x.kcal>0),avg=logged.length?logged.reduce((s,x)=>s+x.kcal,0)/logged.length:0;
  const wk=[...Array(7)].map((_,i)=>addDays(t,-i)),wt=wk.map(d=>dayTotal(d)),wl=wt.filter(x=>x.kcal),wa=k=>wl.length?wl.reduce((s,x)=>s+x[k],0)/wl.length:0;
  const wkHtml=`<div class="card pg"><h2>This week</h2><div class="stats tiles"><div style="--c:#30d158;--c2:#2fd4c8"><span class="mut">📅 Days logged</span><b>${wl.length} / 7</b></div><div style="--c:#ffd60a;--c2:#ff9f0a"><span class="mut">🔥 Avg calories</span><b>${r0(wa('kcal')).toLocaleString()}</b></div>
- <div style="--c:#2fd4c8;--c2:#30d158"><span class="mut">✅ Under budget</span><b>${wt.filter(x=>x.kcal&&x.kcal<=b).length} days</b></div><div class="wide" style="--c:#ff9f0a;--c2:#ff375f"><span class="mut">🥩🍞🧈🥦 Avg P / C / F / Fiber</span><b>${r0(wa('p'))} / ${r0(wa('c'))} / ${r0(wa('f'))} / ${r0(wa('fb'))} g</b></div>
- <div style="--c:#64d2ff;--c2:#2fd4c8"><span class="mut">💧 Avg water</span><b>${fL(wk.reduce((s,d)=>s+(D.water[d]||0),0)/7)}</b></div><div style="--c:#bf5af2;--c2:#ff9f0a"><span class="mut">💪 Gym days</span><b>${wk.filter(d=>D.gym[d]).length}</b></div></div>
+ <div style="--c:#2fd4c8;--c2:#30d158"><span class="mut">✅ Under budget</span><b>${wt.filter(x=>x.kcal&&x.kcal<=b).length} days</b></div><div style="--c:#ff375f;--c2:#bf5af2"><span class="mut">🥩 Avg protein</span><b>${r0(wa('p'))} g</b></div><div class="wide" style="--c:#ff9f0a;--c2:#ff375f"><span class="mut">🥩🍞🧈🥦 Avg P / C / F / Fiber</span><b>${r0(wa('p'))} / ${r0(wa('c'))} / ${r0(wa('f'))} / ${r0(wa('fb'))} g</b></div>
+ <div style="--c:#64d2ff;--c2:#2fd4c8"><span class="mut">💧 Avg water</span><b>${fL(wk.reduce((s,d)=>s+(D.water[d]||0),0)/7)}</b></div><div style="--c:#bf5af2;--c2:#ff9f0a"><span class="mut">💪 Gym days</span><b>${wk.filter(gymDay).length}</b></div></div>
  <div class="wkbars">${wk.slice().reverse().map(d=>{const k=dayTotal(d).kcal;return`<div class="${d===t?'today':''}"><i class="gb${k>b?' over':''}" style="height:${Math.min(100,k/b*80)}%"></i><small>${new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'narrow'})}</small></div>`}).join('')}</div></div>`;
  V.innerHTML=wkHtml+`<div class="card pg"><h2>Last 30 days</h2><div class="mut">Average on logged days: <b>${r0(avg).toLocaleString()}</b> cal (budget ${b.toLocaleString()})</div></div>
  <div class="card pg"><h2>Daily calories</h2><div class="d30">${[...days].reverse().map(d=>{const i=days.indexOf(d),k=tot[i].kcal,mx=Math.max(b*1.4,...tot.map(t=>t.kcal));return`<i data-d="${d}" title="${nice(d)}" class="${!k?'nil':k>b?'gb over':'gb'}${d===t?' today':''}" style="height:${k?Math.max(4,k/mx*100):3}%"></i>`}).join('')}<b style="bottom:${b/Math.max(b*1.4,...tot.map(t=>t.kcal))*100}%"></b></div><div class="d30l"><span>30 days ago</span><span>Today</span></div></div>
@@ -723,7 +723,7 @@ function celebrate(n){toast(`🔥 ${n}-day logging streak!`);const c=document.cr
 function monthGrid(ym,sel,clickable){const[y,m]=ym.split('-').map(Number),first=new Date(y,m-1,1),days=new Date(y,m,0).getDate(),off=(first.getDay()+6)%7,t=logicalToday();
  let h='<div class="mcal">'+['M','T','W','T','F','S','S'].map(x=>`<span class="mh">${x}</span>`).join('')+'<span></span>'.repeat(off);
  for(let i=1;i<=days;i++){const d=`${y}-${String(m).padStart(2,'0')}-${String(i).padStart(2,'0')}`,cl=[doneDay(d)?'dn':foodDay(d)?'fd':'',d===t?'td':'',d===sel?'sel':'',d>t?'fu':''].join(' ');
-  h+=`<button class="${cl}" ${clickable&&d<=t?`data-cd="${d}"`:'disabled'}>${i}${clickable&&(D.gym[d]||stepDay(d))?`<em class="cdots">${D.gym[d]?'<i class="g"></i>':''}${stepDay(d)?'<i class="s"></i>':''}</em>`:''}</button>`}
+  h+=`<button class="${cl}" ${clickable&&d<=t?`data-cd="${d}"`:'disabled'}>${i}${clickable&&(gymDay(d)||stepDay(d))?`<em class="cdots">${gymDay(d)?'<i class="g"></i>':''}${stepDay(d)?'<i class="s"></i>':''}</em>`:''}</button>`}
  return h+`</div><div class="mleg"><span><i class="dn"></i>Done</span><span><i class="fd"></i>Food, not marked</span>${clickable?'<span><i class="g"></i>Gym</span><span><i class="s"></i>Steps</span>':''}</div>`}
 const ymOf=d=>d.slice(0,7),ymAdd=(ym,n)=>{const[y,m]=ym.split('-').map(Number),z=new Date(y,m-1+n,1);return z.getFullYear()+'-'+String(z.getMonth()+1).padStart(2,'0')};
 const ymName=ym=>new Date(ym+'-15T12:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
@@ -735,9 +735,10 @@ const stepDay=d=>(D.steps[d]||0)>=D.stepGoal;
 function dayStreak(fn){const t=logicalToday();let d=fn(t)?t:addDays(t,-1),n=0;while(fn(d)){n++;d=addDays(d,-1)}return n}
 function bestDay(fn,keys){const ds=[...new Set(keys)].filter(fn).sort();let b=0,run=0,prev=null;ds.forEach(d=>{run=prev&&addDays(prev,1)===d?run+1:1;b=Math.max(b,run);prev=d});return b}
 const weekStart=d=>{const x=new Date(d+'T12:00');return addDays(d,-((x.getDay()+6)%7))};
-const gymInWeek=ws=>[...Array(7)].filter((_,i)=>D.gym[addDays(ws,i)]).length;
+const gymDay=d=>!!D.gym[d]||(D.exercise[d]||[]).some(x=>x&&x.name);
+const gymInWeek=ws=>[...Array(7)].filter((_,i)=>gymDay(addDays(ws,i))).length;
 function gymStreak(){let ws=weekStart(logicalToday()),n=gymInWeek(ws)>=D.gymGoal?1:0;ws=addDays(ws,-7);while(gymInWeek(ws)>=D.gymGoal){n++;ws=addDays(ws,-7)}return n}
-function gymBest(){const ks=Object.keys(D.gym).sort();if(!ks.length)return 0;let ws=weekStart(ks[0]),end=weekStart(logicalToday()),b=0,run=0;
+function gymBest(){const ks=[...Object.keys(D.gym),...Object.keys(D.exercise||{}).filter(gymDay)].sort();if(!ks.length)return 0;let ws=weekStart(ks[0]),end=weekStart(logicalToday()),b=0,run=0;
  while(ws<=end){run=gymInWeek(ws)>=D.gymGoal?run+1:0;b=Math.max(b,run);ws=addDays(ws,7)}return b}
 function streaks(){return{done:{cur:dayStreak(doneDay),best:bestDay(doneDay,Object.keys(D.done))},food:{cur:dayStreak(foodDay),best:bestDay(foodDay,Object.keys(D.log))},steps:{cur:dayStreak(stepDay),best:bestDay(stepDay,Object.keys(D.steps))},gym:{cur:gymStreak(),best:gymBest()}}}
 function nudges(){if(cur!==logicalToday())return'';const S=streaks(),t=logicalToday(),out=[];
@@ -745,7 +746,7 @@ function nudges(){if(cur!==logicalToday())return'';const S=streaks(),t=logicalTo
  if(!foodDay(t))out.push(S.food.cur?`🔥 Your ${S.food.cur}-day logging streak is on the line. Log your first meal to keep it going!`:`👋 Log one meal today to start a new streak.`);
  const st=D.steps[t]||0;if(st<D.stepGoal&&S.steps.cur)out.push(`👟 ${(D.stepGoal-st).toLocaleString()} more steps keeps your ${S.steps.cur}-day step streak alive.`);
  const ws=weekStart(t),done=gymInWeek(ws),left=D.gymGoal-done,daysLeft=7-[...Array(7)].findIndex((_,i)=>addDays(ws,i)===t);
- if(left>0&&!D.gym[t]&&left>=daysLeft-1)out.push(`💪 ${left} more gym day${left>1?'s':''} this week to hit your goal — ${daysLeft} day${daysLeft>1?'s':''} left. Today's a great day!`);
+ if(left>0&&!gymDay(t)&&left>=daysLeft-1)out.push(`💪 ${left} more gym day${left>1?'s':''} this week to hit your goal — ${daysLeft} day${daysLeft>1?'s':''} left. Today's a great day!`);
  return out.map(m=>`<div class="card nudge">${m}</div>`).join('')}
 const BADGES=[['food',7,'🥉','7-day logger'],['food',30,'🥈','30-day logger'],['food',100,'🥇','100-day logger'],['steps',7,'👟','7 days of 10k'],['steps',30,'🏃','30 days of 10k'],['steps',100,'🏅','100 days of 10k'],['gym',4,'💪','4 strong weeks'],['gym',12,'🏋️','12 strong weeks'],['gym',52,'🏆','A full year at the gym']];
 function activity(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInWeek(ws),st=D.steps[t]||0,g=D.gym[t];
@@ -755,7 +756,7 @@ function activity(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInW
  const sub=(c,b,u,hint)=>c?(c>=b?`Record! Next: ${pl(tgt(c,b),u)}`:`Best: ${pl(b,u)}`):(b?`Best: ${pl(b,u)}. ${hint}`:hint);
  const box=(ic,title,col,c,b,u,on,hint)=>`<div class="skc${c?'':' zero'}" style="--c:${col}"><div class="skh"><span class="skic">${ic}</span><span class="skt">${title}</span>${on?fl:''}</div><div class="skv"><b>${c}</b><span>${c===1?u:u+'s'}</span></div><div class="skbar"><i style="width:${Math.min(100,c/tgt(c,b)*100)}%"></i></div><small>${sub(c,b,u,hint)}</small></div>`;
  const dOn=doneDay(t),hero=`<div class="card skhero${S.done.cur?'':' zero'}">${ring(S.done.cur,S.done.best,'#ff9f0a',96)}<div class="skhn"><b>${S.done.cur}</b><span>${S.done.cur===1?'day':'days'}</span></div><div class="skhx"><div class="skt">Logging streak ${dOn?fl:''}</div><small>${S.done.cur?`Best: ${pl(S.done.best,'day')}`:'Mark Done Logging today to start'}</small><small class="mut">${dOn?'Today is done ✓':S.done.cur?'Mark Done Logging tonight to keep it':S.done.best?`Best: ${pl(S.done.best,'day')}`:'Tap Done Logging on Summary'}</small></div></div>`;
- const cells=[];const start=addDays(weekStart(t),-7*15);for(let i=0;i<16*7;i++){const d=addDays(start,i);const n=d>t?-1:(foodDay(d)?1:0)+(D.gym[d]?1:0)+(stepDay(d)?1:0);cells.push(`<i class="h${n}" title="${d}"></i>`)}
+ const cells=[];const start=addDays(weekStart(t),-7*15);for(let i=0;i<16*7;i++){const d=addDays(start,i);const n=d>t?-1:(foodDay(d)?1:0)+(gymDay(d)?1:0)+(stepDay(d)?1:0);cells.push(`<i class="h${n}" title="${d}"></i>`)}
  let ym=ymOf(t);V.innerHTML=`<div class="skg">${box('✅','Logging','#ff9f0a',S.done.cur,S.done.best,'day',dOn,'Log today to start')}${box('🍽️','Food Logged','#ffd60a',S.food.cur,S.food.best,'day',foodDay(t),'Log a meal to start')}${box('💪','Gym','#30d158',S.gym.cur,S.gym.best,'week',gw>=D.gymGoal,`${D.gymGoal}× this week to start`)}${box('👟','Steps','#2fd4c8',S.steps.cur,S.steps.best,'day',stepDay(t),'Hit your goal to start')}</div>
  <div class="card calc"><div class="calhd"><button id="am_p" aria-label="Previous month">‹</button><h2 id="am_t">${ymName(ym)}</h2><button id="am_n" aria-label="Next month">›</button></div><div id="am_g">${monthGrid(ym,null,true)}</div><p class="mut" style="font-size:12px;margin:6px 0 0">Streak counts days marked Done Logging. Tap a day to open it, add food and mark it — a missed day can be fixed later.</p></div>
  <div class="card"><button class="btn" id="toGym" style="margin:0">💪 Open Gym — check in & log workouts</button></div>
@@ -792,7 +793,7 @@ function syncGymDay(d){const ws=D.workouts.filter(w=>w.date===d);if(!ws.length){
 function gym(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInWeek(ws),g=D.gym[t],H=[...D.workouts].sort((a,b)=>b.date<a.date?-1:b.date>a.date?1:b.ts-a.ts),last=H[0],HX=gymHist(H);
  V.innerHTML=`<div class="card gymhero"><div class="sks"><div class="sk"><span class="exico" style="--c:#ff9f0a;margin:0 auto 4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1.5 2 2 2 2s-.5-4 1-7z"/></svg></span><b>${S.gym.cur}</b><small>week streak</small></div><div class="sk"><span class="exico" style="--c:#64d2ff;margin:0 auto 4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><b>${gw}/${D.gymGoal}</b><small>this week</small></div><div class="sk"><span class="exico" style="--c:#ffd60a;margin:0 auto 4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"/></svg></span><b>${S.gym.best}</b><small>best streak</small></div></div>
  <div class="bar" style="margin:12px 0 4px"><i style="width:${Math.min(100,gw/D.gymGoal*100)}%;background:var(--acc)"></i></div>
- ${g?`<div class="item"><div>✅ Checked in today${g.type?' · '+esc(g.type):''}${g.kcal?' · '+g.kcal+' cal':''}</div>${g.auto?'':'<button class="x" id="g_undo">Undo</button>'}</div>`:'<button class="btn big1" id="g_check">💪 Check in — I went to the gym</button>'}
+ ${g?`<div class="item"><div>✅ Checked in today${g.type?' · '+esc(g.type):''}${g.kcal?' · '+g.kcal+' cal':''}</div>${g.auto?'':'<button class="x" id="g_undo">Undo</button>'}</div>`:gymDay(t)?'<div class="item"><div>✅ Counted today · exercise logged on Summary</div></div>':'<button class="btn big1" id="g_check">💪 Check in — I went to the gym</button>'}
  <label>Weekly gym goal</label><select id="g_goal">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}">${n} day${n>1?'s':''} a week</option>`).join('')}</select></div>
  <div class="card"><h2>Log a workout</h2><button class="btn" id="w_new">+ Log exercise</button><p class="hint" style="text-align:center;margin:6px 0 10px">Pick an exercise and how long — e.g. 30 min weight machines.</p>${last?`<button class="btn alt" id="w_rep">🔁 Repeat last: ${esc(last.type)} (${nice(last.date)})</button>`:''}
  ${D.wtemplates.length?`<label>Templates</label>${D.wtemplates.map((x,i)=>`<div class="item"><div>${esc(x.name)}<small>${wSum(x)}</small></div><span><button class="btn sm" data-tu="${i}">Start</button> <button class="x" data-td="${i}">✕</button></span></div>`).join('')}`:''}</div>
