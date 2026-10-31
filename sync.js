@@ -29,7 +29,7 @@ async function sync(mode){if(!ses)return;if(busy){again=true;return}busy=true;
    if(remoteNew&&localNew){out=merge(D,R.data,(R.data.updatedAt||0)>loc)}
    else if(remoteNew){out=R.data}
    if(out){const keep={};['usdaKey'].forEach(k=>{if(D[k]&&!out[k])keep[k]=D[k]});Object.assign(out,keep);
-    const tx=JSON.stringify(out)!==JSON.stringify(D);if(tx){for(const k of Object.keys(D))if(!(k in out))delete D[k];Object.assign(D,out);localStorage.setItem(KEY,JSON.stringify(D));if(typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()}
+    const tx=JSON.stringify(out)!==JSON.stringify(D);if(tx){for(const k of Object.keys(D))if(!(k in out))delete D[k];Object.assign(D,out);localStorage.setItem(KEY,JSON.stringify(D));if(window._fxBusy&&Date.now()-window._fxBusy<9000)setTimeout(()=>{if(!window._fxBusy&&typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()},9000);else if(typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()}
     setMeta({pulled:rt,uid:ses.uid});if(!localNew){setMeta({pushed:D.updatedAt||0});stat('Synced');return}}
    else if(!localNew){setMeta({pulled:rt,uid:ses.uid});stat('Synced');return}}
   const now=new Date().toISOString();D.updatedAt=D.updatedAt||Date.now();

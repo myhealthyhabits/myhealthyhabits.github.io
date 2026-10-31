@@ -428,11 +428,11 @@ details.nd[open]>summary .mut{opacity:.6}
 .gconf{position:fixed;inset:0;pointer-events:none;z-index:59}
 @media (prefers-reduced-motion:reduce){.gbadge{animation:none;transition:none}}
 .fxfly{position:fixed;left:0;top:0;z-index:58;font-size:28px;pointer-events:none;margin:-16px 0 0 -16px;will-change:transform}
-.fxland{animation:fxland .8s cubic-bezier(.3,1.5,.5,1) both}@keyframes fxland{from{opacity:0;transform:translateY(-10px) scale(.94)}to{opacity:1;transform:none}}
+.fxland{animation:fxland .9s cubic-bezier(.3,1.5,.5,1) both}@keyframes fxland{from{opacity:0;transform:translateY(-10px) scale(.94)}to{opacity:1;transform:none}}
 .fxfade{animation:fxfade .5s ease both}@keyframes fxfade{from{opacity:0}to{opacity:1}}
 .gwrap.fxglow{animation:fxglow 1.6s ease-out}@keyframes fxglow{0%{filter:drop-shadow(0 0 0 #ff9f0a00)}40%{filter:drop-shadow(0 0 14px #ff9f0a88)}100%{filter:drop-shadow(0 0 0 #ff9f0a00)}}
-.fxchip{position:fixed;z-index:58;transform:translate(-50%,-100%);background:linear-gradient(90deg,#22c55e,#16a34a);color:#fff;font-weight:800;font-size:14px;padding:4px 10px;border-radius:999px;pointer-events:none;animation:fxchip 2s ease-out forwards;box-shadow:0 4px 12px #0004}
-.fxchip.rm{animation:fxfade2 2s ease forwards}@keyframes fxchip{0%{opacity:0;transform:translate(-50%,-60%) scale(.8)}20%{opacity:1;transform:translate(-50%,-100%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-190%)}}
+.fxchip{position:fixed;z-index:58;transform:translate(-50%,-100%);background:linear-gradient(90deg,#22c55e,#16a34a);color:#fff;font-weight:800;font-size:14px;padding:4px 10px;border-radius:999px;pointer-events:none;animation:fxchip 3s ease-out forwards;box-shadow:0 4px 12px #0004}
+.fxchip.rm{animation:fxfade2 3s ease forwards}@keyframes fxchip{0%{opacity:0;transform:translate(-50%,-60%) scale(.8)}12%{opacity:1;transform:translate(-50%,-100%) scale(1)}85%{opacity:1}100%{opacity:0;transform:translate(-50%,-190%)}}
 @keyframes fxfade2{0%,100%{opacity:0}20%,75%{opacity:1}}
 .mch.fxwig{animation:fxwig 1s ease-in-out}@keyframes fxwig{0%,100%{transform:none}25%{transform:rotate(-1.5deg)}50%{transform:rotate(1.5deg) scale(1.02)}75%{transform:rotate(-.7deg)}}
 .fxck{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#22c55e;color:#fff;font-size:13px;font-weight:900;margin-left:6px;animation:fxck 1.6s ease both}.fxck.rm{animation:fxfade2 1.6s ease both}
