@@ -37,7 +37,7 @@ function msItem(x){const g=Math.max(1,+x.grams),lib=msMatch(x.name),per=k=>(+x[k
 const msN=it=>it.lib?it.lib.n:it.ai,msK=it=>msN(it).kcal*it.g/100;
 const msFmt=v=>{v=Math.round(v*100)/100;const w=Math.floor(v),f=v-w,fr={.25:'¼',.5:'½',.75:'¾'}[Math.round(f*4)/4];return Math.abs(f*4-Math.round(f*4))<.02&&fr?(w?w:'')+fr:(Math.round(v*10)/10).toString()};
 function msPortion(it){const U=msUnits(it),u=U[Math.min(it.u,U.length-1)],a=it.g/u.g;return(u.l==='g'?Math.round(a)+' g':msFmt(a)+' '+u.l+(u.l==='oz'?'':' · '+Math.round(it.g)+' g'))}
-function msReview(mid,items){const pick=!!window.msPick,mn=()=>(D.meals.find(m=>m.id===mid)||{}).name||'meal';let open=-1,menu=-1,sw=-1,swq='',swR=[],swBusy=0,swT;
+function msReview(mid,items,o={}){const pick=!!window.msPick,mn=()=>(D.meals.find(m=>m.id===mid)||{}).name||'meal';let open=-1,menu=-1,sw=-1,swq='',swR=[],swBusy=0,swT;
  const tot=()=>items.reduce((t,it)=>{const n=msN(it),m=it.g/100;t.k+=n.kcal*m;t.p+=n.p*m;t.c+=n.c*m;t.f+=n.f*m;t.fb+=(n.fb||0)*m;return t},{k:0,p:0,c:0,f:0,fb:0});
  const totH=()=>{const t=tot();return`<div class="ms-tl"><small>Estimated total</small><b>${fE(t.k)}</b></div><div class="ms-ch"><span class="cp">P ${r0(t.p)}g</span><span class="cc">C ${r0(t.c)}g</span><span class="cf">F ${r0(t.f)}g</span><span class="cb">Fiber ${r0(t.fb)}g</span></div>`};
  const live=i=>{const it=items[i],row=$('#ms_r'+i);if(row){row.querySelector('.ms-kc').textContent=fE(msK(it));row.querySelector('.ms-pt').textContent=msPortion(it)}$('#ms_tot').innerHTML=totH()};
@@ -62,14 +62,14 @@ function msReview(mid,items){const pick=!!window.msPick,mn=()=>(D.meals.find(m=>
   if(!n){const near=swR[0]||msMatch(q);if(near)n={...near.n};else{toast('Couldn’t estimate that · kept the current numbers');n={...msN(it)}}}
   it.name=q;it.lib=null;it.ai=n;it.conf=0;it.u=msUnits(it).findIndex(u=>u.l==='g');sw=-1;draw()};
  const draw=()=>{const sc=$('#sheetBody').scrollTop;
-  sheet(`<div class="ms-head"><h2>📷 Here's what we see</h2><div id="ms_tot" class="ms-tot">${totH()}</div></div>
+  sheet(`<div class="ms-head"><h2>${o.title||"📷 Here's what we see"}</h2><div id="ms_tot" class="ms-tot">${totH()}</div></div>
   <p class="ms-hint">Tap a food to fix its portion.</p>
   <div class="ms-list">${items.map((it,i)=>`<div class="ms-it${open===i?' open':''}" id="ms_r${i}"><div class="ms-row" data-o="${i}"><span class="ms-emo">${emoOf({name:it.lib?it.lib.name:it.name})}</span>
    <div class="ms-nm"><b data-n="${i}">${esc(it.lib?it.lib.name:it.name)}</b><span class="ms-pt">${esc(msPortion(it))}</span><span>${it.lib?'<i class="ms-tag lib">USDA</i>':'<i class="ms-tag ai">AI estimate</i>'}${it.conf&&it.conf<.5?'<i class="ms-tag lo">unsure</i>':''}</span></div>
    <b class="ms-kc">${fE(msK(it))}</b><button class="ms-more" data-m="${i}" aria-label="More options">⋯</button></div>
    ${menu===i?`<div class="ms-menu"><button data-a="s" data-i="${i}">🔄 Swap food</button><button data-a="x" data-i="${i}">🗑️ Remove</button></div>`:''}
    ${open===i?ed(it,i):''}${sw===i?swH(it,i):''}</div>`).join('')||'<p class="mut">No items left.</p>'}</div>
-  <div class="ms-foot">${pick?`<div class="ms-mp"><small>Log to</small>${visMeals().map(m=>`<button data-mp="${m.id}" class="${m.id===mid?'on':''}">${esc(m.name)}</button>`).join('')}</div>`:''}<button class="btn" id="ms_log" ${items.length?'':'disabled'}>Log ${items.length} item${items.length===1?'':'s'} to ${esc(mn())}</button><button class="ms-re" id="ms_re">📷 Retake photo</button></div>`);
+  <div class="ms-foot">${pick?`<div class="ms-mp"><small>Log to</small>${visMeals().map(m=>`<button data-mp="${m.id}" class="${m.id===mid?'on':''}">${esc(m.name)}</button>`).join('')}</div>`:''}<button class="btn" id="ms_log" ${items.length?'':'disabled'}>Log ${items.length} item${items.length===1?'':'s'} to ${esc(mn())}</button><button class="ms-re" id="ms_re">${o.backL||'📷 Retake photo'}</button></div>`);
   $('#sheetBody').scrollTop=sc;
   const L=$('.ms-list');L.onclick=e=>{const t=e.target;
    if(t.closest('.ms-sw')){const it=items[sw];const j=t.closest('[data-j]');if(j){it.lib=j.dataset.j==='ai'?null:swR[+j.dataset.j];if(it.lib&&it.lib.src==='usda')it.lib={...it.lib,name:it.lib.name.split(',').slice(0,2).join(',')};it.conf=0;it.u=msUnits(it).findIndex(u=>u.l==='g');sw=-1;return draw()}
@@ -88,8 +88,8 @@ function msReview(mid,items){const pick=!!window.msPick,mn=()=>(D.meals.find(m=>
    const o=t.closest('[data-o]');if(o){const i=+o.dataset.o;open=open===i?-1:i;menu=-1;draw()}};
   const am=$('#ms_am');if(am)am.oninput=()=>{const it=items[open],U=msUnits(it),u=U[Math.min(it.u,U.length-1)],v=parseFloat(am.value);if(v>0){it.g=v*u.g;live(open);document.querySelectorAll('.ms-qs button').forEach(b=>b.classList.toggle('on',Math.abs(it.g-it.g0*+b.dataset.q)<.5))}};
   const sq=$('#ms_swq');if(sq){sq.oninput=()=>{swq=sq.value;swFind()};sq.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();if(swR[0]&&qWords(swq).length)sq.blur();else if(swq.trim())swUse(items[sw])}}}
-  $('#ms_re').onclick=()=>mealScan(mid);
+  $('#ms_re').onclick=()=>o.back?o.back(mid):mealScan(mid);
   document.querySelectorAll('[data-mp]').forEach(b=>b.onclick=()=>{mid=b.dataset.mp;draw()});
-  $('#ms_log').onclick=()=>{window._fxMeal=items.length>1;window._fxSnap=1;const ph=window.msThumb&&!D.noThumbs?uid():null;if(ph&&window.phPut)phPut(ph,window.msThumb);items.forEach(it=>{const food={src:'photo',ref:uid(),name:it.lib?it.lib.name:it.name,brand:it.lib?'':'AI estimate',n:{...msN(it)},units:[{label:'g',mult:.01}]};const e=entryFrom(food,0,r0(it.g));e.est=1;if(ph)e.ph=ph;addEntry(mid,e)});
+  $('#ms_log').onclick=()=>{window._fxMeal=items.length>1;window._fxSnap=!o.src;const ph=!o.src&&window.msThumb&&!D.noThumbs?uid():null;if(ph&&window.phPut)phPut(ph,window.msThumb);items.forEach(it=>{const food={src:o.src||'photo',ref:uid(),name:it.lib?it.lib.name:it.name,brand:it.lib?'':'AI estimate',n:{...msN(it)},units:[{label:'g',mult:.01}]};const e=entryFrom(food,0,r0(it.g));e.est=1;if(ph)e.ph=ph;addEntry(mid,e)});
    close();render();toast(`Logged ${items.length} item${items.length===1?'':'s'} to ${mn()} · estimate`)}};
  draw()}
