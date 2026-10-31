@@ -33,6 +33,28 @@ const RECAP = { type: "object", properties: {
   headline: { type: "string" }, wins: { type: "array", items: { type: "string" } },
   tips: { type: "array", items: { type: "string" } }, streak: { type: "string" },
 }, required: ["headline", "wins", "tips", "streak"] };
+const RECIPE = { type: "object", properties: {
+  name: { type: "string" }, servings: { type: "number" }, items: SCHEMA.properties.items,
+}, required: ["name", "servings", "items"] };
+const RECIPE_P = (t: string) => `Extract the recipe from this web page text. name: the recipe title. servings: how many servings it makes (number; 4 if not stated). items: every ingredient with the amount the recipe uses for the WHOLE recipe, grams estimated for that amount, and typical nutrition for that amount. Use common US food names. Skip water, salt and "to taste" items. Max 25 items. If there is no recipe, return {"name":"","servings":1,"items":[]}.
+PAGE:
+${t}`;
+// Fetch a public recipe page safely (http/https only, no private hosts, size + time limits)
+async function getPage(u: string): Promise<string | null> {
+  let url: URL; try { url = new URL(u); } catch { return null; }
+  if (!/^https?:$/.test(url.protocol)) return null;
+  const bad = (x: string) => { const h = x.toLowerCase().replace(/^\[|\]$/g, ""); return h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || /^\d+\.\d+\.\d+\.\d+$/.test(h) || h.includes(":") || !h.includes("."); };
+  if (bad(url.hostname)) return null;
+  try {
+    const r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(9000), headers: { "User-Agent": "Mozilla/5.0 (compatible; MyHealthyHabits recipe import)", Accept: "text/html" } });
+    if (!r.ok || bad(new URL(r.url || url.href).hostname)) return null;
+    const raw = (await r.text()).slice(0, 1_500_000);
+    // Prefer schema.org Recipe JSON-LD when present
+    const ld = [...raw.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).find((x) => /"recipeIngredient"/.test(x));
+    if (ld) return ld.slice(0, 14000);
+    return raw.replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").slice(0, 14000);
+  } catch { return null; }
+}
 const PARSE = (t: string) => `The user described what they ate: "${t}". Split it into separate foods with the portion they said (or a typical portion if not said). Use common US names. Return JSON {"items":[...]} with typical nutrition for each portion. Max 8 items. If it is not food, return {"items":[]}.`;
 const IDEA_P = (c: string) => `You are a friendly nutrition coach. Suggest exactly 3 different, realistic meal ideas for the user's upcoming meal using this context (JSON): ${c}
 Each idea should fit within remainingCalories (aim for roughly the share given in targetCalories) and help reach remainingProtein. Never include anything in dislikes. Do not repeat dishes already eaten or suggested today (eatenToday, avoid). Vary cuisines and proteins. Keep it simple to make or buy. "why" is one short upbeat sentence. List each idea's foods as items with portions and nutrition.`;
@@ -48,13 +70,19 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
   if (req.method !== "POST") return out(405, { error: "method" });
   if (!KEY) return out(503, { error: "not_configured" });
-  let body: { image?: string; text?: string; grams?: number; mode?: string; ctx?: unknown };
+  let body: { image?: string; text?: string; grams?: number; mode?: string; ctx?: unknown; url?: string };
   try { body = await req.json(); } catch { return out(400, { error: "bad_request" }); }
   const txt = String(body.text ?? "").trim().slice(0, 80);
   const img = (body.image ?? "").replace(/^data:image\/\w+;base64,/, "");
-  const mode = ["parse", "ideas", "recap"].includes(String(body.mode)) ? String(body.mode) : "";
+  const mode = ["parse", "ideas", "recap", "recipe"].includes(String(body.mode)) ? String(body.mode) : "";
   const ptxt = String(body.text ?? "").trim().slice(0, 300), ctx = JSON.stringify(body.ctx ?? {}).slice(0, 2500);
   if (mode === "parse" && !ptxt) return out(400, { error: "bad_request" });
+  let page = "";
+  if (mode === "recipe") {
+    const p = await getPage(String(body.url ?? "").trim().slice(0, 600));
+    if (!p || p.trim().length < 80) return out(422, { error: "fetch_failed" });
+    page = p;
+  }
   if (!mode && !txt && (!img || img.length > 2_000_000)) return out(413, { error: "too_big" });
   // who: signed-in user id if the JWT is a real user, else hashed IP
   let who = "ip:" + await sha((req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim());
@@ -75,10 +103,10 @@ Deno.serve(async (req) => {
   const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
     method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY },
     body: JSON.stringify({
-      contents: [{ parts: mode === "parse" ? [{ text: PARSE(ptxt.replace(/"/g, "'")) }] : mode === "ideas" ? [{ text: IDEA_P(ctx) }] : mode === "recap" ? [{ text: RECAP_P(ctx) }] : txt
+      contents: [{ parts: mode === "parse" ? [{ text: PARSE(ptxt.replace(/"/g, "'")) }] : mode === "ideas" ? [{ text: IDEA_P(ctx) }] : mode === "recap" ? [{ text: RECAP_P(ctx) }] : mode === "recipe" ? [{ text: RECIPE_P(page) }] : txt
         ? [{ text: `Give typical nutrition for one item: "${txt.replace(/"/g, "'")}", portion about ${Math.max(1, Math.min(2000, +(body.grams ?? 100)))} g. Return JSON {"items":[...]} with exactly that one item, grams set to that portion.` }]
         : [{ text: PROMPT }, { inline_data: { mime_type: "image/jpeg", data: img } }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: mode === "ideas" ? IDEAS : mode === "recap" ? RECAP : SCHEMA, temperature: mode === "ideas" || mode === "recap" ? 0.8 : 0.2 },
+      generationConfig: { responseMimeType: "application/json", responseSchema: mode === "recipe" ? RECIPE : mode === "ideas" ? IDEAS : mode === "recap" ? RECAP : SCHEMA, temperature: mode === "ideas" || mode === "recap" ? 0.8 : 0.2 },
     }),
   });
   if (g.status === 429) return out(429, { error: "global_limit" });
@@ -89,6 +117,7 @@ Deno.serve(async (req) => {
     const J = JSON.parse(t);
     if (mode === "ideas") return out(200, { ideas: (J.ideas ?? []).slice(0, 3) });
     if (mode === "recap") return out(200, J);
+    if (mode === "recipe") return out(200, { name: String(J.name ?? "").slice(0, 80), servings: Math.max(1, Math.min(50, Math.round(+J.servings || 4))), items: (J.items ?? []).slice(0, 25) });
     const items = (J.items ?? []).slice(0, 8);
     return out(200, { items });
   } catch { return out(502, { error: "ai_failed" }); }

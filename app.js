@@ -352,7 +352,8 @@ function mealMenu(mid){const m=D.meals.find(x=>x.id===mid);sheet(`<h2>${esc(m.na
  $('#mm_clr').onclick=()=>{if(confirm('Clear '+m.name+'?')){delete dayLog(cur)[mid];save();close();render()}}}
 function editEntry(mid,id){const es=dayLog(cur)[mid],e=es.find(x=>x.id===id);
  servingSheet(e.food,e.ui,e.qty,mid,(ne,newMeal)=>{es.splice(es.indexOf(e),1);ne.id=e.id;(dayLog(cur)[newMeal]=dayLog(cur)[newMeal]||[]).push(ne);save();render()},
-  ()=>{close();removeEntry(mid,id)},{entry:{mid,id,date:cur}})}
+  ()=>{close();removeEntry(mid,id)},{entry:{mid,id,date:cur}});
+ if(e.food.src==='recipe'){const f=e.food,cur_r=(D.recipes||[]).find(r=>r.id===f.ref),ing=f.ing||(cur_r?recFood(cur_r).ing:[]),h=$('#sheetBody h2');if(h)h.insertAdjacentHTML('afterend',`<div class="rcbd"><span class="rctag">📖 Recipe${f.sv?` · makes ${f.sv} serving${f.sv>1?'s':''}`:''}</span>${ing.length?`<div class="mut" style="font-size:12px;margin:8px 0 4px">Per serving</div>${ing.map(x=>`<div class="rcbi"><span>${esc(x.name)}<small>${esc(x.amt)}${f.sv>1?' ÷ '+f.sv:''}</small></span><b>${r0(x.kcal)} cal</b></div>`).join('')}`:'<p class="mut" style="font-size:13px">Ingredient details aren’t available for this entry.</p>'}${cur_r?`<button class="linkbtn" id="rc_ed">Edit recipe ›</button>`:''}</div>`);if($('#rc_ed'))$('#rc_ed').onclick=()=>recipeSheet(cur_r.id)}}
 function removeEntry(mid,id,date=cur){const es=dayLog(date)[mid]||[],i=es.findIndex(x=>x.id===id);if(i<0)return;const[e]=es.splice(i,1);save();render();toastU(`Removed ${e.food.name.length>28?e.food.name.slice(0,27)+'…':e.food.name}`,()=>{const L=(dayLog(date)[mid]=dayLog(date)[mid]||[]);L.splice(Math.min(i,L.length),0,e)})}
 
 /* ---------- edit any food (scanned / online) -> user's custom version ---------- */
@@ -742,11 +743,13 @@ function settings(){const m=D.macroPct;
   D=Object.assign(def(),j,{exAddBack:D.exAddBack,stepsAddBack:D.stepsAddBack,noAddBackV1:1});save();toast('Backup restored');go('today')}catch(x){toast('That file isn\'t a valid backup')}}}
 /* ---------- v57: recipes ---------- */
 const REMO=['🍲','🥗','🍝','🌯','🥘','🍛','🥪','🍳','🥣','🍜','🍕','🌮','🍔','🥞','🍰','🥤'];
-const recFood=r=>{const s=sumEntries(r.items||[]),sv=Math.max(1,+r.sv||1);return{src:'recipe',ref:r.id,name:r.name,brand:'Recipe',emo:r.emo,n:{kcal:s.kcal/sv,p:s.p/sv,c:s.c/sv,f:s.f/sv,fb:s.fb/sv},units:[{label:'serving',mult:1}]}};
+const recFood=r=>{const s=sumEntries(r.items||[]),sv=Math.max(1,+r.sv||1);return{src:'recipe',ref:r.id,name:r.name,brand:'Recipe',emo:r.emo,ph:r.ph||undefined,sv,ing:(r.items||[]).map(e=>({name:e.food.name,amt:amtLbl(e),kcal:e.kcal/sv,p:e.p/sv})),n:{kcal:s.kcal/sv,p:s.p/sv,c:s.c/sv,f:s.f/sv,fb:s.fb/sv},units:[{label:'serving',mult:1}]}};
 const recFoods=()=>(D.recipes||[]).map(recFood);
-function recipeSheet(id){D.recipes=D.recipes||[];const old=D.recipes.find(r=>r.id===id),r=old?JSON.parse(JSON.stringify(old)):{id:uid(),name:'',emo:'🍲',sv:4,items:[]};
+function recipeSheet(id,draft){D.recipes=D.recipes||[];const old=D.recipes.find(r=>r.id===id),r=draft||(old?JSON.parse(JSON.stringify(old)):{id:uid(),name:'',emo:'🍲',sv:4,items:[]});let newImg=null;
  const pool=()=>{const seen=new Set();return[...D.custom,...Object.values(D.stats).map(s=>s.food).filter(f=>f&&f.src!=='recipe'),...(typeof FOODLIB!=='undefined'?FOODLIB:[]),...STORELIB,...CONDLIB].filter(f=>{if(!f||!f.n)return 0;const k=fkey(f);if(seen.has(k))return 0;seen.add(k);return 1})};
- sheet(`<h2>📖 ${old?'Edit':'New'} recipe</h2><label>Name</label><input id="rc_n" placeholder="e.g. Chicken rice bowl" value="${esc(r.name)}">
+ sheet(`<h2>📖 ${old?'Edit':draft?'Review imported':'New'} recipe</h2>${!old&&!draft?'<button class="btn alt rcimp" id="rc_imp">🔗 Import from a web link <small>· AI</small></button>':''}${draft?`<p class="ai-msg" style="margin-top:0">✨ Check each ingredient and amount, fix anything that looks off, then save. Numbers are estimates.</p>`:''}
+ <div class="rcphoto"><div class="rcpv" id="rc_pv">${r.emo||'🍲'}</div><div><b>Photo</b><small class="mut">Saved only on this device</small><div class="row"><button class="btn sm alt" id="rc_cam">📸 Take</button><button class="btn sm alt" id="rc_up">🖼️ Upload</button>${r.ph?'<button class="x" id="rc_phx" aria-label="Remove photo">✕</button>':''}</div></div><input type="file" id="rc_fc" accept="image/*" capture="environment" hidden><input type="file" id="rc_fu" accept="image/*" hidden></div>
+ <label>Name</label><input id="rc_n" placeholder="e.g. Chicken rice bowl" value="${esc(r.name)}">
  <label>Emoji</label><div class="rcemo" id="rc_e">${REMO.map(e=>`<button data-em="${e}" class="${e===r.emo?'on':''}" aria-label="${e}">${e}</button>`).join('')}</div>
  <label>Ingredients</label><div id="rc_l"></div><input id="rc_q" type="search" placeholder="🔍 Search foods to add…" autocomplete="off"><div id="rc_r" class="rcres"></div>
  <label>Servings this makes</label><div class="rcstep"><button id="rc_m" aria-label="Fewer servings">−</button><b id="rc_sv"></b><button id="rc_p" aria-label="More servings">+</button></div>
@@ -760,18 +763,63 @@ function recipeSheet(id){D.recipes=D.recipes||[];const old=D.recipes.find(r=>r.i
  $('#rc_q').oninput=find;$('#rc_r').onclick=e=>{const b=e.target.closest('[data-rp]');if(!b)return;const f0=R[+b.dataset.rp],f={...f0,units:unitsFor(f0).length?unitsFor(f0):f0.units};r.items.push(entryFrom(f,0,1));$('#rc_q').value='';find();list()};
  $('#rc_e').onclick=e=>{const b=e.target.closest('[data-em]');if(!b)return;r.emo=b.dataset.em;$('#rc_e').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))};
  $('#rc_m').onclick=()=>{r.sv=Math.max(1,r.sv-1);tot()};$('#rc_p').onclick=()=>{r.sv=Math.min(50,r.sv+1);tot()};
- $('#rc_go').onclick=()=>{r.name=$('#rc_n').value.trim();if(!r.name)return toast('Give your recipe a name');if(!r.items.length)return toast('Add at least one ingredient');if(old)D.recipes[D.recipes.indexOf(old)]=r;else D.recipes.push(r);save();close();render();toast(`${r.emo} ${r.name} saved`)};
+ $('#rc_go').onclick=()=>{r.name=$('#rc_n').value.trim();if(!r.name)return toast('Give your recipe a name');if(!r.items.length)return toast('Add at least one ingredient');if(newImg){if(r.ph&&r.ph!==newImg.id){}r.ph=newImg.id;if(window.phPut)phPut(newImg.id,newImg.img)}if(newImg===0)delete r.ph;if(old)D.recipes[D.recipes.indexOf(old)]=r;else D.recipes.push(r);save();close();render();toast(`${r.emo} ${r.name} saved`)};
  if(old)$('#rc_del').onclick=()=>{if(!confirm('Delete '+old.name+'?'))return;D.recipes=D.recipes.filter(x=>x.id!==old.id);save();close();render();toast('Recipe deleted')};
+
+ const pv=img=>{const el=$('#rc_pv');if(!el)return;if(img){el.style.backgroundImage=`url(${img})`;el.classList.add('img');el.textContent=''}else{el.style.backgroundImage='';el.classList.remove('img');el.textContent=r.emo||'🍲'}};
+ if(r.ph&&window.phGet)phGet(r.ph).then(i=>i&&pv(i));
+ const onF=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(D.noThumbs)return toast('Photos are turned off in Settings → Meals');try{const img=await msShrink(f,480,.75);newImg={id:uid(),img};pv(img);toast('Photo added 📸')}catch(x){toast('Couldn’t open that photo')}};
+ $('#rc_cam').onclick=()=>$('#rc_fc').click();$('#rc_up').onclick=()=>$('#rc_fu').click();$('#rc_fc').onchange=onF;$('#rc_fu').onchange=onF;if($('#rc_phx'))$('#rc_phx').onclick=()=>{newImg=0;pv(null);$('#rc_phx').remove()};
+ if($('#rc_imp'))$('#rc_imp').onclick=()=>recipeImport();
  list()}
+function recipeImport(url=''){sheet(`<h2>🔗 Import a recipe</h2><div class="ms-hero">🌐🍲</div><p class="mut" style="margin-top:0">Paste a link to a recipe page. The AI reads the ingredients and servings, then you review everything before saving. Uses 1 of your daily AI uses.</p>
+ <input id="ri_u" type="url" inputmode="url" placeholder="https://…" value="${esc(url)}" autocomplete="off"><div id="ri_m"></div><button class="btn" id="ri_go">✨ Import recipe</button><button class="btn alt" id="ri_bk">Back</button>`);
+ $('#ri_bk').onclick=()=>recipeSheet();
+ $('#ri_go').onclick=async()=>{let u=$('#ri_u').value.trim();if(u&&!/^https?:\/\//i.test(u))u='https://'+u;try{const x=new URL(u);if(/\s/.test(u)||!/\.[a-z]{2,}$/i.test(x.hostname))throw 0}catch(e){return $('#ri_m').innerHTML='<div class="ai-msg">🔗 That doesn’t look like a web link. Copy the full address from your browser.</div>'}
+  const b=$('#ri_go');b.disabled=true;b.textContent='Reading the recipe…';$('#ri_m').innerHTML='<p class="mut" style="text-align:center">🔎 This takes a few seconds.</p>';
+  let r,j={};try{[r,j]=await msCall({mode:'recipe',url:u})}catch(e){}
+  if(!$('#ri_go'))return;
+  const fail=m=>{b.disabled=false;b.textContent='✨ Try again';$('#ri_m').innerHTML=`<div class="ai-msg">${m}</div>`};
+  if(r&&r.status===422)return fail('😕 Couldn’t open that page. Some sites block apps from reading them. Try another link, or build the recipe by hand.');
+  if(!r||!r.ok)return fail(esc(aiErr(r,j,'Recipe import')));
+  const items=(j.items||[]).filter(x=>x&&x.name&&+x.grams>0);if(!items.length)return fail('🤔 No recipe found on that page. Make sure the link goes to a single recipe.');
+  const ents=items.map(x=>{const it=msItem(x),n=msN(it),g=Math.max(1,+x.grams),lbl=(x.amount&&x.unit?`${+x.amount} ${x.unit}`:'portion')+` (${Math.round(g)} g)`;
+   const food={src:'ai',ref:uid(),name:msCap(x.name),brand:it.lib?'':'AI estimate',n:{kcal:n.kcal,p:n.p,c:n.c,f:n.f,fb:n.fb||0},units:[{label:lbl,mult:g/100},{label:'g',mult:.01},{label:'oz',mult:.2835}]};const e=entryFrom(food,0,1);e.est=1;return e});
+  recipeSheet(null,{id:uid(),name:(j.name||'Imported recipe').slice(0,60),emo:'🍲',sv:j.servings||4,items:ents,src:u})}}
 /* ---------- v57: monthly challenges ---------- */
 const CH_EMO=['❄️','💘','🍀','🌷','🌼','☀️','🎆','🌻','🍎','🎃','🦃','🎄'];
 const chYm=d=>d.slice(0,7);
 function chDays(ym){const t=logicalToday(),out=[];let d=ym+'-01';while(chYm(d)===ym&&d<=t){out.push(d);d=addDays(d,1)}return out}
-function chList(ym){const ds=chDays(ym),g=macroGoal();const snaps=ds.reduce((s,d)=>s+Object.values(D.log[d]||{}).filter(a=>(a||[]).some(e=>e&&e.food&&e.food.src==='photo')).length,0);
- return[{id:'log',e:'📝',t:'Log food on 20 days',goal:20,n:ds.filter(foodDay).length,c:'#ffd60a'},{id:'pro',e:'🥩',t:'Hit your protein goal 15 times',goal:15,n:g.p?ds.filter(d=>dayTotal(d).p>=g.p).length:0,c:'#ff375f'},{id:'snap',e:'📸',t:'Snap 10 meals',goal:10,n:snaps,c:'#64d2ff'},{id:'gym',e:'💪',t:'12 gym days',goal:12,n:ds.filter(gymDay).length,c:'#30d158'}]}
+const CH_LV={easy:[.65,'🌱 Easy'],normal:[1,'⭐ Normal'],hard:[1.3,'🔥 Hard']};
+const CH_DEF=['log','pro','snap','gym'];
+function chPool(ym){const ds=chDays(ym),g=macroGoal(),dim=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate(),lv=(CH_LV[D.chLvl]||CH_LV.normal)[0],T=(base,mx)=>Math.max(1,Math.min(mx||dim,Math.round(base*lv)));
+ const cnt=f=>ds.filter(f).length,ents=d=>Object.values(D.log[d]||{}).flat().filter(e=>e&&e.food);
+ return[
+ {id:'log',e:'📝',c:'#ffd60a',t:n=>`Log food on ${n} days`,goal:T(dim-10),n:()=>cnt(foodDay)},
+ {id:'pro',e:'🥩',c:'#ff375f',t:n=>`Hit your protein goal (${r0(g.p)} g) ${n} times`,goal:T(15),n:()=>g.p?cnt(d=>dayTotal(d).p>=g.p):0},
+ {id:'snap',e:'📸',c:'#64d2ff',t:n=>`Snap ${n} meals`,goal:T(10,60),n:()=>ds.reduce((s,d)=>s+Object.values(D.log[d]||{}).filter(a=>(a||[]).some(e=>e&&e.food&&e.food.src==='photo')).length,0)},
+ {id:'gym',e:'💪',c:'#30d158',t:n=>`${n} gym days`,goal:T((D.gymGoal||3)*3.5),n:()=>cnt(gymDay)},
+ {id:'steps',e:'👟',c:'#a6ff3a',t:n=>`Hit ${(D.stepGoal||10000).toLocaleString()} steps on ${n} days`,goal:T(15),n:()=>cnt(stepDay)},
+ {id:'water',e:'💧',c:'#2fd4c8',t:n=>`Drink ${fL?fL(D.waterGoal||64):(D.waterGoal||64)+' oz'} on ${n} days`,goal:T(15),n:()=>cnt(d=>(D.water[d]||0)>=(D.waterGoal||64))},
+ {id:'under',e:'🎯',c:'#ff9f0a',t:n=>`Stay within your calories ${n} days`,goal:T(15),n:()=>cnt(d=>{const k=dayTotal(d).kcal;return k>0&&k<=budget(d)})},
+ {id:'fiber',e:'🥦',c:'#34c759',t:n=>`Hit ${D.fiberGoal||28} g fiber ${n} times`,goal:T(10),n:()=>cnt(d=>dayTotal(d).fb>=(D.fiberGoal||28))},
+ {id:'weigh',e:'⚖️',c:'#bf5af2',t:n=>`Weigh in ${n} times`,goal:T(4,dim),n:()=>D.weights.filter(w=>chYm(w.date)===ym).length},
+ {id:'done',e:'✅',c:'#0a84ff',t:n=>`Mark ${n} days complete`,goal:T(dim-12),n:()=>cnt(d=>D.done&&D.done[d])},
+ {id:'recipe',e:'📖',c:'#ff6482',t:n=>`Log a recipe ${n} times`,goal:T(4,40),n:()=>ds.reduce((s,d)=>s+ents(d).filter(e=>e.food.src==='recipe').length,0)},
+ {id:'veg',e:'🥗',c:'#7ed957',t:n=>`Log fruit or veggies on ${n} days`,goal:T(15),n:()=>cnt(d=>ents(d).some(e=>/salad|apple|banana|berr|orange|grape|melon|broccoli|spinach|carrot|veg|lettuce|kale|tomato|pepper|cucumber|pear|peach|mango|pineapple|avocado|beans|zucchini|asparagus/i.test(e.food.name)))}]}
+function chSel(ym){const P=chPool(ym).map(x=>x.id),sel=(D.chSel&&D.chSel[ym])||D.chPref||CH_DEF;const v=sel.filter(i=>P.includes(i)).slice(0,4);return v.length===4?v:CH_DEF}
+function chList(ym){const P=chPool(ym);return chSel(ym).map(id=>{const x=P.find(p=>p.id===id);return{id,e:x.e,c:x.c,goal:x.goal,t:x.t(x.goal),n:x.n()}})}
+function chEdit(){const t=logicalToday(),ym=chYm(t),P=chPool(ym);let sel=[...chSel(ym)],lv=D.chLvl||'normal';
+ const draw=()=>{sheet(`<h2>🏅 Pick your challenges</h2><p class="mut" style="margin-top:0">Choose any 4. Targets are based on your own goals.</p><div class="seg" id="ce_l">${Object.entries(CH_LV).map(([k,v])=>`<button data-lv="${k}" class="${k===lv?'on':''}">${v[1]}</button>`).join('')}</div>
+ <div class="cepool">${P.map(x=>{const on=sel.includes(x.id),gl=Math.max(1,Math.round(x.goal/((CH_LV[D.chLvl]||CH_LV.normal)[0])*CH_LV[lv][0]));return`<button class="cepick${on?' on':''}" data-ce="${x.id}" style="--c:${x.c}" aria-pressed="${on}"><span class="chico" style="--c:${x.c}">${x.e}</span><span>${esc(x.t(gl))}<small>${Math.min(x.n(),gl)}/${gl} so far</small></span><b>${on?'✓':''}</b></button>`}).join('')}</div>
+ <p class="mut" id="ce_m" style="text-align:center">${sel.length}/4 picked</p><button class="btn" id="ce_go" ${sel.length===4?'':'disabled'}>Save challenges</button><button class="btn alt" id="ce_rs">Reset to defaults</button><button class="btn alt" data-close="1">Cancel</button>`);
+  document.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{lv=b.dataset.lv;draw()});
+  document.querySelectorAll('[data-ce]').forEach(b=>b.onclick=()=>{const id=b.dataset.ce,i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else if(sel.length<4)sel.push(id);else return toast('Pick 4 at most — tap one to remove it first');draw()});
+  $('#ce_go').onclick=()=>{D.chSel=D.chSel||{};D.chSel[ym]=[...sel];D.chPref=[...sel];D.chLvl=lv;save();close();render();toast('Challenges updated 🏅')};
+  $('#ce_rs').onclick=()=>{sel=[...CH_DEF];lv='normal';draw()}};draw()}
 function chCard(){const t=logicalToday(),ym=chYm(t),L=chList(ym),done=L.filter(x=>x.n>=x.goal).length,me=CH_EMO[+ym.slice(5)-1],mn=new Date(t+'T12:00').toLocaleDateString(undefined,{month:'long'}),left=chDays(ym).length,dim=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate()-left;
  const H=Object.keys(D.chDone||{}).filter(k=>k<ym&&Object.keys(D.chDone[k]).length).sort().reverse();
- return`<div class="card chc"><div class="wghead"><h2>${me} ${mn} challenges</h2><span class="wgch dn">${done}/4</span></div><p class="mut" style="margin:2px 0 10px">${done===4?`You earned the ${mn} badge! 🎉`:`Finish all 4 to earn the ${me} ${mn} badge · ${dim} day${dim===1?'':'s'} left`}</p>
+ return`<div class="card chc"><div class="wghead"><h2>${me} ${mn} challenges</h2><span style="display:flex;gap:6px;align-items:center"><span class="wgch dn">${done}/4</span><button class="linkbtn" id="ch_ed" aria-label="Change challenges">✏️ Change</button></span></div><p class="mut" style="margin:2px 0 10px">${done===4?`You earned the ${mn} badge! 🎉`:`Finish all 4 to earn the ${me} ${mn} badge · ${dim} day${dim===1?'':'s'} left`}</p>
  ${L.map(x=>`<div class="chrow${x.n>=x.goal?' ok':''}"><span class="chico" style="--c:${x.c}">${x.n>=x.goal?'✅':x.e}</span><div><div class="chtop"><b>${x.t}</b><small>${Math.min(x.n,x.goal)}/${x.goal}</small></div><div class="bar chbar"><i style="width:${Math.min(100,x.n/x.goal*100)}%;--c:${x.c}"></i></div></div></div>`).join('')}
  <div class="chhist"><span class="mut">Badges</span>${done===4?`<span class="chb on" title="${mn}">${me}<small>${mn.slice(0,3)}</small></span>`:''}${H.map(k=>{const full=Object.keys(D.chDone[k]).length>=4,m=new Date(k+'-15T12:00').toLocaleDateString(undefined,{month:'short'});return`<span class="chb${full?' on':''}" title="${m} ${k.slice(0,4)} · ${Object.keys(D.chDone[k]).length}/4">${full?CH_EMO[+k.slice(5)-1]:'🎖️'}<small>${m}${Object.keys(D.chDone[k]).length<4?' '+Object.keys(D.chDone[k]).length+'/4':''}</small></span>`}).join('')}${!H.length&&done<4?'<span class="mut" style="font-size:12px">Your monthly badges will collect here.</span>':''}</div></div>`}
 function chCheck(){const t=logicalToday(),ym=chYm(t);D.chDone=D.chDone||{};{const pm=chYm(addDays(ym+'-01',-1));if(!D.chDone[pm]){const r={};chList(pm).forEach(x=>{if(x.n>=x.goal)r[x.id]=1});if(Object.keys(r).length){D.chDone[pm]=r;save()}}}const rec=D.chDone[ym]=D.chDone[ym]||{},nw=chList(ym).filter(x=>x.n>=x.goal&&!rec[x.id]);if(!nw.length){if(!Object.keys(rec).length)delete D.chDone[ym];return}
@@ -839,7 +887,7 @@ function activity(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInW
  <label>Daily step goal</label><input id="s_goal" type="number" value="${D.stepGoal}"></div>
  <div class="card"><h2>Last 16 weeks</h2><div class="heat">${cells.join('')}</div><div class="mut" style="font-size:12px;margin-top:6px">Brighter = more goals hit that day (food logged, gym, steps)</div></div>
  <div class="card"><h2>Badges</h2><div class="badges">${BADGES.map(([k,n,ic,l])=>{const got=S[k].best>=n;return`<div class="bd ${got?'':'off'}"><div>${ic}</div><small>${l}</small></div>`}).join('')}</div></div>`;
- $('#toGym').onclick=()=>go('gym');
+ $('#toGym').onclick=()=>go('gym');if($('#ch_ed'))$('#ch_ed').onclick=chEdit;
  const am=()=>{$('#am_t').textContent=ymName(ym);$('#am_g').innerHTML=monthGrid(ym,null,true);$('#am_n').disabled=ym>=ymOf(t);V.querySelectorAll('#am_g [data-cd]').forEach(b=>b.onclick=()=>{cur=b.dataset.cd;go('today')})};am();
  $('#am_p').onclick=()=>{ym=ymAdd(ym,-1);am()};$('#am_n').onclick=()=>{if(ym<ymOf(t)){ym=ymAdd(ym,1);am()}};
  $('#s_set').onclick=()=>{const v=+$('#s_n').value;if(!(v>=0))return;D.steps[t]=v;save();activity();if(v>=D.stepGoal)toast('Step goal hit! 🎉')};
@@ -849,7 +897,7 @@ function activity(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInW
 function myfoods(){const L=myFoods().filter(x=>x.food.src!=='recipe');
  V.innerHTML=`<div class="card"><h2>My Foods</h2><p class="mut" style="margin-top:0">Your meals, snacks and scanned items, most used first. Tap + to add in one tap.</p>
  <button class="fabsnap" id="mf_snap" style="margin:10px 0 8px"><span>📷</span><b>Snap meal</b><small>Photo → AI calorie estimate</small></button><div class="row"><button class="btn sm" id="mf_scan" style="flex:1">▦ Scan barcode</button><button class="btn sm alt" id="mf_new" style="flex:1">+ Custom food</button></div><button class="btn sm alt rcbtn" id="mf_rec">📖 Build a recipe</button></div>
- ${(D.recipes||[]).length?`<div class="card"><h2>📖 Recipes</h2>${D.recipes.map((r,i)=>{const n=recFood(r).n;return`<div class="rcrow"><button class="rcname" data-re="${i}"><span class="emo">${r.emo||'🍲'}</span><span><b>${esc(r.name)}</b><small>${r0(n.kcal)} cal · P ${r0(n.p)} · C ${r0(n.c)} · F ${r0(n.f)} per serving</small></span></button><div class="rclog"><button data-rs="${i}" data-d="-1" aria-label="Fewer servings">−</button><b data-rn="${i}">1</b><button data-rs="${i}" data-d="1" aria-label="More servings">+</button><button class="btn sm" data-rl="${i}">Log</button></div></div>`}).join('')}</div>`:''}
+ ${(D.recipes||[]).length?`<div class="card"><h2>📖 Recipes</h2>${D.recipes.map((r,i)=>{const n=recFood(r).n;return`<div class="rcrow"><button class="rcname" data-re="${i}"><span class="rcthumb"><span class="emo">${r.emo||'🍲'}</span>${r.ph?`<span class="mph" data-ph="${r.ph}"></span>`:''}</span><span><b>${esc(r.name)}</b><small>${r0(n.kcal)} cal · P ${r0(n.p)} · C ${r0(n.c)} · F ${r0(n.f)} per serving</small></span></button><div class="rclog"><button data-rs="${i}" data-d="-1" aria-label="Fewer servings">−</button><b data-rn="${i}">1</b><button data-rs="${i}" data-d="1" aria-label="More servings">+</button><button class="btn sm" data-rl="${i}">Log</button></div></div>`}).join('')}</div>`:''}
  <div class="card">${L.map((x,i)=>`<div class="item"><div>${D.fav.includes(fkey(x.food))?'★ ':''}${esc(x.food.name)}<small>${r0(x.food.n.kcal*x.food.units[x.ui||0].mult*(x.qty||1))} cal · used ${x.count}×${x.food.barcode?' · UPC '+esc(x.food.barcode):''}</small></div><span style="display:flex;gap:6px;flex:none"><button class="btn sm" data-mf="${i}" style="flex:none" aria-label="Add ${esc(x.food.name)}">+</button><button class="x" data-mfx="${i}" aria-label="Remove ${esc(x.food.name)} from My Foods">✕</button></span></div>`).join('')||'<p class="mut">Nothing yet. Log, scan or create a food and it shows up here.</p>'}
  ${D.saved.map((m,i)=>`<div class="item"><div>🍱 ${esc(m.name)}<small>Saved meal · ${r0(sumEntries(m.items).kcal)} cal</small></div><button class="btn sm" data-ms="${i}" style="flex:none">+</button></div>`).join('')}</div>`;
  const mealNow=()=>{const vm=visMeals(logicalToday()).filter(m=>m.id!=='s'),L0=D.log[logicalToday()]||{};return(vm.find(m=>!(L0[m.id]||[]).length)||vm[vm.length-1]).id};

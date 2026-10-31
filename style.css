@@ -535,3 +535,17 @@ body .top{padding-left:calc(50% - 610px);padding-right:calc(50% - 610px)}body na
 .btn.sm{min-height:40px}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid color-mix(in srgb,var(--pri) 55%,transparent);outline-offset:2px}
 .shhead .x{min-width:36px}
+/* v58 recipes: photo, import, breakdown */
+.rcimp{width:100%;margin:0 0 10px}.rcimp small{opacity:.75}
+.rcphoto{display:flex;gap:12px;align-items:center;margin:4px 0 6px}.rcphoto b{display:block}.rcphoto small{display:block;font-size:12px;margin-bottom:6px}.rcphoto .row{gap:6px;align-items:center}
+.rcpv{width:72px;height:72px;flex:none;border-radius:18px;display:grid;place-items:center;font-size:36px;background:linear-gradient(135deg,#ffd60a33,#ff375f22,#64d2ff33) center/cover}.rcpv.img{font-size:0}
+.rcthumb{position:relative;display:inline-grid;place-items:center;width:44px;height:44px;flex:none}.rcthumb .mph{position:absolute;inset:0;width:44px;height:44px;margin:0;border-radius:12px;border:0}
+.rcbd{margin:0 0 12px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#ff648218,#ffd60a18)}.rctag{display:inline-block;font-size:12px;font-weight:800;padding:4px 10px;border-radius:99px;background:#ff6482;color:#fff}
+.rcbi{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:14px}.rcbi:last-of-type{border-bottom:0}.rcbi small{display:block;color:var(--mut);font-size:12px}.rcbi b{white-space:nowrap}
+.cepool{display:flex;flex-direction:column;gap:6px;margin:12px 0}.cepick{display:grid;grid-template-columns:40px 1fr 24px;gap:10px;align-items:center;text-align:left;padding:8px 10px;border-radius:14px;border:2px solid var(--ln);background:var(--card);color:var(--tx);font-size:14px;min-height:52px}.cepick small{display:block;color:var(--mut);font-size:12px}.cepick.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 10%,var(--card))}.cepick b{color:var(--c);font-size:18px}
+#ce_go:disabled{opacity:.5}
+/* v58 light-mode contrast */
+[data-theme=light]{--pri:#c94a0a;--acc:#c94a0a;--pri-soft:#c94a0a14}
+[data-theme=light] .gin small,[data-theme=light] .gends span,[data-theme=light] .mck small,[data-theme=light] .skv span,[data-theme=light] .skc .skn,[data-theme=light] .skc small,[data-theme=light] .gpt span,[data-theme=light] .min small,[data-theme=light] .mempty,[data-theme=light] .x,[data-theme=light] .mchart small,[data-theme=light] [style*="#8e8e93"]{color:var(--mut)!important}
+[data-theme=light] .wgch.dn,[data-theme=light] .qchip button[data-n]::after{color:#047857}
+[data-theme=light] .today>small{color:#0f766e!important}
