@@ -462,3 +462,7 @@ details.nd[open]>summary .mut{opacity:.6}
 .rc-h{font-size:17px;font-weight:700;margin:10px 0}.rc-sec{margin:8px 0}.rc-sec p{margin:4px 0;font-size:14px}.rc-st{background:#ff9f0a22;border-radius:12px;padding:8px 10px;margin:8px 0;font-size:14px}
 @media (prefers-reduced-motion:reduce){.ai-wait{animation:none}}
 .fabsnap.fabai1{background:linear-gradient(100deg,#22c55e,#06b6d4)}.fabsnap.fabai2{background:linear-gradient(100deg,#6366f1,#a855f7)}
+/* v49 swipe / ✕ to remove */
+.miw{position:relative;overflow:hidden;border-radius:12px}.miw>.mi{position:relative;z-index:1;background:var(--card,#1c1c22);touch-action:pan-y;user-select:none}
+.mibg{position:absolute;inset:0 0 0 auto;width:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;border:0;background:linear-gradient(90deg,#ef4444,#dc2626);color:#fff;font-weight:800;font-size:14px;cursor:pointer;opacity:0;transition:opacity .2s}.miw.mswo .mibg{opacity:1}
+.mix{flex:none;width:26px;height:26px;margin-left:8px;border-radius:50%;border:0;background:#8882;color:inherit;font-size:12px;line-height:26px;padding:0;cursor:pointer;opacity:.75}.mix:hover{opacity:1;background:#ef444433}
