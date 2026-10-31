@@ -466,3 +466,18 @@ details.nd[open]>summary .mut{opacity:.6}
 .miw{position:relative;overflow:hidden;border-radius:12px}.miw>.mi{position:relative;z-index:1;background:var(--card,#1c1c22);touch-action:pan-y;user-select:none}
 .mibg{position:absolute;inset:0 0 0 auto;width:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;border:0;background:linear-gradient(90deg,#ef4444,#dc2626);color:#fff;font-weight:800;font-size:14px;cursor:pointer;opacity:0;transition:opacity .2s}.miw.mswo .mibg{opacity:1}
 .mix{flex:none;width:26px;height:26px;margin-left:8px;border-radius:50%;border:0;background:#8882;color:inherit;font-size:12px;line-height:26px;padding:0;cursor:pointer;opacity:.75}.mix:hover{opacity:1;background:#ef444433}
+
+/* v51 full-screen exercise picker */
+.sheet.xpfull{align-items:stretch}
+.sheet.xpfull .sheet-body{width:100%;max-width:none;height:100vh;height:100dvh;max-height:none;border-radius:0;border-top:0;display:flex;flex-direction:column;overflow:hidden;padding:calc(env(safe-area-inset-top) + 8px) 16px 0}
+.sheet.xpfull .xplist{flex:1;max-height:none;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scroll-behavior:smooth;margin:0 -16px;padding:0 12px}
+.sheet.xpfull .xpsearch{position:static;margin:0;padding:2px 0 8px}
+.sheet.xpfull .xpsearch input{font-size:17px;padding:13px 16px;border-radius:14px}
+.sheet.xpfull #xp_c{flex:none}
+.sheet.xpfull #xp_new{flex:none;margin:8px 0 calc(env(safe-area-inset-bottom) + 10px)}
+.sheet.xpfull .xprow{min-height:64px;gap:14px;padding:8px}
+.sheet.xpfull .xprow .exico{width:44px;height:44px;border-radius:14px}
+.sheet.xpfull .xpn{font-size:16px}
+.sheet.xpfull .shhead #xp_bk{font-size:30px}
+.xph.xpsec{font-size:15px;text-transform:none;letter-spacing:0;color:var(--txt,inherit);padding-top:16px}
+.exico.ms svg{width:64%;height:64%}

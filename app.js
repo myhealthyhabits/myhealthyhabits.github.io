@@ -27,7 +27,7 @@ const logicalToday=()=>iso(Date.now()-D.rollover*3600e3);
 const addDays=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return iso(d)};
 const nice=s=>{const t=logicalToday();if(s===t)return'Today';if(s===addDays(t,-1))return'Yesterday';return new Date(s+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})};
 let cur=logicalToday(),tab='today';
-const sheet=h=>{$('#sheetBody').innerHTML=h;$('#sheet').classList.remove('hidden')};
+const sheet=h=>{$('#sheet').classList.remove('xpfull');$('#sheetBody').innerHTML=h;$('#sheet').classList.remove('hidden')};
 const close=()=>{stopScan();$('#sheet').classList.add('hidden')};
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')close()};
 
@@ -255,20 +255,20 @@ function exScore(x,q){const n=x.name.toLowerCase();if(!q)return 1;if(n===q)retur
  return s+((D.exFav||[]).includes(x.name)?40:0)+((D.exRecent||[]).includes(x.name)?20:0)}
 const EXEMO=[[/leg press|leg ext|leg curl|hack squat|smith machine squat|calf raise machine|abductor|adductor|glute kickback/i,'🦵'],[/tricep pushdown|bicep curl|preacher|dip machine/i,'💪'],[/ab crunch|torso rotation/i,'🎯'],[/chest press|pec deck|chest fly|crossover|smith machine bench|lat pulldown|seated row|assisted pull|pullover|shoulder press|rear delt|back extension/i,'🏋️'],[/treadmill/i,'🏃'],[/ellip/i,'⛷️'],[/stair|step/i,'🪜'],[/row(ing)? machine|canoe|kayak|paddle/i,'🚣'],[/bike|cycl|spin/i,'🚴'],[/hik/i,'🥾'],[/walk/i,'🚶'],[/run|jog/i,'🏃'],[/swim|water/i,'🏊'],[/yoga|stretch|pilates|barre/i,'🧘'],[/dance|zumba/i,'💃'],[/box/i,'🥊'],[/climb/i,'🧗'],[/golf/i,'⛳'],[/tennis|pickle/i,'🎾'],[/basket/i,'🏀'],[/soccer/i,'⚽'],[/volley/i,'🏐'],[/snowboard/i,'🏂'],[/ski/i,'⛷️'],[/skate/i,'🛹'],[/surf/i,'🏄'],[/fish/i,'🎣'],[/yard|mow|garden|shovel/i,'🌿'],[/push-up|pull-up|\bchin|\bdips?\b|plank|burpee|crunch|sit-up|squats|jumping|mountain climb|lunge|bridge|raise|wall sit/i,'🤸'],[/hiit|crossfit|bootcamp/i,'🔥']];
 const exEmoji=x=>{if(!x)return null;const m=EXEMO.find(r=>r[0].test(x.name));return m?m[1]:x.cat==='mach'?null:x.cat==='free'?'🏋️':null};
-const exIcon=(x,sz)=>{const e=exEmoji(x);if(!e)return exIco(x&&x.cat,sz);const c=EXCATS.find(c=>c.id===(x&&x.cat))||{col:'#8e8e93'};return `<span class="exico emo" style="--c:${c.col}${sz?';width:'+sz+'px;height:'+sz+'px':''}">${e}</span>`};
+const exIcon=(x,sz)=>window.msExIcon?msExIcon(x,sz):exIco(x&&x.cat,sz);
 const myEx=()=>{const s=new Set([...(D.exCustom||[]).map(x=>x.name),...(D.exFav||[]),...(D.exRecent||[])]);Object.values(D.exercise||{}).forEach(a=>a.forEach(e=>s.add(e.name)));(D.workouts||[]).forEach(w=>w.items.forEach(i=>s.add(i.name)));return[...s].map(findEx).filter(Boolean).sort((p,q)=>p.name.localeCompare(q.name))};
 function exPicker(cb,back){D.exFav=D.exFav||[];let cat='all',q='',top=null,ptab=myEx().length?'my':'all';
  sheet(`<div class="shhead"><button class="x" id="xp_bk" aria-label="Back">‹</button><h2>Exercise</h2><button class="linkbtn" id="xp_new2">Create</button></div><div class="seg xptabs" id="xp_t"><button data-pt="my">My Exercises</button><button data-pt="all">All Exercises</button></div>
  <div class="xpsearch"><input id="xp_q" type="search" enterkeyhint="go" placeholder="Search ${EXLIB.length}+ exercises — try bike, lat, walk" autocomplete="off" autocapitalize="off"></div>
  <div class="segscroll" id="xp_c" ${myEx().length?'style="display:none"':''}><button data-c="all" class="on">All</button>${EXCATS.map(c=>`<button data-c="${c.id}">${c.name}</button>`).join('')}<button data-c="custom">Custom</button></div>
- <div id="xp_l" class="xplist"></div><button class="btn alt" id="xp_new">+ Custom exercise</button>`);
+ <div id="xp_l" class="xplist"></div><button class="btn alt" id="xp_new">+ Custom exercise</button>`);$('#sheet').classList.add('xpfull');$('#sheetBody').scrollTop=0;
  const row=x=>`<div class="xprow" data-n="${esc(x.name)}">${exIcon(x)}<div class="xpn">${esc(x.name)}<small>${(EXCATS.find(c=>c.id===x.cat)||{name:'Custom'}).name}</small></div><button class="star ${D.exFav.includes(x.name)?'on':''}" data-st="${esc(x.name)}" aria-label="Favorite">★</button></div>`;
  const list=()=>{const qq=q.toLowerCase(),MY=myEx(),A=ptab==='my'&&!qq?MY:allEx(),myN=new Set(MY.map(x=>x.name));let h='';
-  if(ptab==='my'&&!qq){let ltr='';A.forEach(x=>{const c=x.name[0].toUpperCase();if(c!==ltr){ltr=c;h+=`<div class="xph">${c}</div>`}h+=row(x)});if(!A.length)h='<div class="empty"><p>Exercises you log or create show up here.</p></div>'}
+  const az=L=>{let ltr='',o='';L.forEach(x=>{const c=x.name[0].toUpperCase();if(c!==ltr){ltr=c;o+=`<div class="xph">${c}</div>`}o+=row(x)});return o};const RC=(D.exRecent||[]).map(findEx).filter(Boolean).slice(0,6),rec=RC.length?`<div class="xph xpsec">Recent activities</div>${RC.map(row).join('')}`:'';
+  if(ptab==='my'&&!qq){h+=rec+(A.length?'<div class="xph xpsec">My exercises</div>':'');let ltr='';A.forEach(x=>{const c=x.name[0].toUpperCase();if(c!==ltr){ltr=c;h+=`<div class="xph">${c}</div>`}h+=row(x)});if(!A.length&&!RC.length)h='<div class="empty"><p>Exercises you log or create show up here.</p></div>'}
   else if(!qq&&cat==='all'){const F=D.exFav.map(findEx).filter(Boolean),R=(D.exRecent||[]).filter(n=>!D.exFav.includes(n)).map(findEx).filter(Boolean);
-   if(F.length)h+=`<div class="xph">Favorites</div>${F.map(row).join('')}`;if(R.length)h+=`<div class="xph">Recent</div>${R.map(row).join('')}`;
-   EXCATS.forEach(c=>h+=`<div class="xph">${c.name}</div>${A.filter(x=>x.cat===c.id&&!x.custom).map(row).join('')}`);
-   const C=A.filter(x=>x.custom);if(C.length)h+=`<div class="xph">Custom</div>${C.map(row).join('')}`}
+   if(F.length)h+=`<div class="xph">Favorites</div>${F.map(row).join('')}`;if(R.length)h+=`<div class="xph xpsec">Recent activities</div>${R.slice(0,6).map(row).join('')}`;
+   h+=`<div class="xph xpsec">All activities</div>`+az([...A].sort((p,q)=>p.name.localeCompare(q.name)))}
   else{const L=A.filter(x=>cat==='all'||(cat==='custom'?x.custom:x.cat===cat)).map(x=>[exScore(x,qq)+(ptab==='my'&&myN.has(x.name)?60:0),x]).filter(z=>z[0]>0).sort((p,r)=>r[0]-p[0]).map(z=>z[1]);top=L[0];h=L.slice(0,40).map((x,i)=>row(x).replace('class="xprow"',i?'class="xprow"':'class="xprow top"')).join('');if(q&&!L.some(x=>x.name.toLowerCase()===qq))h+=`<button class="xpadd" id="xp_mk">+ Add “${esc(q)}” as custom</button>`;if(!L.length)h=`<button class="xpadd only" id="xp_mk">+ Add “${esc(q)}” as custom</button><p class="hint" style="text-align:center">Saved to your library for next time.</p>`}
   const l=$('#xp_l');l.innerHTML=h;
   l.querySelectorAll('.xprow').forEach(r=>r.onclick=e=>{if(e.target.closest('.star'))return;cb(findEx(r.dataset.n))});
