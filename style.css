@@ -481,3 +481,11 @@ details.nd[open]>summary .mut{opacity:.6}
 .sheet.xpfull .shhead #xp_bk{font-size:30px}
 .xph.xpsec{font-size:15px;text-transform:none;letter-spacing:0;color:var(--txt,inherit);padding-top:16px}
 .exico.ms svg{width:64%;height:64%}
+/* v52 QA polish */
+.bd.off{opacity:.55}.bd.off small{color:var(--tx)}
+.tog input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--acc,#ff7a1a);margin:0}
+.tog{min-height:40px}
+#w_c.empty{height:70px!important}
+.item .x,.mswx,button.x{min-width:32px;min-height:32px}
+.sheet-body{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+@media(min-width:760px){body .top{padding-left:calc(50% - 300px);padding-right:calc(50% - 300px)}body nav.tabs{left:0;right:0;margin:0 auto;max-width:600px}body .fab{right:calc(50% - 300px)}.sheet.xpfull .sheet-body{max-width:640px;margin:0 auto}}

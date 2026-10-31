@@ -27,8 +27,10 @@ const logicalToday=()=>iso(Date.now()-D.rollover*3600e3);
 const addDays=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return iso(d)};
 const nice=s=>{const t=logicalToday();if(s===t)return'Today';if(s===addDays(t,-1))return'Yesterday';return new Date(s+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})};
 let cur=logicalToday(),tab='today';
-const sheet=h=>{$('#sheet').classList.remove('xpfull');$('#sheetBody').innerHTML=h;$('#sheet').classList.remove('hidden')};
-const close=()=>{stopScan();$('#sheet').classList.add('hidden')};
+const sheet=h=>{$('#sheet').classList.remove('xpfull');$('#sheetBody').innerHTML=h;$('#sheet').classList.remove('hidden');if(!_shBack&&!(history.state&&history.state.sh))history.pushState({sh:1},'')};
+let _shBack=0;const shOpen=()=>!$('#sheet').classList.contains('hidden');
+const close=()=>{stopScan();$('#sheet').classList.add('hidden');if(history.state&&history.state.sh){_shBack=1;history.back()}};
+addEventListener('popstate',()=>{if(_shBack){_shBack=0;if(shOpen()&&!(history.state&&history.state.sh))history.pushState({sh:1},'');return}if(shOpen()){stopScan();$('#sheet').classList.add('hidden')}});
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')close()};
 
 /* ---------- calculations ---------- */
@@ -184,7 +186,7 @@ function stepsCard(){const d=cur,st=D.steps[d]||0,g=D.stepGoal||10000,S=streaks(
  return`<div class="card stepsc"><h2 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">Steps<button class="pill sgedit" aria-label="Change step goal">Goal ${g.toLocaleString()} ✎</button></h2><div style="display:flex;gap:14px;align-items:center"><div class="ring" style="position:relative;width:120px;height:120px">${ring(st/g,st>=g?'var(--ok)':'var(--steps)')}<div class="in" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b class="stepnum" data-sd="${d}" role="button" aria-label="Edit steps">${st.toLocaleString()}</b><small class="mut">of ${g.toLocaleString()}</small></div></div>
  <div style="flex:1"><div>🔥 ${S.cur}-day streak<small class="mut" style="display:block">Best ${S.best}</small></div><div class="mut" style="font-size:13px">≈ ${stepKcal(d).toLocaleString()} cal burned${D.stepsAddBack?` · +${stepCredit(d)} added`:''}</div>
  <div class="row" style="margin-top:6px"><button class="add" data-sp="1000">+1,000</button><button class="add" data-sp="5000">+5,000</button></div>
- <div class="row"><input id="sp_n" type="number" inputmode="numeric" placeholder="Exact steps" style="flex:1;min-width:0"><button class="add" id="sp_set">Set</button></div></div></div>
+ <div class="row"><input id="sp_n" type="number" inputmode="numeric" placeholder="Steps" style="flex:1;min-width:0"><button class="add" id="sp_set">Set</button></div></div></div>
  <div class="wkbars">${days.map(x=>{const v=D.steps[x]||0;return`<div><i style="height:${Math.min(100,v/g*80)}%;background:${v>=g?'var(--ok)':'var(--steps)'}"></i><small>${new Date(x+'T12:00').toLocaleDateString(undefined,{weekday:'narrow'})}</small></div>`}).join('')}</div>
  <label class="tog"><input type="checkbox" id="sp_ab" ${D.stepsAddBack?'checked':''}> Add step calories to my budget (skips walks/runs already logged)</label>
  <p class="mut" style="font-size:12px;margin:4px 0 0">Enter steps from your phone's health app; automatic counting will come with the app version.</p></div>`}
@@ -503,7 +505,7 @@ function unitsFor(f){const gk=f.src==='custom'?(f.gpS?f.gpS:0):(f.src==='quick'?
  if(gw){add({label:'g',mult:1/gw,kind:'w'});add({label:'oz',mult:28.3495/gw,kind:'w'});if(/ml|drink|juice|milk|soda|water|beverage/i.test((f.units||[]).map(u=>u.label).join(' ')+' '+f.name))add({label:'ml',mult:1/gw,kind:'w'})}
  return out}
 const PZ={};
-async function usdaPortions(f){if(f.src!=='usda'||f.pz)return null;if(PZ[f.ref])return PZ[f.ref];
+async function usdaPortions(f){if(f.src!=='usda'||f.pz||String(f.ref).startsWith('common:'))return null;if(PZ[f.ref])return PZ[f.ref];
  try{const r=await tfetch('https://api.nal.usda.gov/fdc/v1/food/'+f.ref+'?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY'));if(!r.ok)return null;const j=await r.json();
   const U2=[];let sv=null;(j.foodPortions||[]).forEach(p=>{const gw=+p.gramWeight,am=+p.amount||1;if(!gw)return;const un=(p.measureUnit?.name||'').toLowerCase(),md=(p.modifier||p.portionDescription||'').trim();
    if(un==='racc'||/^(oz|g|grams?|quantity not specified)$/i.test(md))return;if(/nlea serving/i.test(md)){sv=gw/am;return}
@@ -579,7 +581,7 @@ async function scan(mid){sheet(`<h2>Scan a barcode</h2><div class="vf" id="b_vf"
     const det=new BarcodeDetector({formats:fm.filter(f=>/ean|upc|code_128/.test(f))});
     const tick=async()=>{if(!stream)return;try{const r=await det.detect(v);if(r[0])return found(r[0].rawValue)}catch(e){}scanLoop=requestAnimationFrame(tick)};return tick()}}
   await loadZX();zx=new ZXing.BrowserMultiFormatReader();
-  zx.decodeFromConstraints({video:{facingMode:'environment'}},'b_v',(res)=>{if(res)found(res.getText())});
+  await zx.decodeFromConstraints({video:{facingMode:'environment'}},'b_v',(res)=>{if(res)found(res.getText())});
  }catch(e){$('#b_s').textContent='Camera not available ('+e.name+'). Type the barcode number instead.'}}
 const loadZX=()=>window.ZXing?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='vendor/zxing.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
 async function lookup(code,mid){if(!code)return;const s=$('#b_s');if(s)s.textContent='Looking up '+code+'…';
@@ -609,8 +611,8 @@ async function prepImg(file){const bm=await createImageBitmap(file),M=Math.max(b
  const x=c.getContext('2d');x.drawImage(bm,0,0,c.width,c.height);return c}
 
 /* ---------- history ---------- */
-function progress(){weight();const keep=V.innerHTML;history();const h=V.innerHTML;weight();V.insertAdjacentHTML('beforeend',h);V.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{cur=el.dataset.d;go('today')});V.insertAdjacentHTML('afterbegin',programCard());bindProgram();V.querySelectorAll('details[data-k]').forEach(el=>el.addEventListener('toggle',()=>{D[el.dataset.k]=el.open;save()}))}
-function history(){const t=logicalToday(),days=[...Array(30)].map((_,i)=>addDays(t,-i)),b=budget();
+function progress(){weight();const keep=V.innerHTML;historyView();const h=V.innerHTML;weight();V.insertAdjacentHTML('beforeend',h);V.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{cur=el.dataset.d;go('today')});V.insertAdjacentHTML('afterbegin',programCard());bindProgram();V.querySelectorAll('details[data-k]').forEach(el=>el.addEventListener('toggle',()=>{D[el.dataset.k]=el.open;save()}))}
+function historyView(){const t=logicalToday(),days=[...Array(30)].map((_,i)=>addDays(t,-i)),b=budget();
  const tot=days.map(d=>dayTotal(d)),logged=tot.filter(x=>x.kcal>0),avg=logged.length?logged.reduce((s,x)=>s+x.kcal,0)/logged.length:0;
  const wk=[...Array(7)].map((_,i)=>addDays(t,-i)),wt=wk.map(d=>dayTotal(d)),wl=wt.filter(x=>x.kcal),wa=k=>wl.length?wl.reduce((s,x)=>s+x[k],0)/wl.length:0;
  const wkHtml=`<div class="card pg"><h2>This week</h2><div class="stats tiles"><div style="--c:#30d158;--c2:#2fd4c8"><span class="mut">📅 Days logged</span><b>${wl.length} / 7</b></div><div style="--c:#ffd60a;--c2:#ff9f0a"><span class="mut">🔥 Avg calories</span><b>${r0(wa('kcal')).toLocaleString()}</b></div>
@@ -637,9 +639,9 @@ function weight(){const W=[...D.weights].sort((a,b)=>a.date<b.date?-1:1),last=W[
 
  V.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{D.weights=D.weights.filter(w=>w.date!==b.dataset.del);save();progress()});
  drawChart($('#w_c'),W,goal)}
-function drawChart(cv,W,goal){const dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;const x=cv.getContext('2d');x.scale(dpr,dpr);
+function drawChart(cv,W,goal){cv.classList.toggle('empty',W.length<1);const dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;const x=cv.getContext('2d');x.scale(dpr,dpr);
  const cs=getComputedStyle(document.body),mut=cs.getPropertyValue('--mut'),ln=cs.getPropertyValue('--ln');x.font='11px system-ui';
- if(W.length<1){x.fillStyle=mut;x.fillText('Log your weight to see a chart',10,h/2);return}
+ if(W.length<1){x.fillStyle=mut;x.font='14px system-ui';x.textAlign='center';x.fillText('⚖️ Log your weight below to see your trend',w/2,h/2+5);return}
  const vals=W.map(p=>p.lb).concat(goal?[goal]:[]),lo=Math.floor(Math.min(...vals)-2),hi=Math.ceil(Math.max(...vals)+2);
  const t0=new Date(W[0].date).getTime(),t1=Math.max(new Date(W[W.length-1].date).getTime(),t0+864e5);
  const P={l:36,r:10,t:10,b:22},X=d=>P.l+(new Date(d).getTime()-t0)/(t1-t0)*(w-P.l-P.r),Y=v=>P.t+(hi-v)/(hi-lo)*(h-P.t-P.b);
@@ -665,7 +667,7 @@ function settings(){const m=D.macroPct;
  <div class="card"><h2>Meals</h2><label>Meals a day</label><div class="seg" id="st_mc">${[1,2,3,4].map(n=>`<button data-mc="${n}" class="${D.mealCount===n?'on':''}">${n}</button>`).join('')}</div>
  <p class="mut" style="margin-top:0;font-size:13px">Name your meals however your day runs — e.g. night shift: "Lunch", "Dinner", "Breakfast (after shift)". Snacks always show.</p>
  <label class="tog" style="margin:4px 0 10px"><input type="checkbox" id="st_fx" ${D.noFx?'':'checked'}> ✨ Fun animations when you log food</label><label class="tog" style="margin:4px 0 10px"><input type="checkbox" id="st_ph" ${D.noThumbs?'':'checked'}> 📷 Keep Snap meal photo thumbnails on this device (never uploaded, cleared after 60 days)</label>
- ${D.meals.map((x,i)=>`<div class="row" style="margin-bottom:6px;align-items:center"><input data-mn="${i}" value="${esc(x.name)}"><button class="btn sm alt" data-up="${i}" style="flex:none">↑</button><button class="btn sm alt" data-dn="${i}" style="flex:none">↓</button></div>`).join('')}
+ ${D.meals.map((x,i)=>(x.id!=='s'&&mainMeals().indexOf(x)>=D.mealCount)?'':`<div class="row" style="margin-bottom:6px;align-items:center"><input data-mn="${i}" value="${esc(x.name)}"><button class="btn sm alt" data-up="${i}" style="flex:none">↑</button><button class="btn sm alt" data-dn="${i}" style="flex:none">↓</button></div>`).join('')}
  <label>New day starts at</label><select id="st_roll">${[...Array(13)].map((_,h)=>`<option value="${h}">${h===0?'Midnight (default)':(h<12?h+':00 AM':'Noon')}</option>`).join('')}</select>
  <p class="mut" style="font-size:13px">Working nights? Set this to when you usually go to bed so a whole shift counts as one day.</p></div>
  <div class="card"><h2>My foods & meals</h2>${D.custom.map((f,i)=>`<div class="item" data-cf="${i}"><div>${esc(f.name)}<small>${r0(f.n.kcal)} cal · ${esc(f.units[0].label)}</small></div><span class="mut">Edit</span></div>`).join('')}
@@ -755,13 +757,13 @@ function activity(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInW
  const cells=[];const start=addDays(weekStart(t),-7*15);for(let i=0;i<16*7;i++){const d=addDays(start,i);const n=d>t?-1:(foodDay(d)?1:0)+(D.gym[d]?1:0)+(stepDay(d)?1:0);cells.push(`<i class="h${n}" title="${d}"></i>`)}
  let ym=ymOf(t);V.innerHTML=`<div class="skg">${box('✅','Logging','#ff9f0a',S.done.cur,S.done.best,'day',dOn,'Log today to start')}${box('🍽️','Food Logged','#ffd60a',S.food.cur,S.food.best,'day',foodDay(t),'Log a meal to start')}${box('💪','Gym','#30d158',S.gym.cur,S.gym.best,'week',gw>=D.gymGoal,`${D.gymGoal}× this week to start`)}${box('👟','Steps','#2fd4c8',S.steps.cur,S.steps.best,'day',stepDay(t),'Hit your goal to start')}</div>
  <div class="card calc"><div class="calhd"><button id="am_p" aria-label="Previous month">‹</button><h2 id="am_t">${ymName(ym)}</h2><button id="am_n" aria-label="Next month">›</button></div><div id="am_g">${monthGrid(ym,null,true)}</div><p class="mut" style="font-size:12px;margin:6px 0 0">Streak counts days marked Done Logging. Tap a day to open it, add food and mark it — a missed day can be fixed later.</p></div>
- <div class="card"><button class="btn" id="toGym">💪 Open Gym — check in & log workouts</button></div>
+ <div class="card"><button class="btn" id="toGym" style="margin:0">💪 Open Gym — check in & log workouts</button></div>
  <div class="card"><h2>Steps today</h2><div class="mut"><b class="stepnum" data-sd="${t}" role="button" aria-label="Edit steps" style="font-size:22px;color:var(--tx)">${st.toLocaleString()}</b> / ${D.stepGoal.toLocaleString()}</div><div class="bar" style="margin:8px 0"><i class="gbar" style="width:${Math.min(100,st/D.stepGoal*100)}%"></i></div>
  <div class="row"><input id="s_n" type="number" inputmode="numeric" placeholder="Total steps from your phone"><button class="btn sm" id="s_set" style="flex:none">Save</button></div>
  <div class="seg">${[1000,2500,5000].map(n=>`<button data-plus="${n}">+${n.toLocaleString()}</button>`).join('')}</div>
  <p class="mut" style="font-size:12px;margin:0">Copy the number from Apple Health or Google Fit — browsers can't read them directly.</p>
  <label>Daily step goal</label><input id="s_goal" type="number" value="${D.stepGoal}"></div>
- <div class="card"><h2>Last 16 weeks</h2><div class="heat">${cells.join('')}</div><div class="mut" style="font-size:12px;margin-top:6px">Darker = more goals hit that day (food logged, gym, steps)</div></div>
+ <div class="card"><h2>Last 16 weeks</h2><div class="heat">${cells.join('')}</div><div class="mut" style="font-size:12px;margin-top:6px">Brighter = more goals hit that day (food logged, gym, steps)</div></div>
  <div class="card"><h2>Badges</h2><div class="badges">${BADGES.map(([k,n,ic,l])=>{const got=S[k].best>=n;return`<div class="bd ${got?'':'off'}"><div>${ic}</div><small>${l}</small></div>`}).join('')}</div></div>`;
  $('#toGym').onclick=()=>go('gym');
  const am=()=>{$('#am_t').textContent=ymName(ym);$('#am_g').innerHTML=monthGrid(ym,null,true);$('#am_n').disabled=ym>=ymOf(t);V.querySelectorAll('#am_g [data-cd]').forEach(b=>b.onclick=()=>{cur=b.dataset.cd;go('today')})};am();
@@ -792,7 +794,7 @@ function gym(){const t=logicalToday(),S=streaks(),ws=weekStart(t),gw=gymInWeek(w
  <label>Weekly gym goal</label><select id="g_goal">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}">${n} day${n>1?'s':''} a week</option>`).join('')}</select></div>
  <div class="card"><h2>Log a workout</h2><button class="btn" id="w_new">+ Log exercise</button><p class="hint" style="text-align:center;margin:6px 0 10px">Pick an exercise and how long — e.g. 30 min weight machines.</p>${last?`<button class="btn alt" id="w_rep">🔁 Repeat last: ${esc(last.type)} (${nice(last.date)})</button>`:''}
  ${D.wtemplates.length?`<label>Templates</label>${D.wtemplates.map((x,i)=>`<div class="item"><div>${esc(x.name)}<small>${wSum(x)}</small></div><span><button class="btn sm" data-tu="${i}">Start</button> <button class="x" data-td="${i}">✕</button></span></div>`).join('')}`:''}</div>
- <div class="card"><h2>History</h2>${H.slice(0,40).map(w=>`<div class="item" data-wo="${w.id}"><div>${nice(w.date)} · <b>${esc(w.type)}</b><small>${wSum(w)||'No exercises'}${w.notes?' — '+esc(w.notes):''}</small></div><span class="mut">${w.kcal?(w.est?'~':'')+w.kcal+' cal':''}</span></div>`).join('')||'<div class="empty">'+exIco('free',44).replace('exico','exico big')+'<p>No workouts yet.<br>Tap <b>New workout</b> and pick from 100+ exercises.</p></div>'}</div>`;
+ <div class="card"><h2>History</h2>${H.slice(0,40).map(w=>`<div class="item" data-wo="${w.id}"><div>${nice(w.date)} · <b>${esc(w.type)}</b><small>${wSum(w)||'No exercises'}${w.notes?' — '+esc(w.notes):''}</small></div><span class="mut">${w.kcal?(w.est?'~':'')+w.kcal+' cal':''}</span></div>`).join('')||'<div class="empty">'+exIco('free',44).replace('exico','exico big')+'<p>No workouts yet.<br>Tap <b>Log exercise</b> and pick from 100+ exercises.</p></div>'}</div>`;
  if($('#g_check'))$('#g_check').onclick=()=>{D.gym[t]={type:'',kcal:0};save();gym();toast('Nice work! 💪 Streak saved')};
  if($('#g_undo'))$('#g_undo').onclick=()=>{delete D.gym[t];save();gym()};
  $('#g_goal').value=D.gymGoal;$('#g_goal').onchange=e=>{D.gymGoal=+e.target.value;save();gym()};
@@ -868,7 +870,7 @@ function kjWalk(root){if(U().e!=='kJ'||!root)return;const tw=document.createTree
 {let busy=false;const mo=new MutationObserver(()=>{if(busy||U().e!=='kJ')return;busy=true;mo.disconnect();['#view','#sheet','#toast'].forEach(s=>kjWalk($(s)));obs();busy=false});
  const obs=()=>['#view','#sheet','#toast'].forEach(s=>$(s)&&mo.observe($(s),{childList:true,subtree:true,characterData:true}));obs()}
 /* ---------- nav / install ---------- */
-const views={today,myfoods,gym,activity,progress,history,weight,settings};
+const views={today,myfoods,gym,activity,progress,history:historyView,weight,settings};
 function render(){$('#fab').classList.toggle('hidden',!D.budget);if(!D.budget)return budgetHome();nb();views[tab]();if(window.afterRender)afterRender();if(tab==='today'&&window.acctPrompt)acctPrompt();pageTitle()}
 const TITLES={today:'Summary',myfoods:'My Foods',gym:'Gym',activity:'Streaks',progress:'Progress',history:'History',weight:'Weight',settings:'Settings'};
 function pageTitle(){const h=document.querySelector('.top h1');h.innerHTML=`<small>${new Date((tab==='today'?cur:logicalToday())+'T12:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}).toUpperCase()}</small>${TITLES[tab]||APP_NAME}`}
