@@ -627,19 +627,63 @@ function historyView(){const t=logicalToday(),days=[...Array(30)].map((_,i)=>add
  V.querySelectorAll('[data-d]').forEach(el=>el.onclick=()=>{cur=el.dataset.d;go('today')})}
 
 /* ---------- weight ---------- */
-function weight(){const W=[...D.weights].sort((a,b)=>a.date<b.date?-1:1),last=W[W.length-1],first=W[0],goal=D.profile?.goal;
- V.innerHTML=`<div class="card pg wtc"><h2>Weight</h2><div class="stats tiles"><div style="--c:#30d158;--c2:#2fd4c8"><span class="mut">⚖️ Current</span><b>${last?fW(last.lb):'—'}</b></div>
- <div style="--c:#2fd4c8;--c2:#64d2ff"><span class="mut">📉 Change</span><b>${last&&first?(r1(last.lb-first.lb)>0?'+':'')+fW(last.lb-first.lb):'—'}</b></div><div style="--c:#ffd60a;--c2:#ff9f0a"><span class="mut">🎯 Goal</span><b>${goal?fW(goal):'—'}</b></div>
- ${last&&goal?`<div style="--c:#ff9f0a;--c2:#ff375f"><span class="mut">🏁 To go</span><b>${fW(Math.abs(last.lb-goal))}</b></div>`:''}</div>
- <canvas class="chart" id="w_c"></canvas>
- <div class="row" style="margin-top:10px"><input id="w_d" type="date" value="${logicalToday()}"><input id="w_v" type="number" step="0.1" inputmode="decimal" placeholder="${wU()}"><button class="btn sm" id="w_go" style="flex:none">Log</button></div></div>
- <details class="card pg nd"${D.wlOpen?' open':''} data-k="wlOpen"><summary><span>🗓️ Weigh-ins</span><span class="mut">${W.length} logged ›</span></summary>${W.slice().reverse().map(w=>`<div class="item"><div>${nice(w.date)}</div><span><b>${fW(w.lb)}</b> <button class="x" data-del="${w.date}">✕</button></span></div>`).join('')||'<p class="mut">No weigh-ins yet.</p>'}</details>`;
- $('#w_go').onclick=()=>{const v=toLb(+$('#w_v').value),d=$('#w_d').value;if(!v||!d)return toast('Enter a weight');D.weights=D.weights.filter(w=>w.date!==d);D.weights.push({date:d,lb:v});
-  const latest=d>=W.reduce((m,w)=>w.date>m?w.date:m,'');if(D.profile&&latest)D.profile.weight=v;save();progress();
+function weight(){const W=[...D.weights].sort((a,b)=>a.date<b.date?-1:1),goal=D.profile?.goal;
+ V.innerHTML=wgCard(W,goal)+wgJourney(W,goal)+`<details class="card pg nd"${D.wlOpen?' open':''} data-k="wlOpen"><summary><span>🗓️ Weigh-ins</span><span class="mut">${W.length} logged ›</span></summary>${W.slice().reverse().map(w=>`<div class="item"><div>${nice(w.date)}</div><span><b>${fW(w.lb)}</b> <button class="x" data-del="${w.date}">✕</button></span></div>`).join('')||'<p class="mut">No weigh-ins yet.</p>'}</details>`;
+ const rec=()=>{const v=toLb(+$('#w_v').value),d=$('#w_d').value;if(!v||!d)return toast('Enter a weight');close();D.weights=D.weights.filter(w=>w.date!==d);D.weights.push({date:d,lb:v});
+  const latest=d>=W.reduce((m,w)=>w.date>m?w.date:m,'');if(D.profile&&latest)D.profile.weight=v;save();progress();toast('Weight recorded ⚖️');
   if(latest&&D.profile&&D.profile.sex){const c=calc(D.profile);if(c.final!==D.budget){sheet(`<h2>Update your budget?</h2><p>At ${v} lb your recommended budget is <b>${c.final.toLocaleString()}</b> calories a day (now ${budget().toLocaleString()}).</p>${c.capped?'<p class="mut">Held at the safe minimum.</p>':''}<button class="btn" id="rc_y">Update to ${c.final.toLocaleString()}</button><button class="btn alt" onclick="close()">Keep ${budget().toLocaleString()}</button>`);$('#rc_y').onclick=()=>{D.budget=c.final;D.budgetMode='guided';save();close();toast('Budget updated')}}}};
-
+ $('#wg_rec').onclick=()=>{const l=W[W.length-1];sheet(`<h2>⚖️ Record weight</h2><label>Date</label><input id="w_d" type="date" value="${logicalToday()}"><label>Weight (${wU()})</label><input id="w_v" class="bigin" type="number" step="0.1" inputmode="decimal" placeholder="${l?r1(wgDisp(l.lb)):wU()}"><button class="btn" id="w_go">Save</button><button class="btn alt" onclick="close()">Cancel</button>`);$('#w_go').onclick=rec;setTimeout(()=>$('#w_v')&&$('#w_v').focus(),50)};
+ V.querySelectorAll('[data-wr]').forEach(b=>b.onclick=()=>{localStorage.setItem('mhh-wrange',b.dataset.wr);V.querySelectorAll('[data-wr]').forEach(x=>x.classList.toggle('on',x===b));const c=wgCard(W,goal),tmp=document.createElement('div');tmp.innerHTML=c;$('.wgc .wghead').replaceWith(tmp.querySelector('.wghead'));wgDraw(W,goal)});
  V.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{D.weights=D.weights.filter(w=>w.date!==b.dataset.del);save();progress()});
- drawChart($('#w_c'),W,goal)}
+ _wgW=[W,goal];wgDraw(W,goal)}
+let _wgW=null,_wgRz;addEventListener('resize',()=>{clearTimeout(_wgRz);_wgRz=setTimeout(()=>{if(_wgW&&$('#wg_box')){const s=$('#wg_box svg');if(s)s.classList.remove('anim');wgDraw(..._wgW);const n=$('#wg_box svg');n&&n.classList.remove('anim')}},200)});
+/* ---------- v55: weight progress graph (inline SVG) ---------- */
+const WG_R=[['1W',7],['1M',30],['3M',91],['6M',182],['1Y',365],['All',0]];
+const wgDays=(a,b)=>Math.round((Date.parse(b+'T12:00')-Date.parse(a+'T12:00'))/864e5);
+const wgDisp=lb=>U().w==='kg'?lb*0.453592:lb;
+const wgShort=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+function wgTrend(W){const t=logicalToday(),P=W.filter(w=>wgDays(w.date,t)<=42);if(P.length<2)return 0;const xs=P.map(w=>wgDays(P[0].date,w.date)),n=P.length,mx=xs.reduce((a,b)=>a+b)/n,my=P.reduce((a,w)=>a+w.lb,0)/n;let num=0,den=0;P.forEach((w,i)=>{num+=(xs[i]-mx)*(w.lb-my);den+=(xs[i]-mx)**2});return den?num/den:0}
+function wgSmooth(p){if(p.length<2)return p.length?`M${p[0][0]},${p[0][1]}`:'';const n=p.length,dx=[],m=[],s=[];for(let i=0;i<n-1;i++){dx[i]=p[i+1][0]-p[i][0]||1e-6;s[i]=(p[i+1][1]-p[i][1])/dx[i]}
+ m[0]=s[0];m[n-1]=s[n-2];for(let i=1;i<n-1;i++)m[i]=s[i-1]*s[i]<=0?0:(s[i-1]+s[i])/2;
+ let d=`M${p[0][0].toFixed(1)},${p[0][1].toFixed(1)}`;for(let i=0;i<n-1;i++){const h=dx[i]/3;d+=`C${(p[i][0]+h).toFixed(1)},${(p[i][1]+m[i]*h).toFixed(1)} ${(p[i+1][0]-h).toFixed(1)},${(p[i+1][1]-m[i+1]*h).toFixed(1)} ${p[i+1][0].toFixed(1)},${p[i+1][1].toFixed(1)}`}return d}
+function wgCard(W,goal){const rg=localStorage.getItem('mhh-wrange')||'3M',t=logicalToday(),days=(WG_R.find(r=>r[0]===rg)||WG_R[2])[1];
+ const R=days?W.filter(w=>wgDays(w.date,t)<days):W,last=W[W.length-1],f=R[0];
+ const ch=last&&f&&R.length>1?last.lb-f.lb:0,chTxt=R.length>1?`<span class="wgch ${ch<=0?'dn':'up'}">${ch<0?'↓':ch>0?'↑':'→'} ${fW(Math.abs(ch))} since ${wgShort(f.date)}</span>`:'';
+ return `<div class="card pg wgc"><div class="wghead"><h2>Weight</h2>${chTxt}</div><div class="seg wgseg" id="wg_r">${WG_R.map(r=>`<button data-wr="${r[0]}" class="${r[0]===rg?'on':''}">${r[0]}</button>`).join('')}</div>
+ <div class="wgbox" id="wg_box">${W.length?'':`<div class="empty wgempty"><span style="font-size:40px">⚖️</span><p>No weigh-ins yet.<br>Tap <b>Record</b> to start your graph!</p></div>`}</div>
+ <div class="wglast"><div>${last?`<small class="mut">Latest · ${nice(last.date)}</small><b>${fW(last.lb)}</b>`:'<small class="mut">Log your first weight</small>'}</div><button class="btn sm" id="wg_rec" style="flex:none">⚖️ Record</button></div></div>`}
+function wgJourney(W,goal){const last=W[W.length-1],first=W[0];if(!last)return'';const lose=goal?goal<first.lb:true,step=U().w==='kg'?2.267962:5,done=lose?first.lb-last.lb:last.lb-first.lb;
+ const BD=['🌱','🍓','⭐','🏅','🔥','🚀','💎','🏆','👑','🦄'],got=Math.max(0,Math.floor(Math.max(0,done)/step)),into=Math.max(0,done)-got*step,pct=Math.min(100,into/step*100);
+ const tr=wgTrend(W),rem=goal?goal-last.lb:0,eta=goal&&Math.abs(rem)>=.2&&tr&&Math.sign(tr)===Math.sign(rem)?Math.ceil(rem/tr):0,atGoal=goal&&Math.abs(rem)<.2||goal&&(lose?last.lb<=goal:last.lb>=goal);
+ const unit=U().w==='kg'?'2.5 kg':'5 lb';
+ return `<div class="card pg wgj"><h2>🧭 Journey</h2>${atGoal?'<p class="wgeta">🎉 You reached your goal weight!</p>':eta?`<p class="wgeta">At this pace you'll hit <b>${fW(goal)}</b> in about <b>${eta} day${eta>1?'s':''}</b> <span class="mut">(~${eta>300?new Date(addDays(logicalToday(),eta)+'T12:00').toLocaleDateString(undefined,{month:'short',year:'numeric'}):wgShort(addDays(logicalToday(),eta))})</span></p>`:`<p class="mut">${goal?'Log a few more weigh-ins to see your goal date.':'Set a goal weight in Settings to see your goal date.'}</p>`}
+ <div class="wgms"><span>${fW(Math.max(0,done))} ${lose?'lost':'gained'}</span><span class="mut">next badge in ${fW(step-into)}</span></div><div class="bar wgbar"><i style="width:${pct}%"></i></div>
+ <div class="wgbadges">${BD.slice(0,Math.max(got+1,4)).map((b,i)=>`<span class="${i<got?'on':''}" title="${(i+1)*(U().w==='kg'?2.5:5)} ${U().w}">${i<got?b:'🔒'}<small>${(i+1)*(U().w==='kg'?2.5:5)}</small></span>`).join('')}</div><p class="mut" style="font-size:12px;margin:6px 0 0">A new badge every ${unit} ${lose?'lost':'gained'}.</p></div>`}
+function wgDraw(W,goal){const box=$('#wg_box');if(!box||!W.length)return;const rg=localStorage.getItem('mhh-wrange')||'3M',t=logicalToday(),days=(WG_R.find(r=>r[0]===rg)||WG_R[2])[1];
+ let R=days?W.filter(w=>wgDays(w.date,t)<days):W.slice();if(!R.length)R=[W[W.length-1]];
+ const w=Math.max(260,box.clientWidth||320),h=220,pl=10,pr=46,pt=26,pb=26,d0=days?addDays(t,-days+1):R[0].date,tr=wgTrend(W),last=W[W.length-1];
+ const span0=Math.max(1,wgDays(d0,t)),proj=goal&&tr&&Math.sign(tr)===Math.sign(goal-last.lb)&&Math.abs(goal-last.lb)>=.2,pd=proj?Math.min(Math.ceil((goal-last.lb)/tr),Math.round(span0*.35)+1):0,d1=addDays(t,pd),span=Math.max(1,wgDays(d0,d1));
+ const pv=proj?last.lb+tr*pd:null,vals=R.map(x=>x.lb).concat(goal?[goal]:[],pv!=null?[pv]:[]);let lo=Math.min(...vals),hi=Math.max(...vals);const pad=Math.max(1,(hi-lo)*.12);lo-=pad;hi+=pad;
+ const X=d=>pl+wgDays(d0,d)/span*(w-pl-pr),Y=v=>pt+(hi-v)/(hi-lo)*(h-pt-pb),P=R.map(x=>[X(x.date),Y(x.lb)]);
+ const C=['#30d158','#2fd4c8','#64d2ff','#bf5af2','#ff375f','#ff9f0a'],col=i=>C[Math.min(C.length-1,Math.floor(i/Math.max(1,R.length)*C.length))];
+ const ticks=[...Array(4)].map((_,i)=>lo+pad*.5+(hi-lo-pad)*i/3),line=wgSmooth(P),area=P.length>1?line+`L${P[P.length-1][0].toFixed(1)},${h-pb}L${P[0][0].toFixed(1)},${h-pb}Z`:'';
+ const anim=(typeof fxOn!=='function'||fxOn())&&!(typeof fxRM==='function'&&fxRM());
+ const bub=(x,y,txt,cls)=>{const tw=txt.length*6.6+14,bx=Math.max(2,Math.min(w-pr-tw,x-tw/2)),by=Math.max(2,y-30);return`<g class="wgbub ${cls}"><rect x="${bx}" y="${by}" width="${tw}" height="20" rx="10"/><text x="${bx+tw/2}" y="${by+14}" text-anchor="middle">${txt}</text></g>`};
+ box.innerHTML=`<svg class="wgsvg${anim?' anim':''}" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Weight graph"><defs><linearGradient id="wgl" x1="0" x2="1"><stop offset="0" stop-color="#30d158"/><stop offset=".5" stop-color="#64d2ff"/><stop offset="1" stop-color="#bf5af2"/></linearGradient><linearGradient id="wga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#64d2ff" stop-opacity=".35"/><stop offset="1" stop-color="#bf5af2" stop-opacity="0"/></linearGradient></defs>
+ ${ticks.map(v=>`<line class="wggrid" x1="${pl}" x2="${w-pr}" y1="${Y(v)}" y2="${Y(v)}"/><text class="wgax" x="${w-pr+6}" y="${Y(v)+4}">${Math.round(wgDisp(v))}</text>`).join('')}
+ <text class="wgax" x="${pl}" y="${h-8}">${wgShort(d0)}</text><text class="wgax" x="${X(t)}" y="${h-8}" text-anchor="${pd?'middle':'end'}">Today</text>
+ ${goal?`<line class="wggoal" x1="${pl}" x2="${w-pr}" y1="${Y(goal)}" y2="${Y(goal)}"/><text class="wggl" x="${w-pr+6}" y="${Y(goal)+4}">🎯${Math.round(wgDisp(goal))}</text>`:''}
+ ${area?`<path class="wgarea" d="${area}" fill="url(#wga)"/>`:''}${P.length>1?`<path class="wgline" d="${line}" stroke="url(#wgl)" pathLength="1"/>`:''}
+ ${proj?`<line class="wgproj" x1="${X(last.date)}" y1="${Y(last.lb)}" x2="${X(d1)}" y2="${Y(pv)}"/>`:''}
+ ${R.length<=90?P.map((p,i)=>`<circle class="wgdot" cx="${p[0]}" cy="${p[1]}" r="${R.length>40?3:4.5}" fill="${col(i)}" style="animation-delay:${anim?(.3+i/Math.max(1,R.length)*1.1).toFixed(2):0}s"/>`).join(''):''}
+ ${R.length>1?bub(P[0][0],P[0][1],fW(R[0].lb),'st'):''}${bub(P[P.length-1][0],P[P.length-1][1],fW(R[R.length-1].lb),'en')}
+ <g id="wg_tip" class="wgtip" style="display:none"><line y1="${pt-6}" y2="${h-pb}"/><circle r="6"/><rect height="34" rx="10"/><text class="a"></text><text class="b"></text></g></svg>`;
+ const svg=box.querySelector('svg'),tip=$('#wg_tip');
+ const show=e=>{const r=svg.getBoundingClientRect(),mx=(e.clientX-r.left)*w/r.width;let bi=0;P.forEach((p,i)=>{if(Math.abs(p[0]-mx)<Math.abs(P[bi][0]-mx))bi=i});const[x,y]=P[bi],tw=118,bx=Math.max(2,Math.min(w-pr-tw,x-tw/2)),by=y>pt+50?y-46:y+12;
+  tip.style.display='';tip.querySelector('line').setAttribute('x1',x);tip.querySelector('line').setAttribute('x2',x);const c=tip.querySelector('circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('fill',col(bi));
+  const rc=tip.querySelector('rect');rc.setAttribute('x',bx);rc.setAttribute('y',by);rc.setAttribute('width',tw);const[a,b]=tip.querySelectorAll('text');a.setAttribute('x',bx+tw/2);a.setAttribute('y',by+14);a.textContent=nice(R[bi].date);b.setAttribute('x',bx+tw/2);b.setAttribute('y',by+28);b.textContent=fW(R[bi].lb)};
+ svg.addEventListener('pointerdown',e=>{show(e);svg.setPointerCapture&&svg.setPointerCapture(e.pointerId)});svg.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='mouse')show(e)});svg.addEventListener('pointerleave',()=>tip.style.display='none')}
+
 function drawChart(cv,W,goal){cv.classList.toggle('empty',W.length<1);const dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;const x=cv.getContext('2d');x.scale(dpr,dpr);
  const cs=getComputedStyle(document.body),mut=cs.getPropertyValue('--mut'),ln=cs.getPropertyValue('--ln');x.font='11px system-ui';
  if(W.length<1){x.fillStyle=mut;x.font='14px system-ui';x.textAlign='center';x.fillText('⚖️ Log your weight below to see your trend',w/2,h/2+5);return}

@@ -494,3 +494,26 @@ details.nd[open]>summary .mut{opacity:.6}
 main{padding-bottom:calc(170px + env(safe-area-inset-bottom))!important}
 @media(min-width:1100px){main{max-width:1240px;column-count:2;column-gap:18px}main>*{break-inside:avoid;-webkit-column-break-inside:avoid;display:inline-block;width:100%}
 body .top{padding-left:calc(50% - 610px);padding-right:calc(50% - 610px)}body nav.tabs{max-width:760px}body .fab{right:calc(50% - 610px)}}
+
+/* v55 weight graph */
+.wghead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}.wghead h2{margin:0}
+.wgch{font-weight:700;font-size:14px;padding:3px 10px;border-radius:99px}.wgch.dn{color:#30d158;background:#30d15822}.wgch.up{color:#ff9f0a;background:#ff9f0a22}
+.wgseg{display:flex;gap:4px;margin:12px 0 6px;background:var(--ln);padding:3px;border-radius:12px}.wgseg button{flex:1;border:0;background:none;color:var(--mut);font-weight:700;padding:7px 0;border-radius:9px;font-size:13px}
+.wgseg button.on{background:linear-gradient(135deg,#30d158,#2fd4c8);color:#fff}
+.wgbox{min-height:120px;touch-action:pan-y}.wgsvg{display:block;overflow:visible;user-select:none;-webkit-user-select:none}
+.wggrid{stroke:var(--ln);stroke-width:1}.wgax{fill:var(--mut);font-size:11px}.wggoal{stroke:#ffd60a;stroke-width:1.5;stroke-dasharray:5 5}.wggl{fill:#e0a800;font-size:11px;font-weight:700}
+.wgline{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.wgproj{stroke:#bf5af2;stroke-width:2;stroke-dasharray:3 6;stroke-linecap:round;opacity:.8}
+.wgdot{stroke:var(--card);stroke-width:1.5}
+.wgbub rect{fill:var(--card);stroke-width:2}.wgbub.st rect{stroke:#30d158}.wgbub.en rect{stroke:#bf5af2}.wgbub text{fill:var(--tx);font-size:11.5px;font-weight:700}
+.wgtip line{stroke:var(--mut);stroke-dasharray:2 3}.wgtip circle{stroke:#fff;stroke-width:2.5}.wgtip rect{fill:var(--tx);opacity:.92}.wgtip text{fill:var(--bg);font-size:11.5px;text-anchor:middle;font-weight:600}.wgtip text.b{font-weight:800}
+.wgsvg.anim .wgline{stroke-dasharray:1;stroke-dashoffset:1;animation:wgdraw 1.6s ease-out .15s forwards}
+.wgsvg.anim .wgarea{opacity:0;animation:wgfade 1s ease-out 1s forwards}
+.wgsvg.anim .wgdot,.wgsvg.anim .wgbub,.wgsvg.anim .wgproj{opacity:0;animation:wgfade .6s ease-out forwards}.wgsvg.anim .wgbub,.wgsvg.anim .wgproj{animation-delay:1.5s}
+@keyframes wgdraw{to{stroke-dashoffset:0}}@keyframes wgfade{to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.wgsvg.anim *{animation:none!important;opacity:1!important;stroke-dashoffset:0!important}}
+.wglast{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:10px;border-top:1px solid var(--ln)}.wglast b{display:block;font-size:22px}
+.wgempty{text-align:center;padding:20px 0}
+.wgeta{margin:4px 0 10px}.wgms{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px}
+.wgbar{height:12px;border-radius:99px}.wgbar i{background:linear-gradient(90deg,#30d158,#64d2ff,#bf5af2)!important;border-radius:99px}
+.wgbadges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.wgbadges span{display:flex;flex-direction:column;align-items:center;width:46px;padding:6px 0;border-radius:14px;background:var(--ln);font-size:22px;opacity:.55}
+.wgbadges span.on{opacity:1;background:linear-gradient(135deg,#ffd60a33,#ff375f33)}.wgbadges small{font-size:10px;color:var(--mut);font-weight:700}
