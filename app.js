@@ -391,10 +391,10 @@ function openAdd(mid){window.curMid=mid;sheet(`<h2>Add to ${esc(D.meals.find(m=>
  let tmo;$('#s_q').oninput=e=>{clearTimeout(tmo);const q=e.target.value.trim();if(!q)return showTab();instant(q,mid);tmo=setTimeout(()=>search(q,mid),300)};
  $('#s_q').onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tmo);search(e.target.value.trim(),mid)}};
  $('#s_st').onclick=e=>{const b=e.target.closest('[data-st]');if(!b)return;const s=STORES.find(x=>x.k===b.dataset.st);storeSel=storeSel===s?null:s;$('#s_st').querySelectorAll('button').forEach(x=>x.classList.toggle('on',storeSel?.k===x.dataset.st));const q=$('#s_q').value.trim();if(q||storeSel)search(q,mid);else showTab()};$('#s_scan').onclick=()=>scan(mid);$('#s_snap').onclick=()=>mealScan(mid,0);if(window.rmBind)rmBind(()=>mid,()=>{close();render()});$('#s_new').onclick=()=>customFood(mid);$('#s_rec').onclick=()=>recipeSheet();showTab()}
-function instant(q,mid){const R=$('#s_res'),ws=qWords(q);if(!ws.length)return;const pool=[...STORELIB,...CONDLIB,...(typeof FOODLIB!=="undefined"?FOODLIB:[]),...D.custom,...recFoods(),...Object.values(D.stats).map(s=>s.food).filter(f=>f&&f.src!=='recipe'),...Object.values(SC).flat()],seen=new Set();
- const L=pool.filter(f=>{const k=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k))return false;seen.add(k);return(!storeSel||storeOf(f)===storeSel)&&fMatch(f,ws)}).map(f=>[f,relScore(f,ws,storeSel)]).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
+function instant(q,mid){const R=$('#s_res'),ws=qWords(q);if(!ws.length)return;const pool=[...STORELIB,...CONDLIB,...(typeof DISHLIB!=="undefined"?DISHLIB:[]),...(typeof FOODLIB!=="undefined"?FOODLIB:[]),...D.custom,...recFoods(),...Object.values(D.stats).map(s=>s.food).filter(f=>f&&f.src!=='recipe'),...Object.values(SC).flat()],seen=new Set();
+ const L=pool.filter(f=>{const k=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k))return false;seen.add(k);return(!storeSel||storeOf(f)===storeSel)&&fMatch(f,ws)}).map(f=>[f,relScore(f,ws,storeSel)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);L.splice(0,L.length,...dishFirst(L).slice(0,12));
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));if(!L.length){if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';return}R.innerHTML=L.map(f=>resRow(f)).join('')+'<p class="mut" style="font-size:13px" id="s_more">Searching online…</p>';bindRes(L,mid,f=>pick(f,mid))}
-const resRow=(f,extra='',mid=window.curMid)=>{const st=storeOf(f),u0=unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res qpr" data-i><span class="emo remo">${emoOf(f)}</span><div class="rtx"><b class="rnm">${esc(f.name)}</b> ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}<div class="rsub">${(()=>{const k=f.n.kcal*u0.mult;return`<span class="kchip ${k<150?'lo':k<400?'md':'hi'}">${fE(k)}</span>`})()}<small>${f.brand?esc(f.brand)+' · ':''}per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div></div><span class="qp">${qpHtml(mid,f)}</span></div>`};
+const resRow=(f,extra='',mid=window.curMid)=>{const st=storeOf(f),u0=(f.dish&&unitsFor(f).find(u=>u.label==='regular'))||unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res qpr" data-i><span class="emo remo">${emoOf(f)}</span><div class="rtx"><b class="rnm">${esc(f.name)}</b> ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}${f.dish?`<span class="stchip dish">🍽️ Dish${f.dv==='r'?' · restaurant':''}</span>`:''}${f.src==='ai'?'<span class="stchip dish">✨ AI estimate</span>':''}<div class="rsub">${(()=>{const k=f.n.kcal*u0.mult;return`<span class="kchip ${k<150?'lo':k<400?'md':'hi'}">${fE(k)}</span>`})()}<small>${f.brand?esc(f.brand)+' · ':''}per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div></div><span class="qp">${qpHtml(mid,f)}</span></div>`};
 function bindRes(list,mid,onpick){$('#s_res').querySelectorAll('[data-i]').forEach((el,i)=>el.onclick=ev=>{const b=ev.target.closest('[data-qd]');if(b){ev.stopPropagation();const it=list[i],f=it.food||it;qpTap(mid,f,+b.dataset.qd,it.food?it.ui:0,el.querySelector('.qp'));return}onpick(list[i])})}
 /* + stepper: merge taps into one entry per food per meal */
 const qpEntry=(mid,f)=>(dayLog(cur)[mid]||[]).find(x=>fkey(x.food)===fkey(f));
@@ -455,7 +455,7 @@ function relScore(f,ws,store){const nm=(f.name||'').toLowerCase(),seg=nm.split('
  const tk=ftoks(f),bt=norm(f.brand||'').split(/[^a-z0-9]+/).map(stem);let hitAll=ws.length>0,bq=0;ws.forEach((w,i)=>{const h=wHit(w,tk,i===ws.length-1);if(h===3)s+=10;else if(h===2)s+=7;else if(h===1)s+=5;else{s-=6;hitAll=false}if(bt.includes(stem(w)))bq=1});if(hitAll)s+=15;
  if(ws.length&&stem(seg)===stem(ws.join(' ')))s+=8;if(/\braw\b/.test(nm))s+=3;if(/dehydrated|powder|babyfood|chips|candied|canned in heavy|frozen dessert/.test(nm))s-=4;
  if(f.cond)s+=6;if(f.dt==='SR Legacy')s+=2;if(f.src==='custom')s+=6;
- if(f.cur)s+=40;if(store){if(storeOf(f)===store)s+=25;else s-=30}else if((f.branded||f.src==='off')&&!bq)s-=12;else if(bq&&/box|dinner|as packaged|maccheese/.test(norm(nm)))s+=4;
+ if(f.cur)s+=40;if(f.dish){s+=8+(f.pop?14:0);const nt=(f.name||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).map(stem);if(ws.every(w=>nt.some(t=>t.startsWith(stem(w)))))s+=10}if(store){if(storeOf(f)===store)s+=25;else s-=30}else if((f.branded||f.src==='off')&&!bq)s-=12;else if(bq&&/box|dinner|as packaged|maccheese/.test(norm(nm)))s+=4;
  return s-Math.min(nm.length,120)/40}
 async function usdaQ(q,types){const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=30&dataType='+encodeURIComponent(types)+'&query='+encodeURIComponent(q),8000,SIG?.signal);
  if(!r.ok)throw new Error(r.status===429?'limit':'usda');const j=await r.json();return(j.foods||[]).map(usdaFood).filter(f=>f.n.kcal||f.n.p)}
@@ -467,7 +467,7 @@ async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STOR
  const rest=q.replace(st0?new RegExp(st0.re.source,'gi'):/$^/,' ').replace(/\s+/g,' ').trim(),ws=qWords(rest);
  if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';if(!SC[(st0?.k||'')+':'+rest.toLowerCase()]){SIG?.abort();SIG=new AbortController()}
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));
- const lq=rest.toLowerCase(),loc=st0?STORELIB.filter(f=>storeOf(f)===st0&&fMatch(f,ws)):[...STORELIB,...CONDLIB,...(typeof FOODLIB!=="undefined"?FOODLIB:[]),...D.custom,...recFoods(),...Object.values(D.stats).map(s=>s.food).filter(f=>f&&f.src!=='recipe')].filter(f=>fMatch(f,ws));
+ const lq=rest.toLowerCase(),loc=st0?STORELIB.filter(f=>storeOf(f)===st0&&fMatch(f,ws)):[...STORELIB,...CONDLIB,...(typeof DISHLIB!=="undefined"?DISHLIB:[]),...(typeof FOODLIB!=="undefined"?FOODLIB:[]),...D.custom,...recFoods(),...Object.values(D.stats).map(s=>s.food).filter(f=>f&&f.src!=='recipe')].filter(f=>fMatch(f,ws));
  const ck=(st0?.k||'')+':'+lq;let list=[],err='';
  if(SC[ck])list=SC[ck];else{
   const jobs=[];
@@ -478,12 +478,12 @@ async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STOR
  if(($('#s_q')?.value.trim()||'')!==q)return;
  const seen=new Set();let all=[...loc,...list].filter(f=>{const k=fkey(f),k2=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k)||seen.has(k2))return false;seen.add(k);seen.add(k2);return true});
  const hits=f=>ws.filter((w,i)=>wHit(w,ftoks(f),i===ws.length-1)).length;
- const lset=new Set(loc);all=all.map(f=>[f,relScore(f,ws,st0)+(lset.has(f)?1000:0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,40);
+ const lset=new Set(loc);all=all.map(f=>[f,relScore(f,ws,st0)+(lset.has(f)?1000:0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);all=dishFirst(all).slice(0,40);
  let note='';if(st0&&!all.length&&ws.length){note=`<div class="nomatch"><div>No ${esc(st0.lbl)} match for “${esc(rest)}” yet.<small>Add it once from the label and it stays in My Foods.</small></div><div class="row"><button class="btn sm" id="nm_scan">📷 Scan it</button><button class="btn sm alt" id="nm_add">+ Add it</button></div></div><p class="mut" style="font-size:13px;margin:10px 2px 4px">General results</p>`;
   const gk=':'+lq;let g=SC[gk];if(!g){g=(await Promise.all([usdaQ(rest,'Foundation,SR Legacy').catch(()=>[]),usdaQ(rest,'Branded').catch(()=>[])])).flat();SC[gk]=g}
   if(($('#s_q')?.value.trim()||'')!==q)return;all=g.map(f=>[f,relScore(f,ws,null)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,30)}
- R.innerHTML=note+all.map(f=>resRow(f)).join('')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a minute.':'No results'+(st0?' at '+st0.lbl:'')+'.'}</p>`;
- bindRes(all,mid,f=>pick(f,mid));
+ R.innerHTML=(window.aiRow&&!st0&&ws.length?aiRow(rest,all):'')+note+all.map(f=>resRow(f)).join('')+(window.aiRow&&!st0&&ws.length?aiRow(rest,all,1):'')||`<p class="mut">${!navigator.onLine?'You are offline. Search needs internet; your recent and custom foods still work.':err.includes('limit')?'The free food database is busy (hourly limit). Try again in a minute.':'No results'+(st0?' at '+st0.lbl:'')+'.'}</p>`;
+ bindRes(all,mid,f=>pick(f,mid));if(window.aiBind)aiBind(rest,mid);
  if(note){$('#nm_scan').onclick=()=>scan(mid);$('#nm_add').onclick=()=>customFood(mid,null,{name:rest.replace(/\b\w/g,c=>c.toUpperCase()),brand:st0.bn})}
  lazyPortions(all,q)}
 const prefUnit=L=>L.find(u=>u.kind==='n'&&/^medium\b/.test(u.label))||L.find(u=>u.kind==='s'&&u.note!=='100 g')||L.find(u=>u.kind==='n'&&!/head|package|container/.test(u.label))||L.find(u=>u.kind==='n');
@@ -512,7 +512,7 @@ function unitsFor(f){const gk=f.src==='custom'?(f.gpS?f.gpS:0):(f.src==='quick'?
  if(gw){add({label:'g',mult:1/gw,kind:'w'});add({label:'oz',mult:28.3495/gw,kind:'w'});if(/ml|drink|juice|milk|soda|water|beverage/i.test((f.units||[]).map(u=>u.label).join(' ')+' '+f.name))add({label:'ml',mult:1/gw,kind:'w'})}
  return out}
 const PZ={};
-async function usdaPortions(f){if(f.src!=='usda'||f.pz||String(f.ref).startsWith('common:'))return null;if(PZ[f.ref])return PZ[f.ref];
+async function usdaPortions(f){if(f.src!=='usda'||f.pz||!/^\d+$/.test(String(f.ref)))return null;if(PZ[f.ref])return PZ[f.ref];
  try{const r=await tfetch('https://api.nal.usda.gov/fdc/v1/food/'+f.ref+'?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY'));if(!r.ok)return null;const j=await r.json();
   const U2=[];let sv=null;(j.foodPortions||[]).forEach(p=>{const gw=+p.gramWeight,am=+p.amount||1;if(!gw)return;const un=(p.measureUnit?.name||'').toLowerCase(),md=(p.modifier||p.portionDescription||'').trim();
    if(un==='racc'||/^(oz|g|grams?|quantity not specified)$/i.test(md))return;if(/nlea serving/i.test(md)){sv=gw/am;return}
@@ -522,9 +522,9 @@ async function usdaPortions(f){if(f.src!=='usda'||f.pz||String(f.ref).startsWith
 function servingSheet(f,ui,qty,mid,onSave,onDel,ctx){let L=unitsFor(f);let touched=false;let lbl=(f.units[ui]||f.units[0]||{}).label;
  if(!onDel){const st=D.stats[fkey(f)];if(st&&st.food.units[st.ui]){lbl=st.food.units[st.ui].label;qty=st.qty}}
  if(OLDGEN.test(lbl||''))lbl={'100 g':'g','1 oz':'oz','1 g':'g'}[lbl],qty=lbl==='g'&&(f.units[ui]||{}).label==='100 g'?qty*100:qty;
- if(!L.some(u=>u.label===lbl))lbl=L[0].label==='serving'?'serving':L[0].label;
+ if(f.dish&&!onDel&&!(D.stats[fkey(f)]))lbl='regular';if(!L.some(u=>u.label===lbl))lbl=L[0].label==='serving'?'serving':L[0].label;
  const sv=L.find(u=>u.kind==='s');
- sheet(`<div class="vhd"><h2>${esc(f.name)}</h2>${f.src!=='quick'?'<button class="edbtn" id="v_ed" aria-label="Edit food">✏️ Edit</button>':''}</div>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}
+ sheet(`<div class="vhd"><h2>${esc(f.name)}</h2>${f.src!=='quick'?'<button class="edbtn" id="v_ed" aria-label="Edit food">✏️ Edit</button>':''}</div>${f.brand?`<div class="mut">${esc(f.brand)}</div>`:''}${window.dishBar?dishBar(f):''}
  <div class="amtbox"><input id="v_q" class="amtin" inputmode="decimal" autocomplete="off" value="${fmtAmt(qty).replace('½',' 1/2').replace('¼',' 1/4').replace('¾',' 3/4').trim()}" aria-label="Amount"><div class="uchips" id="v_u">${L.map(u=>`<button class="uchip" data-l="${esc(u.label)}">${esc(u.label)}</button>`).join('')}</div></div>
  <div class="qchips">${[['1/2','½'],['1','1'],['1.5','1½'],['2','2']].map(([v,t])=>`<button data-q="${v}">${t}</button>`).join('')}</div>
  ${f.chk?`<div class="chkhint">⚠️ Check serving: ${esc(f.chk)} Compare with your package or use grams.</div>`:''}<div class="mut" id="v_note" style="font-size:13px;margin:2px 2px 0;min-height:16px">${sv&&sv.note?'1 serving = '+esc(sv.note):''}</div>${f.url?`<div class="mut" style="font-size:12px;margin:2px">Label data: <a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:inherit">source</a></div>`:''}
@@ -545,7 +545,7 @@ function servingSheet(f,ui,qty,mid,onSave,onDel,ctx){let L=unitsFor(f);let touch
  $('#v_q').onkeydown=e=>{if(e.key==='Enter')$('#v_go').click()};
  $('#v_q').onfocus=e=>e.target.select();upd();
  $('#v_go').onclick=()=>{const a=q();if(!(a>0))return toast('Enter an amount, like 1, 1.5 or 1 1/2');close();onSave(entryFrom(f2,ix(),a),$('#v_meal').value)};
- if(onDel)$('#v_del').onclick=onDel;
+ if(onDel)$('#v_del').onclick=onDel;if(window.dishBind)dishBind(f,ui,qty,mid,onSave,onDel,ctx);
  if(f.src==='usda'&&!f.pz)usdaPortions(f).then(P=>{if(!P||!document.body.contains($('#v_u'))||$('#sheet h2')?.textContent!==f.name)return;
   const base=(f.units||[]).filter(u=>!OLDGEN.test(u.label));const nu=[];if(P.sv&&!base.length)nu.push({label:'serving',mult:P.sv/100,kind:'s',note:Math.round(P.sv)+' g'});
   const f3={...f,pz:1,units:[...nu,...base,...P.units]};L=unitsFor(f3);f2={...f3,units:L};

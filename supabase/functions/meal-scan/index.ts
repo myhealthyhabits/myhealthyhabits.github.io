@@ -56,6 +56,7 @@ async function getPage(u: string): Promise<string | null> {
   } catch { return null; }
 }
 const PARSE = (t: string) => `The user described what they ate: "${t}". Split it into separate foods with the portion they said (or a typical portion if not said). Use common US names. Return JSON {"items":[...]} with typical nutrition for each portion. Max 8 items. If it is not food, return {"items":[]}.`;
+const DISH_P = (t: string) => `The user ate this prepared dish or restaurant meal: "${t}". Treat it as ONE finished dish (do not split into ingredients). Estimate the portion they described, or a typical portion for where it was from (restaurant portions are usually larger and richer than homemade). Give grams for that portion, amount+unit in common US measures (e.g. 2 cups, 1 burrito), and typical nutrition for that portion. Return JSON {"items":[...]} with exactly one item. If it is not food, return {"items":[]}.`;
 const IDEA_P = (c: string) => `You are a friendly nutrition coach. Suggest exactly 3 different, realistic meal ideas for the user's upcoming meal using this context (JSON): ${c}
 Each idea should fit within remainingCalories (aim for roughly the share given in targetCalories) and help reach remainingProtein. Never include anything in dislikes. Do not repeat dishes already eaten or suggested today (eatenToday, avoid). Vary cuisines and proteins. Keep it simple to make or buy. "why" is one short upbeat sentence. List each idea's foods as items with portions and nutrition.`;
 const RECAP_P = (c: string) => `You are a warm, upbeat health coach. Write a short weekly recap from this data (JSON): ${c}
@@ -74,9 +75,9 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return out(400, { error: "bad_request" }); }
   const txt = String(body.text ?? "").trim().slice(0, 80);
   const img = (body.image ?? "").replace(/^data:image\/\w+;base64,/, "");
-  const mode = ["parse", "ideas", "recap", "recipe"].includes(String(body.mode)) ? String(body.mode) : "";
+  const mode = ["parse", "dish", "ideas", "recap", "recipe"].includes(String(body.mode)) ? String(body.mode) : "";
   const ptxt = String(body.text ?? "").trim().slice(0, 300), ctx = JSON.stringify(body.ctx ?? {}).slice(0, 2500);
-  if (mode === "parse" && !ptxt) return out(400, { error: "bad_request" });
+  if ((mode === "parse" || mode === "dish") && !ptxt) return out(400, { error: "bad_request" });
   let page = "";
   if (mode === "recipe") {
     const p = await getPage(String(body.url ?? "").trim().slice(0, 600));
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
   const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
     method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY },
     body: JSON.stringify({
-      contents: [{ parts: mode === "parse" ? [{ text: PARSE(ptxt.replace(/"/g, "'")) }] : mode === "ideas" ? [{ text: IDEA_P(ctx) }] : mode === "recap" ? [{ text: RECAP_P(ctx) }] : mode === "recipe" ? [{ text: RECIPE_P(page) }] : txt
+      contents: [{ parts: mode === "parse" ? [{ text: PARSE(ptxt.replace(/"/g, "'")) }] : mode === "dish" ? [{ text: DISH_P(ptxt.replace(/"/g, "'")) }] : mode === "ideas" ? [{ text: IDEA_P(ctx) }] : mode === "recap" ? [{ text: RECAP_P(ctx) }] : mode === "recipe" ? [{ text: RECIPE_P(page) }] : txt
         ? [{ text: `Give typical nutrition for one item: "${txt.replace(/"/g, "'")}", portion about ${Math.max(1, Math.min(2000, +(body.grams ?? 100)))} g. Return JSON {"items":[...]} with exactly that one item, grams set to that portion.` }]
         : [{ text: PROMPT }, { inline_data: { mime_type: "image/jpeg", data: img } }] }],
       generationConfig: { responseMimeType: "application/json", responseSchema: mode === "recipe" ? RECIPE : mode === "ideas" ? IDEAS : mode === "recap" ? RECAP : SCHEMA, temperature: mode === "ideas" || mode === "recap" ? 0.8 : 0.2 },
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
     if (mode === "ideas") return out(200, { ideas: (J.ideas ?? []).slice(0, 3) });
     if (mode === "recap") return out(200, J);
     if (mode === "recipe") return out(200, { name: String(J.name ?? "").slice(0, 80), servings: Math.max(1, Math.min(50, Math.round(+J.servings || 4))), items: (J.items ?? []).slice(0, 25) });
-    const items = (J.items ?? []).slice(0, 8);
+    const items = (J.items ?? []).slice(0, mode === "dish" ? 1 : 8);
     return out(200, { items });
   } catch { return out(502, { error: "ai_failed" }); }
 });

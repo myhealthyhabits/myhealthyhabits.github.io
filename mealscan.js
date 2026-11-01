@@ -24,7 +24,7 @@ async function msRun(mid,file){sheet(`<h2>📷 Snap meal</h2><div class="ms-hero
 const msTk=t=>norm(t).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w&&!/^(and|with|the|of|a|on|in|fresh|plain|homemade|style|nfs)$/.test(w)).map(stem);
 const MS_MOD0=['grill','steam','bake','fry','fri','roast','boil','cook','larg','small','medium','slice','side','regular','mini','hot','warm','cold','homemad','restaurant','fast','food','order','piece','bowl','plate','serving','sauce','syrup','topping','dress'];let _msm;const msMod=()=>_msm||(_msm=MS_MOD0.map(stem));
 function msMatch(name){const ws=msTk(name);if(!ws.length||typeof FOODLIB==='undefined')return null;let best=null,bs=0;
- for(const f of FOODLIB){const nm=msTk(f.name),core=msTk(f.name.split(',')[0]).filter(w=>!/^\d/.test(w));
+ for(const f of [...FOODLIB,...(typeof DISHLIB!=='undefined'?DISHLIB.filter(d=>d.pop):[])]){const nm=msTk(f.name),core=msTk(f.name.split(',')[0]).filter(w=>!/^\d/.test(w));
   for(const c of [core,...(f.syn||[]).map(msTk)]){if(!c.length||!c.every(w=>ws.includes(w)))continue;if(c!==core&&ws.some(w=>!c.includes(w)&&!nm.includes(w)&&!msMod().includes(w)))continue;
    const sc=c.length*3+nm.filter(w=>ws.includes(w)).length+(c===core?1:0)-nm.filter(w=>!ws.includes(w)).length*.2;if(sc>bs){bs=sc;best=f}}}
  return best}

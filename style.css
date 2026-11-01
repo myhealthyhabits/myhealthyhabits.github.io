@@ -549,3 +549,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 [data-theme=light] .gin small,[data-theme=light] .gends span,[data-theme=light] .mck small,[data-theme=light] .skv span,[data-theme=light] .skc .skn,[data-theme=light] .skc small,[data-theme=light] .gpt span,[data-theme=light] .min small,[data-theme=light] .mempty,[data-theme=light] .x,[data-theme=light] .mchart small,[data-theme=light] [style*="#8e8e93"]{color:var(--mut)!important}
 [data-theme=light] .wgch.dn,[data-theme=light] .qchip button[data-n]::after{color:#047857}
 [data-theme=light] .today>small{color:#0f766e!important}
+/* v60 dishes */
+.stchip.dish{background:rgba(255,159,10,.16);color:#ffb340}
+[data-theme=light] .stchip.dish{background:rgba(201,74,10,.12);color:#c94a0a}
+.dishbar{margin:6px 0 8px}.dishbar .dseg{margin:8px 0 4px}.dsrc{font-size:12px;margin:4px 2px 0;line-height:1.35}.dsrc a{color:inherit}
+.aiest{display:flex;gap:10px;align-items:center;width:100%;text-align:left;margin:4px 0 8px;padding:12px 14px;border-radius:14px;border:1.5px dashed rgba(191,90,242,.6);background:linear-gradient(135deg,rgba(191,90,242,.14),rgba(63,227,255,.10));color:inherit;font:inherit;cursor:pointer}
+.aiest>span{font-size:22px}.aiest b{display:block;font-size:15px}.aiest small{display:block;opacity:.75;font-size:12px;margin-top:2px}.aiest.sm{margin-top:10px}
+[data-theme=light] .aiest{border-color:rgba(130,50,190,.5);background:linear-gradient(135deg,rgba(191,90,242,.10),rgba(63,170,255,.08))}
