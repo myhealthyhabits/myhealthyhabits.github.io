@@ -556,3 +556,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .aiest{display:flex;gap:10px;align-items:center;width:100%;text-align:left;margin:4px 0 8px;padding:12px 14px;border-radius:14px;border:1.5px dashed rgba(191,90,242,.6);background:linear-gradient(135deg,rgba(191,90,242,.14),rgba(63,227,255,.10));color:inherit;font:inherit;cursor:pointer}
 .aiest>span{font-size:22px}.aiest b{display:block;font-size:15px}.aiest small{display:block;opacity:.75;font-size:12px;margin-top:2px}.aiest.sm{margin-top:10px}
 [data-theme=light] .aiest{border-color:rgba(130,50,190,.5);background:linear-gradient(135deg,rgba(191,90,242,.10),rgba(63,170,255,.08))}
+
+/* v62: water + steps rings to match icon */
+.gwrap .gauge{overflow:visible}
+.xglow.xst{filter:drop-shadow(0 0 3px #b45cff99)}.xglow.xw{filter:drop-shadow(0 0 3px #3fd8ff99)}
+.xra.nofx{transition:none!important}
+.xdot{opacity:0;animation:xdotin .4s ease 1.2s forwards}.xra.ra2~.xdot{animation-delay:2.3s}.xdot.nofx{animation:none;opacity:1}
+@keyframes xdotin{to{opacity:1}}
+.xleg{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin:4px 0 8px;font-size:12.5px;color:#8e8e93}
+.xl{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}.xl i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.xlw i{background:linear-gradient(135deg,#5ff0ff,#2e9bff);box-shadow:0 0 6px #3fd8ff88}.xls i{background:linear-gradient(135deg,#c86bff,#7a5cff);box-shadow:0 0 6px #b45cff88}
+.xl b{color:var(--tx);font-variant-numeric:tabular-nums}.xl em{font-style:normal;font-weight:500;color:#8e8e93}
+@media (max-width:380px){.xleg{font-size:11.5px;gap:4px 10px}}
+@media (prefers-reduced-motion:reduce){.xdot{animation:none;opacity:1}}
+[data-theme=light] .xleg,[data-theme=light] .xl em{color:var(--mut)}
