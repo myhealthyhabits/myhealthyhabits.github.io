@@ -791,45 +791,54 @@ function recipeImport(url=''){sheet(`<h2>🔗 Import a recipe</h2><div class="ms
   const ents=items.map(x=>{const it=msItem(x),n=msN(it),g=Math.max(1,+x.grams),lbl=(x.amount&&x.unit?`${+x.amount} ${x.unit}`:'portion')+` (${Math.round(g)} g)`;
    const food={src:'ai',ref:uid(),name:msCap(x.name),brand:it.lib?'':'AI estimate',n:{kcal:n.kcal,p:n.p,c:n.c,f:n.f,fb:n.fb||0},units:[{label:lbl,mult:g/100},{label:'g',mult:.01},{label:'oz',mult:.2835}]};const e=entryFrom(food,0,1);e.est=1;return e});
   recipeSheet(null,{id:uid(),name:(j.name||'Imported recipe').slice(0,60),emo:'🍲',sv:j.servings||4,items:ents,src:u})}}
-/* ---------- v57: monthly challenges ---------- */
+/* ---------- v59: rolling 30/60-day challenges (each starts the day it's picked) ---------- */
 const CH_EMO=['❄️','💘','🍀','🌷','🌼','☀️','🎆','🌻','🍎','🎃','🦃','🎄'];
 const chYm=d=>d.slice(0,7);
-function chDays(ym){const t=logicalToday(),out=[];let d=ym+'-01';while(chYm(d)===ym&&d<=t){out.push(d);d=addDays(d,1)}return out}
 const CH_LV={easy:[.65,'🌱 Easy'],normal:[1,'⭐ Normal'],hard:[1.3,'🔥 Hard']};
 const CH_DEF=['log','pro','snap','gym'];
-function chPool(ym){const ds=chDays(ym),g=macroGoal(),dim=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate(),lv=(CH_LV[D.chLvl]||CH_LV.normal)[0],T=(base,mx)=>Math.max(1,Math.min(mx||dim,Math.round(base*lv)));
- const cnt=f=>ds.filter(f).length,ents=d=>Object.values(D.log[d]||{}).flat().filter(e=>e&&e.food);
+const chEnd=a=>addDays(a.start,a.len-1);
+function chDaysR(start,len){const t=logicalToday(),e=addDays(start,len-1),out=[];let d=start;while(d<=e&&d<=t){out.push(d);d=addDays(d,1)}return out}
+function chDayNo(a){const t=logicalToday();let n=1,d=a.start;while(d<t&&n<=a.len){d=addDays(d,1);n++}return Math.min(n,a.len)}
+function chPool(start,len,lvk){const ds=chDaysR(start,len),g=macroGoal(),L=len||30,f=L/30,lv=(CH_LV[lvk||D.chLvl]||CH_LV.normal)[0],T=(base,mx)=>Math.max(1,Math.min(mx||L,Math.round(base*f*lv)));
+ const cnt=fn=>ds.filter(fn).length,ents=d=>Object.values(D.log[d]||{}).flat().filter(e=>e&&e.food),end=addDays(start,L-1);
  return[
- {id:'log',e:'📝',c:'#ffd60a',t:n=>`Log food on ${n} days`,goal:T(dim-10),n:()=>cnt(foodDay)},
+ {id:'log',e:'📝',c:'#ffd60a',t:n=>`Log food on ${n} days`,goal:T(20),n:()=>cnt(foodDay)},
  {id:'pro',e:'🥩',c:'#ff375f',t:n=>`Hit your protein goal (${r0(g.p)} g) ${n} times`,goal:T(15),n:()=>g.p?cnt(d=>dayTotal(d).p>=g.p):0},
- {id:'snap',e:'📸',c:'#64d2ff',t:n=>`Snap ${n} meals`,goal:T(10,60),n:()=>ds.reduce((s,d)=>s+Object.values(D.log[d]||{}).filter(a=>(a||[]).some(e=>e&&e.food&&e.food.src==='photo')).length,0)},
+ {id:'snap',e:'📸',c:'#64d2ff',t:n=>`Snap ${n} meals`,goal:T(10,L*2),n:()=>ds.reduce((s,d)=>s+Object.values(D.log[d]||{}).filter(a=>(a||[]).some(e=>e&&e.food&&e.food.src==='photo')).length,0)},
  {id:'gym',e:'💪',c:'#30d158',t:n=>`${n} gym days`,goal:T((D.gymGoal||3)*3.5),n:()=>cnt(gymDay)},
  {id:'steps',e:'👟',c:'#a6ff3a',t:n=>`Hit ${(D.stepGoal||10000).toLocaleString()} steps on ${n} days`,goal:T(15),n:()=>cnt(stepDay)},
  {id:'water',e:'💧',c:'#2fd4c8',t:n=>`Drink ${fL?fL(D.waterGoal||64):(D.waterGoal||64)+' oz'} on ${n} days`,goal:T(15),n:()=>cnt(d=>(D.water[d]||0)>=(D.waterGoal||64))},
  {id:'under',e:'🎯',c:'#ff9f0a',t:n=>`Stay within your calories ${n} days`,goal:T(15),n:()=>cnt(d=>{const k=dayTotal(d).kcal;return k>0&&k<=budget(d)})},
  {id:'fiber',e:'🥦',c:'#34c759',t:n=>`Hit ${D.fiberGoal||28} g fiber ${n} times`,goal:T(10),n:()=>cnt(d=>dayTotal(d).fb>=(D.fiberGoal||28))},
- {id:'weigh',e:'⚖️',c:'#bf5af2',t:n=>`Weigh in ${n} times`,goal:T(4,dim),n:()=>D.weights.filter(w=>chYm(w.date)===ym).length},
- {id:'done',e:'✅',c:'#0a84ff',t:n=>`Mark ${n} days complete`,goal:T(dim-12),n:()=>cnt(d=>D.done&&D.done[d])},
- {id:'recipe',e:'📖',c:'#ff6482',t:n=>`Log a recipe ${n} times`,goal:T(4,40),n:()=>ds.reduce((s,d)=>s+ents(d).filter(e=>e.food.src==='recipe').length,0)},
+ {id:'weigh',e:'⚖️',c:'#bf5af2',t:n=>`Weigh in ${n} times`,goal:T(4),n:()=>D.weights.filter(w=>w.date>=start&&w.date<=end).length},
+ {id:'done',e:'✅',c:'#0a84ff',t:n=>`Mark ${n} days complete`,goal:T(18),n:()=>cnt(d=>D.done&&D.done[d])},
+ {id:'recipe',e:'📖',c:'#ff6482',t:n=>`Log a recipe ${n} times`,goal:T(4,L),n:()=>ds.reduce((s,d)=>s+ents(d).filter(e=>e.food.src==='recipe').length,0)},
  {id:'veg',e:'🥗',c:'#7ed957',t:n=>`Log fruit or veggies on ${n} days`,goal:T(15),n:()=>cnt(d=>ents(d).some(e=>/salad|apple|banana|berr|orange|grape|melon|broccoli|spinach|carrot|veg|lettuce|kale|tomato|pepper|cucumber|pear|peach|mango|pineapple|avocado|beans|zucchini|asparagus/i.test(e.food.name)))}]}
-function chSel(ym){const P=chPool(ym).map(x=>x.id),sel=(D.chSel&&D.chSel[ym])||D.chPref||CH_DEF;const v=sel.filter(i=>P.includes(i)).slice(0,4);return v.length===4?v:CH_DEF}
-function chList(ym){const P=chPool(ym);return chSel(ym).map(id=>{const x=P.find(p=>p.id===id);return{id,e:x.e,c:x.c,goal:x.goal,t:x.t(x.goal),n:x.n()}})}
-function chEdit(){const t=logicalToday(),ym=chYm(t),P=chPool(ym);let sel=[...chSel(ym)],lv=D.chLvl||'normal';
- const draw=()=>{sheet(`<h2>🏅 Pick your challenges</h2><p class="mut" style="margin-top:0">Choose any 4. Targets are based on your own goals.</p><div class="seg" id="ce_l">${Object.entries(CH_LV).map(([k,v])=>`<button data-lv="${k}" class="${k===lv?'on':''}">${v[1]}</button>`).join('')}</div>
- <div class="cepool">${P.map(x=>{const on=sel.includes(x.id),gl=Math.max(1,Math.round(x.goal/((CH_LV[D.chLvl]||CH_LV.normal)[0])*CH_LV[lv][0]));return`<button class="cepick${on?' on':''}" data-ce="${x.id}" style="--c:${x.c}" aria-pressed="${on}"><span class="chico" style="--c:${x.c}">${x.e}</span><span>${esc(x.t(gl))}<small>${Math.min(x.n(),gl)}/${gl} so far</small></span><b>${on?'✓':''}</b></button>`}).join('')}</div>
- <p class="mut" id="ce_m" style="text-align:center">${sel.length}/4 picked</p><button class="btn" id="ce_go" ${sel.length===4?'':'disabled'}>Save challenges</button><button class="btn alt" id="ce_rs">Reset to defaults</button><button class="btn alt" data-close="1">Cancel</button>`);
+/* active challenges: D.chAct=[{id,start,len,lvl,done?}] ; finished ones go to D.chHist */
+function chMigrate(){if(Array.isArray(D.chAct))return;const t=logicalToday(),ym=chYm(t),ids=['log','pro','snap','gym','steps','water','under','fiber','weigh','done','recipe','veg'];
+ let sel=((D.chSel&&D.chSel[ym])||D.chPref||CH_DEF).filter(i=>ids.includes(i)).slice(0,4);if(sel.length!==4)sel=[...CH_DEF];
+ const rec=(D.chDone&&D.chDone[ym])||{};D.chAct=sel.map(id=>({id,start:ym+'-01',len:30,lvl:D.chLvl||'normal',...(rec[id]?{done:typeof rec[id]==='number'&&rec[id]>1?rec[id]:Date.now()}:{})}));D.chHist=D.chHist||[];D.chMig=ym;save()}
+function chInfo(a){const x=chPool(a.start,a.len,a.lvl).find(p=>p.id===a.id);const n=x.n();return{...a,e:x.e,c:x.c,goal:x.goal,t:x.t(x.goal),n,end:chEnd(a),day:chDayNo(a)}}
+function chList(){chMigrate();return D.chAct.map(chInfo)}
+function chRoll(){chMigrate();const t=logicalToday();let ch=false;D.chAct=D.chAct.map(a=>{if(chEnd(a)>=t)return a;const i=chInfo(a);D.chHist=D.chHist||[];D.chHist.push({id:a.id,e:i.e,start:a.start,len:a.len,lvl:a.lvl,n:i.n,goal:i.goal,ok:!!a.done||i.n>=i.goal});ch=true;return{id:a.id,start:t,len:a.len,lvl:a.lvl}});if(ch)save();return ch}
+const fdt=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+function chEdit(){chRoll();const t=logicalToday();let sel=D.chAct.map(a=>a.id),lv=D.chLvl||'normal',len=D.chLen||30;
+ const draw=()=>{const P=chPool(t,len,lv);sheet(`<h2>🏅 Pick your challenges</h2><p class="mut" style="margin-top:0">Choose any 4. Each new one starts today; ones you keep carry on where they are.</p><div class="seg" id="ce_d">${[30,60].map(n=>`<button data-len="${n}" class="${n===len?'on':''}">📅 ${n} days</button>`).join('')}</div><div class="seg" id="ce_l" style="margin-top:8px">${Object.entries(CH_LV).map(([k,v])=>`<button data-lv="${k}" class="${k===lv?'on':''}">${v[1]}</button>`).join('')}</div>
+ <div class="cepool">${P.map(x=>{const on=sel.includes(x.id),A=D.chAct.find(a=>a.id===x.id),ii=A&&on?chInfo(A):null;return`<button class="cepick${on?' on':''}" data-ce="${x.id}" style="--c:${x.c}" aria-pressed="${on}"><span class="chico" style="--c:${x.c}">${x.e}</span><span>${esc(ii?ii.t:x.t(x.goal))}<small>${ii?`Day ${ii.day} of ${ii.len} · ${Math.min(ii.n,ii.goal)}/${ii.goal}`:`${len} days · ends ${fdt(addDays(t,len-1))}`}</small></span><b>${on?'✓':''}</b></button>`}).join('')}</div>
+ <p class="mut" id="ce_m" style="text-align:center">${sel.length}/4 picked · length and level apply to newly picked ones</p><button class="btn" id="ce_go" ${sel.length===4?'':'disabled'}>Save challenges</button><button class="btn alt" id="ce_rs">Reset to defaults</button><button class="btn alt" data-close="1">Cancel</button>`);
   document.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{lv=b.dataset.lv;draw()});
+  document.querySelectorAll('[data-len]').forEach(b=>b.onclick=()=>{len=+b.dataset.len;draw()});
   document.querySelectorAll('[data-ce]').forEach(b=>b.onclick=()=>{const id=b.dataset.ce,i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else if(sel.length<4)sel.push(id);else return toast('Pick 4 at most — tap one to remove it first');draw()});
-  $('#ce_go').onclick=()=>{D.chSel=D.chSel||{};D.chSel[ym]=[...sel];D.chPref=[...sel];D.chLvl=lv;save();close();render();toast('Challenges updated 🏅')};
-  $('#ce_rs').onclick=()=>{sel=[...CH_DEF];lv='normal';draw()}};draw()}
-function chCard(){const t=logicalToday(),ym=chYm(t),L=chList(ym),done=L.filter(x=>x.n>=x.goal).length,me=CH_EMO[+ym.slice(5)-1],mn=new Date(t+'T12:00').toLocaleDateString(undefined,{month:'long'}),left=chDays(ym).length,dim=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate()-left;
- const H=Object.keys(D.chDone||{}).filter(k=>k<ym&&Object.keys(D.chDone[k]).length).sort().reverse();
- return`<div class="card chc"><div class="wghead"><h2>${me} ${mn} challenges</h2><span style="display:flex;gap:6px;align-items:center"><span class="wgch dn">${done}/4</span><button class="linkbtn" id="ch_ed" aria-label="Change challenges">✏️ Change</button></span></div><p class="mut" style="margin:2px 0 10px">${done===4?`You earned the ${mn} badge! 🎉`:`Finish all 4 to earn the ${me} ${mn} badge · ${dim} day${dim===1?'':'s'} left`}</p>
- ${L.map(x=>`<div class="chrow${x.n>=x.goal?' ok':''}"><span class="chico" style="--c:${x.c}">${x.n>=x.goal?'✅':x.e}</span><div><div class="chtop"><b>${x.t}</b><small>${Math.min(x.n,x.goal)}/${x.goal}</small></div><div class="bar chbar"><i style="width:${Math.min(100,x.n/x.goal*100)}%;--c:${x.c}"></i></div></div></div>`).join('')}
- <div class="chhist"><span class="mut">Badges</span>${done===4?`<span class="chb on" title="${mn}">${me}<small>${mn.slice(0,3)}</small></span>`:''}${H.map(k=>{const full=Object.keys(D.chDone[k]).length>=4,m=new Date(k+'-15T12:00').toLocaleDateString(undefined,{month:'short'});return`<span class="chb${full?' on':''}" title="${m} ${k.slice(0,4)} · ${Object.keys(D.chDone[k]).length}/4">${full?CH_EMO[+k.slice(5)-1]:'🎖️'}<small>${m}${Object.keys(D.chDone[k]).length<4?' '+Object.keys(D.chDone[k]).length+'/4':''}</small></span>`}).join('')}${!H.length&&done<4?'<span class="mut" style="font-size:12px">Your monthly badges will collect here.</span>':''}</div></div>`}
-function chCheck(){const t=logicalToday(),ym=chYm(t);D.chDone=D.chDone||{};{const pm=chYm(addDays(ym+'-01',-1));if(!D.chDone[pm]){const r={};chList(pm).forEach(x=>{if(x.n>=x.goal)r[x.id]=1});if(Object.keys(r).length){D.chDone[pm]=r;save()}}}const rec=D.chDone[ym]=D.chDone[ym]||{},nw=chList(ym).filter(x=>x.n>=x.goal&&!rec[x.id]);if(!nw.length){if(!Object.keys(rec).length)delete D.chDone[ym];return}
- nw.forEach(x=>rec[x.id]=Date.now());save();const all=Object.keys(rec).length>=4,mn=new Date(t+'T12:00').toLocaleDateString(undefined,{month:'long'});
- const msg=all?`${CH_EMO[+ym.slice(5)-1]} ${mn} badge earned!`:nw.map(x=>x.e+' '+x.t).join('  ');if(typeof goalParty==='function')goalParty(msg);else toast('Challenge done: '+msg)}
+  $('#ce_go').onclick=()=>{D.chAct=sel.map(id=>D.chAct.find(a=>a.id===id)||{id,start:t,len,lvl:lv});D.chPref=[...sel];D.chLvl=lv;D.chLen=len;save();close();render();toast('Challenges updated 🏅')};
+  $('#ce_rs').onclick=()=>{sel=[...CH_DEF];lv='normal';len=30;draw()}};draw()}
+function chCard(){chRoll();const L=chList(),done=L.filter(x=>x.n>=x.goal).length;
+ const H=(D.chHist||[]).filter(h=>h.ok).reverse().slice(0,24),O=Object.keys(D.chDone||{}).filter(k=>Object.keys(D.chDone[k]).length&&k!==D.chMig).sort().reverse();
+ const OB=O.map(k=>{const c=Object.keys(D.chDone[k]).length,full=c>=4,m=new Date(k+'-15T12:00').toLocaleDateString(undefined,{month:'short'});return`<span class="chb${full?' on':''}" title="${m} ${k.slice(0,4)} · ${c}/4">${full?CH_EMO[+k.slice(5)-1]:'🎖️'}<small>${m}${c<4?' '+c+'/4':''}</small></span>`}).join('');
+ return`<div class="card chc"><div class="wghead"><h2>🏅 My challenges</h2><span style="display:flex;gap:6px;align-items:center"><span class="wgch dn">${done}/4</span><button class="linkbtn" id="ch_ed" aria-label="Change challenges">✏️ Change</button></span></div><p class="mut" style="margin:2px 0 10px">${done===4?'All 4 done! 🎉 Each one restarts when its days are up.':'Each challenge runs from the day you pick it. Finish one to earn its badge.'}</p>
+ ${L.map(x=>`<div class="chrow${x.n>=x.goal?' ok':''}"><span class="chico" style="--c:${x.c}">${x.n>=x.goal?'✅':x.e}</span><div><div class="chtop"><b>${x.t}</b><small>${Math.min(x.n,x.goal)}/${x.goal}</small></div><div class="bar chbar"><i style="width:${Math.min(100,x.n/x.goal*100)}%;--c:${x.c}"></i></div><small class="mut">Day ${x.day} of ${x.len} · ends ${fdt(x.end)}</small></div></div>`).join('')}
+ <div class="chhist"><span class="mut">Badges</span>${L.filter(x=>x.n>=x.goal).map(x=>`<span class="chb on" title="${esc(x.t)}">${x.e}<small>${x.len}d</small></span>`).join('')}${H.map(h=>`<span class="chb on" title="${fdt(h.start)} · ${h.n}/${h.goal}">${h.e}<small>${h.len}d</small></span>`).join('')}${OB}${!H.length&&!OB&&!done?'<span class="mut" style="font-size:12px">Your challenge badges will collect here.</span>':''}</div></div>`}
+function chCheck(){chRoll();const nw=D.chAct.filter(a=>!a.done&&(i=>i.n>=i.goal)(chInfo(a)));if(!nw.length)return;nw.forEach(a=>a.done=Date.now());save();
+ const L=chList(),all=L.every(x=>x.n>=x.goal),msg=all?'🏅 All 4 challenges done!':nw.map(a=>{const i=chInfo(a);return i.e+' '+i.t}).join('  ');if(typeof goalParty==='function')goalParty(msg);else toast('Challenge done: '+msg)}
 
 
 /* ---------- activity & streaks ---------- */
