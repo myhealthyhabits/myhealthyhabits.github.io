@@ -56,7 +56,12 @@ function addEntry(mealId,e,date=cur){(dayLog(date)[mealId]=dayLog(date)[mealId]|
 
 /* ---------- calorie budget ---------- */
 const nb=()=>{$('.tabs').classList.toggle('hidden',!D.profile&&!D.budget)};
+let _newUser=false;
 function budgetHome(){nb();const has=!!D.budget;
+ if(!has&&!_newUser&&!(window.MHHSync?MHHSync.signedIn:localStorage.getItem('mhh-sb'))){V.innerHTML=`<div class="card hero"><div class="mut">Welcome to ${esc(APP_NAME)}</div><h2 style="margin-top:6px">👋 Let's get you started</h2></div><div class="welc"><span>🥗</span><span>💪</span><span>👟</span><span>🔥</span></div>
+ <button class="choice" id="w_new"><b>✨ I'm new</b><span>Set up your calorie budget in a minute. No account needed.</span></button>
+ <button class="choice" id="w_in"><b>🔑 I already have an account</b><span>Sign in to bring your logs, goals and foods to this device.</span></button>`;
+ $('#w_new').onclick=()=>{_newUser=true;budgetHome()};$('#w_in').onclick=()=>MHHSync.auth('in');return}
  V.innerHTML=`<div class="card hero"><div class="mut">${has?'Your daily calorie budget':'Welcome to '+esc(APP_NAME)}</div>${has?`<div class="big">${budget().toLocaleString()}</div><div class="mut">${D.budgetMode==='guided'?'Recommended from your profile':'Set by you'}</div>`:'<h2 style="margin-top:6px">How do you want to set your calorie budget?</h2>'}</div>
  ${has?'':'<div class="welc"><span>🥗</span><span>💪</span><span>👟</span><span>🔥</span></div><p class="mut" style="text-align:center;margin:-4px 0 12px">Free · no account needed · your data stays on this device</p>'}<button class="choice" id="b_guide"><b>🧭 Guide me</b><span>Answer a few quick questions and get a recommended budget and goal date.</span></button>
  <button class="choice" id="b_own"><b>✏️ Set my own calories</b><span>Type in a daily calorie number, with optional macro goals.</span></button>
