@@ -139,8 +139,8 @@ function heroRings(t,b,exc,left){const B=b+exc||1,p=Math.max(0,t.kcal/B),over=le
  const[sx,sy]=pt(a0,r),[ex,ey]=pt(a0+sw,r),arc=`M${sx} ${sy}A${r} ${r} 0 1 1 ${ex} ${ey}`,fill=Math.min(1,p);
  const wv=D.water[cur]||0,wg=wGoal()||64,sv=D.steps[cur]||0,sg=D.stepGoal||10000,nofx=D.noFx?' nofx':'';
  const xarc=(rr,pc,cl,id,del)=>{pc=Math.max(0,Math.min(1,pc));const[a,b2]=pt(a0,rr),[e1,e2]=pt(a0+sw,rr),d=`M${a} ${b2}A${rr} ${rr} 0 1 1 ${e1} ${e2}`,[dx,dy]=pt(a0+sw*pc,rr);
-  return`<path d="${d}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6" stroke-linecap="round"/>${pc>0?`<g class="xglow ${id}"><path class="ra xra${del?' ra2':''}${nofx}" d="${d}" fill="none" stroke="${cl}" stroke-width="6" stroke-linecap="round" pathLength="1" stroke-dasharray="1 2" stroke-dashoffset="1" data-to="${(1-pc).toFixed(4)}"/><circle class="xdot${nofx}" cx="${dx}" cy="${dy}" r="2.6" fill="#fff"/></g>`:''}`};
- const xr=xarc(115,sv/sg,'url(#xg_st)','xst',0)+xarc(75,wv/wg,'url(#xg_w)','xw',1);
+  return`<path d="${d}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5" stroke-linecap="round"/>${pc>0?`<g class="xglow ${id}"><path class="ra xra${del?' ra2':''}${nofx}" d="${d}" fill="none" stroke="${cl}" stroke-width="5" stroke-linecap="round" pathLength="1" stroke-dasharray="1 2" stroke-dashoffset="1" data-to="${(1-pc).toFixed(4)}"/><circle class="xdot${nofx}" cx="${dx}" cy="${dy}" r="2.6" fill="#fff"/></g>`:''}`};
+ const xr=xarc(77,sv/sg,'url(#xg_st)','xst',0)+xarc(67,wv/wg,'url(#xg_w)','xw',1);
  const svg=`<svg class="gauge" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" aria-hidden="true"><defs>
   <linearGradient id="gg_ok" gradientUnits="userSpaceOnUse" x1="20" y1="200" x2="220" y2="200"><stop offset="0" stop-color="#ffc24d"/><stop offset=".55" stop-color="#ff9f0a"/><stop offset="1" stop-color="#ff6a1a"/></linearGradient>
   <linearGradient id="gg_ov" gradientUnits="userSpaceOnUse" x1="20" y1="200" x2="220" y2="200"><stop offset="0" stop-color="#ff8a3d"/><stop offset="1" stop-color="#ff3b30"/></linearGradient>

@@ -570,3 +570,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @media (max-width:380px){.xleg{font-size:11.5px;gap:4px 10px}}
 @media (prefers-reduced-motion:reduce){.xdot{animation:none;opacity:1}}
 [data-theme=light] .xleg,[data-theme=light] .xl em{color:var(--mut)}
+/* v63: rings inside ticks */
+.gin b{font-size:38px}.gin span{font-size:13px}.gin small{font-size:10.5px!important;margin-top:5px}
