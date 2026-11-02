@@ -27,12 +27,20 @@ const logicalToday=()=>iso(Date.now()-D.rollover*3600e3);
 const addDays=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return iso(d)};
 const nice=s=>{const t=logicalToday();if(s===t)return'Today';if(s===addDays(t,-1))return'Yesterday';return new Date(s+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})};
 let cur=logicalToday(),tab='today';
-(()=>{let y0=null,dy=0;document.addEventListener('touchstart',e=>{const b=e.target.closest&&e.target.closest('#sheetBody');y0=b&&b.scrollTop<=0&&!e.target.closest('input,select,textarea,.uchips')?e.touches[0].clientY:null;dy=0},{passive:true});document.addEventListener('touchmove',e=>{if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>0)$('#sheetBody').style.transform=`translateY(${dy}px)`},{passive:true});document.addEventListener('touchend',()=>{if(y0==null)return;const b=$('#sheetBody');b.style.transform='';if(dy>110)close();y0=null})})();
+/* v79 drag-to-close: only starts from the sheet's handle/header strip (top 64px, or an h2 header), never inside a wheel, picker, input,
+   or any scrollable area; the sheet must be at its top; activation needs a clearly vertical downward drag. */
+const _scrollAnc=(t,stop)=>{for(let n=t;n&&n!==stop;n=n.parentElement){if(n.matches&&n.matches('.wh,.wheels,input,select,textarea,[data-noswipe]'))return true;const cs=getComputedStyle(n);if((/(auto|scroll)/.test(cs.overflowY)&&n.scrollHeight>n.clientHeight+1)||(/(auto|scroll)/.test(cs.overflowX)&&n.scrollWidth>n.clientWidth+1))return true}return false};
+(()=>{let y0=null,x0=0,dy=0,on=false;const B=()=>$('#sheetBody');
+document.addEventListener('touchstart',e=>{y0=null;dy=0;on=false;const b=e.target.closest&&e.target.closest('#sheetBody');if(!b||e.touches.length>1||b.scrollTop>0)return;const r=b.getBoundingClientRect(),t=e.touches[0];const inHead=t.clientY-r.top<=64||!!e.target.closest('h2,.shhead,[data-grab]');if(!inHead||_scrollAnc(e.target,b))return;y0=t.clientY;x0=t.clientX},{passive:true});
+document.addEventListener('touchmove',e=>{if(y0==null)return;const t=e.touches[0],d=t.clientY-y0,ax=Math.abs(t.clientX-x0);if(!on){if(d>10&&d>ax*1.5)on=true;else if(ax>10||d<-6){y0=null;return}else return}dy=d;B().style.transform=dy>0?`translateY(${dy}px)`:''},{passive:true});
+const end=()=>{if(y0==null)return;const b=B();b.style.transform='';if(on&&dy>110)close();y0=null;on=false};document.addEventListener('touchend',end);document.addEventListener('touchcancel',()=>{if(y0==null)return;B().style.transform='';y0=null;on=false})})();
 const sheet=h=>{_xpBack=null;$('#sheet').classList.remove('xpfull');$('#sheetBody').innerHTML=h;$('#sheet').classList.remove('hidden');if(!_shBack&&!(history.state&&history.state.sh))history.pushState({sh:1},'')};
 let _shBack=0,_xpBack=null;const shOpen=()=>!$('#sheet').classList.contains('hidden');
 const close=()=>{stopScan();$('#sheet').classList.add('hidden');if(history.state&&history.state.sh){_shBack=1;history.back()}};
 addEventListener('popstate',()=>{if(_shBack){_shBack=0;if(shOpen()&&!(history.state&&history.state.sh))history.pushState({sh:1},'');return}if(shOpen()&&_xpBack){const f=_xpBack;_xpBack=null;f();return}if(shOpen()){stopScan();$('#sheet').classList.add('hidden')}});
-$('#sheet').onclick=e=>{if(e.target.id==='sheet'||e.target.closest('[data-close]'))close()};
+/* backdrop closes only on a real tap that both started and ended on the backdrop (not the tail of a scroll or drag) */
+let _bd=null;$('#sheet').addEventListener('pointerdown',e=>{_bd=e.target.id==='sheet'?{x:e.clientX,y:e.clientY,t:Date.now()}:null},true);
+$('#sheet').onclick=e=>{if(e.target.closest('[data-close]'))return close();if(e.target.id==='sheet'){const d=_bd;_bd=null;if(d&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12&&Date.now()-d.t<700)close()}};
 
 /* ---------- calculations ---------- */
 const ACT=[[1.2,'Sedentary','Desk job or mostly sitting, little or no exercise'],[1.375,'Lightly active','On your feet some of the day, or light exercise 1–3 days a week'],[1.55,'Moderately active','On your feet most of a shift, or exercise 3–5 days a week'],[1.725,'Very active','Physical job all shift, or hard exercise 6–7 days a week'],[1.9,'Extremely active','Heavy labor plus daily training']];
@@ -369,7 +377,7 @@ const INTS=[['l','Light',.75],['m','Moderate',1],['v','Vigorous',1.25]];
 const intF=k=>(INTS.find(x=>x[0]===k)||INTS[1])[2];
 function wheel(el,n,v,onv,fmt){const H=40;el.innerHTML=`<div class="whpad"></div>${[...Array(n)].map((_,i)=>`<div class="whi" data-v="${i}">${fmt?fmt(i):i}</div>`).join('')}<div class="whpad"></div>`;
  let cur=v,raf=0,lock=Date.now()+300;const mark=()=>el.querySelectorAll('.whi').forEach((x,i)=>x.classList.toggle('on',i===cur));
- el.scrollTop=v*H;mark();el.onscroll=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(Date.now()<lock)return;const nv=Math.max(0,Math.min(n-1,Math.round(el.scrollTop/H)));if(nv!==cur){cur=nv;mark();onv(nv)}})};
+ ['touchstart','touchmove','touchend'].forEach(t=>el.addEventListener(t,e=>e.stopPropagation(),{passive:true}));el.scrollTop=v*H;mark();el.onscroll=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(Date.now()<lock)return;const nv=Math.max(0,Math.min(n-1,Math.round(el.scrollTop/H)));if(nv!==cur){cur=nv;mark();onv(nv)}})};
  el.querySelectorAll('.whi').forEach(x=>x.onclick=()=>el.scrollTo({top:+x.dataset.v*H,behavior:'smooth'}));
  return{set:(nv,sm=true)=>{cur=nv;mark();lock=Date.now()+(sm?600:100);el.scrollTo({top:nv*H,behavior:sm?'smooth':'auto'})},get:()=>cur}}
 /* Simple exercise sheet: name, intensity, duration wheels, live estimate. opts.gym → logs into today's gym session */
@@ -597,7 +605,7 @@ async function search(q,mid){const R=$('#s_res');if(!R)return;q=(q||'').trim();c
  bindRes(all,mid,f=>pick(f,mid));if(window.aiBind)aiBind(rest,mid);if($('#s_mr'))$('#s_mr').onclick=()=>{$('#s_mr').remove();$('#s_res .rhid')?.classList.remove('rhid')};
  if(note){$('#nm_scan').onclick=()=>scan(mid);$('#nm_add').onclick=()=>customFood(mid,null,{name:rest.replace(/\b\w/g,c=>c.toUpperCase()),brand:st0.bn})}
  lazyPortions(all,q)}
-const prefUnit=L=>L.find(u=>u.kind==='n'&&/^medium\b/.test(u.label))||L.find(u=>u.kind==='s'&&u.note!=='100 g')||L.find(u=>u.kind==='n'&&!/head|package|container/.test(u.label))||L.find(u=>u.kind==='n');
+const prefUnit=L=>L.find(u=>u.kind==='n'&&/^medium\b/.test(u.label))||L.find(u=>u.kind==='n'&&/^(1\/2|½)\s*cup\b/.test(u.label))||L.find(u=>u.kind==='n'&&/^cup\b|^1 cup\b/.test(u.label))||L.find(u=>u.kind==='s'&&u.note!=='100 g')||L.find(u=>u.kind==='n'&&!/head|package|container/.test(u.label))||L.find(u=>u.kind==='n');
 async function lazyPortions(all,q){if(!$('#s_res'))return;const rows=$('#s_res').querySelectorAll('.res[data-i]');
  for(let i=0;i<Math.min(all.length,10);i++){const f=all[i];if(f.src!=='usda'||f.branded||f.pz)continue;const P=await usdaPortions(f);
   if(!P||($('#s_q')?.value.trim()||'')!==q||!document.body.contains(rows[i]))return;
