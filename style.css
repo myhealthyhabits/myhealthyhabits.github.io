@@ -644,3 +644,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .rmore{display:block;width:100%;min-height:44px;margin:8px 0;border:1px solid var(--ln);border-radius:14px;background:var(--card2,var(--card));color:var(--acc,#ff9f0a);font:inherit;font-weight:700;cursor:pointer}
 .min{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .vdet{margin:2px 0 6px;color:var(--mut);font-size:13px}.vdet summary{cursor:pointer;min-height:28px}
+
+/* v71 serving sheet */
+.vfav,.vx{flex:none;border:0;border-radius:999px;width:34px;height:34px;margin-top:2px;background:var(--card2);color:var(--mut);font-size:18px;line-height:1}.vfav.on{color:#ffcc00;background:rgba(255,204,0,.15)}
+.vdet summary{font-size:12px;min-height:22px;list-style:none}.vdet summary::-webkit-details-marker{display:none}.vdet small{display:block;margin-top:2px}
+#v_ms{margin:2px 0 12px}
+.sheet-body{transition:transform .15s}
+.empt{text-align:center;padding:18px 8px 10px;color:var(--tx);font-weight:600}.empt span{display:block;font-size:34px;margin-bottom:4px}.empt small{display:block;color:var(--mut);font-weight:400;margin-top:3px;font-size:13px}
