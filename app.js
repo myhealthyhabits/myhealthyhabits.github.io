@@ -105,7 +105,7 @@ function cleanName(f){if(!f||!f.name)return'';if(f._cn!==undefined)return f._cn;
   out=cnCap(core)+(ex.length?', '+ex.join(', '):'');try{Object.defineProperty(f,'_cnx',{value:[...drop.filter(w=>!/^(drained|cooked|nfs|commercial|retail)$/.test(w)),...fx,...keep.slice(1)],enumerable:false,configurable:true})}catch(e){}}
  else{let head=segs[0],rest=segs.slice(1);const hl=head.toLowerCase();rest=rest.filter(s=>!hl.includes(s.toLowerCase())&&!CN_NOISE.test(s));
   const wasS=/[A-Z]{3}/.test(head)&&head===head.toUpperCase();head=cnCase(head);if(wasS)head=cnTitle(head);const shout=/^[^a-z]*$/.test(head.replace(/[^A-Za-z]/g,'')?head:'a');
-  const flav=rest.slice(-1).map(s=>cnCase(s));out=(head===head.toLowerCase()?cnCap(head):cnTitle(head))+(flav.length?' · '+cnTitle(flav[0].toLowerCase()===flav[0]?flav[0]:flav[0]):'')}
+  const flav=rest.slice(-1).map(s=>cnCase(s));if(f.src==='usda'&&!f.branded&&!f.brand){out=cnCap(head.toLowerCase())+(flav.length?', '+flav[0].toLowerCase():'')}else out=(head===head.toLowerCase()?cnCap(head):cnTitle(head))+(flav.length?' · '+cnTitle(flav[0].toLowerCase()===flav[0]?flav[0]:flav[0]):'')}
  out=out.replace(/\s+/g,' ').replace(/^[-–·:,\s]+|[-–·:,\s]+$/g,'').replace(/\s+·\s*$/,'').trim();if(out.length<2)out=raw;
  try{Object.defineProperty(f,'_cn',{value:out,enumerable:false,configurable:true})}catch(e){}return out}
 function cnDedupe(L){const g={};L.forEach(f=>{if(!f||!f.name)return;const k=cleanName(f).toLowerCase()+'|'+(cnBrand(f)||'').toLowerCase();(g[k]=g[k]||[]).push(f)});Object.values(g).forEach(G=>{if(G.length<2)return;const base=cleanName(G[0]);G.forEach(f=>{const d=(f._cnx||[]).find(w=>!base.toLowerCase().includes(w)&&G.some(o=>o!==f&&!(o._cnx||[]).includes(w)));if(d){try{Object.defineProperty(f,'_cn',{value:base+', '+d,enumerable:false,configurable:true})}catch(e){}}})});return L}
@@ -545,11 +545,14 @@ function simBoost(f,ws){if(!ws.length)return 0;const isD=!!f.dish||/^dish:/.test
  if(!q.every(w=>nt.some(t=>t.startsWith(w))))b-=35;
  if(likeSegs().has(sg.join(' ')))b+=6;return b}
 const fuzzyOnly=(f,ws)=>{const nt=ftoks(f);return!ws.map(stem).every(w=>nt.some(t=>t.startsWith(w)))};
+/* the query names this food itself ("Bread", "White bread", "Cheddar cheese"), not a side ingredient ("Egg sandwich on white bread") */
+const headMatch=(f,ws)=>{const q=ws.map(stem),sg=segOf(f);if(q.every((w,i)=>sg[i]&&sg[i].startsWith(w)))return true;return sg.length<=q.length+1&&q.every((w,i)=>sg[sg.length-q.length+i]===w)};
 function rankTidy(L,ws){if(!isStapleQ(ws)){const ex=L.some(f=>!fuzzyOnly(f,ws));const d=L.filter(f=>f&&f.dish&&(!ex||!fuzzyOnly(f,ws))).slice(0,6),ds=new Set(d);L=[...d,...L.filter(f=>!ds.has(f))]}const out=[],used=new Set(),k=f=>segOf(f).join(' ');
  L.forEach((f,i)=>{if(used.has(f))return;out.push(f);used.add(f);if(i>=12)return;const key=k(f);L.slice(i+1,30).forEach(g=>{if(!used.has(g)&&k(g)===key){out.push(g);used.add(g)}})});return out}
 /* Unified food library (Supabase): Postgres full-text + trigram search over USDA (Foundation, SR Legacy, FNDDS, popular Branded) and popular Open Food Facts US products. Falls back to the live USDA/OFF APIs, then local-only results. */
 const LIB_SB='https://mbmeftdocjazdrgpeftu.supabase.co',LIB_AK='sb_publishable__FA1ABf79m6khS0isPDlmQ_2fXh9CKN';
 const likedBases=()=>{const b=new Set(),add=f=>{if(!f)return;const n=(cleanName(f)||'').toLowerCase().split(',')[0].replace(/[^a-z0-9 ]/g,' ').trim().split(/\s+/).map(w=>w.replace(/ies$/,'y').replace(/(ch|sh|o|x)es$/,'$1').replace(/([^s])s$/,'$1')).join(' ');if(n)b.add(n)};Object.values(D.stats||{}).forEach(h=>h&&add(h.food));return[...b].slice(0,200)};
+async function srvBC(V){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),2500);const r=await fetch(LIB_SB+'/rest/v1/rpc/food_by_gtin',{method:'POST',signal:c.signal,headers:{apikey:LIB_AK,Authorization:'Bearer '+LIB_AK,'Content-Type':'application/json'},body:JSON.stringify({codes:V})}).finally(()=>clearTimeout(t));if(!r.ok)return null;const j=await r.json();const x=j&&j[0];if(!x)return null;const f=x.src==='off'?offFood(x.raw):usdaFood(x.raw);return f&&f.n.kcal?f:null}catch(e){return null}}
 async function srvQ(q){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),2500);if(SIG)SIG.signal.addEventListener('abort',()=>c.abort());
  const r=await fetch(LIB_SB+'/rest/v1/rpc/search_foods',{method:'POST',signal:c.signal,headers:{apikey:LIB_AK,Authorization:'Bearer '+LIB_AK,'Content-Type':'application/json'},body:JSON.stringify({q,liked:likedBases(),lim:40})}).finally(()=>clearTimeout(t));
  if(!r.ok)return null;const j=await r.json();if(!Array.isArray(j))return null;
@@ -573,7 +576,7 @@ async function search(q,mid){const R=$('#s_res');if(!R)return;q=(q||'').trim();c
  const ck=(st0?.k||'')+':'+lq;let list=[],err='';
  if(SC[ck])list=SC[ck];else{
   const jobs=[];
-  if(st0){const req=ws.map(w=>'+'+w).join(' ');st0.usda.forEach(b=>jobs.push(usdaQ(b+' '+req,'Branded').then(r=>r.length||!ws.length?r:usdaQ(b+' '+rest,'Branded')).catch(e=>{err+=e.message;return[]})));
+  if(st0){jobs.push(srvQ(st0.bn+' '+rest).then(r=>r||[]));const req=ws.map(w=>'+'+w).join(' ');st0.usda.forEach(b=>jobs.push(usdaQ(b+' '+req,'Branded').then(r=>r.length||!ws.length?r:usdaQ(b+' '+rest,'Branded')).catch(e=>{err+=e.message;return[]})));
    0}
   else{jobs.push(srvQ(rest).then(r=>r&&r.length?r:Promise.all([offQ(rest).then(r=>r||[]),usdaQ(rest,'Foundation,SR Legacy').catch(e=>{err+=e.message;return[]}),usdaQ(rest,'Branded').catch(e=>{err+=e.message;return[]})]).then(a=>a.flat())),...expQ(rest).map(x=>usdaQ(x,'Branded').catch(()=>[])))}
   const acc=[];jobs.forEach(j=>j.then(r=>{if(!r||!r.length||($('#s_q')?.value.trim()||'')!==q)return;acc.push(...r);SC['~'+ck]=acc;instant(q,mid)},()=>{}));
@@ -581,7 +584,7 @@ async function search(q,mid){const R=$('#s_res');if(!R)return;q=(q||'').trim();c
  if(($('#s_q')?.value.trim()||'')!==q)return;
  const seen=new Set();let all=[...loc,...list].filter(f=>{const k=fkey(f),k2=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k)||seen.has(k2))return false;seen.add(k);seen.add(k2);return true});
  const hits=f=>ws.filter((w,i)=>wHit(w,ftoks(f),i===ws.length-1)).length;
- const lset=new Set(loc);all=all.map(f=>[f,relScore(f,ws,st0)+(lset.has(f)&&!fuzzyOnly(f,ws)?1000:0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);all=rankTidy(all,ws).slice(0,40);
+ const lset=new Set(loc);all=all.map(f=>[f,relScore(f,ws,st0)+(lset.has(f)&&!fuzzyOnly(f,ws)&&!(isStapleQ(ws)&&(!headMatch(f,ws)||storeOf(f)))?1000:0)]).filter(([f,s])=>!st0||(storeOf(f)===st0&&(!ws.length||hits(f)>=(ws.length<=2?ws.length:ws.length-1)))).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);all=rankTidy(all,ws).slice(0,40);
  let note='';if(st0&&!all.length&&ws.length){note=`<div class="nomatch"><div>No ${esc(st0.lbl)} match for “${esc(rest)}” yet.<small>Add it once from the label and it stays in My Foods.</small></div><div class="row"><button class="btn sm" id="nm_scan">📷 Scan it</button><button class="btn sm alt" id="nm_add">+ Add it</button></div></div><p class="mut" style="font-size:13px;margin:10px 2px 4px">General results</p>`;
   const gk=':'+lq;let g=SC[gk];if(!g){g=(await Promise.all([usdaQ(rest,'Foundation,SR Legacy').catch(()=>[]),usdaQ(rest,'Branded').catch(()=>[])])).flat();SC[gk]=g}
   if(($('#s_q')?.value.trim()||'')!==q)return;all=g.map(f=>[f,relScore(f,ws,null)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,30)}
@@ -706,6 +709,7 @@ async function bcOFF(V){const F='?fields=code,product_name,brands,nutriments,ser
 async function bcUSDA(V){try{const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&dataType=Branded&pageSize=10&query='+encodeURIComponent(V.join(' ')),7000);if(!r.ok)return null;const j=await r.json();const x=(j.foods||[]).find(f=>bcSame(f.gtinUpc,V));if(!x)return null;const f=usdaFood(x);f.barcode=V.find(v=>v.length===12)||V[0];return f.n.kcal||f.n.p?f:null}catch(e){return null}}
 async function lookup(code,mid){code=String(code||'').replace(/\D/g,'');if(!code)return;const s=$('#b_s');if(s)s.textContent='Looking up '+code+'…';const V=bcVars(code);
  const cached=bcGet(V);if(cached){window._scanMid=mid;return pick(cached,mid)}const mine=D.custom.find(f=>bcSame(f.barcode,V))||Object.values(D.stats).map(s=>s.food).find(f=>f&&bcSame(f.barcode||(f.src==='off'&&f.ref),V));window._scanMid=mid;if(mine)return pick(mine,mid);if(!navigator.onLine){window._scanMid=null;if(s)s.textContent='Offline — this barcode isn’t saved on this phone yet. Try again when online.';return}
+ const sv=await srvBC(V);if(sv){sv.barcode=sv.barcode||code;bcPut(V,sv);pick(sv,mid);const sb=$('#sheetBody');if(sb){sb.insertAdjacentHTML('afterbegin',`<button class="fixlab" id="fixlab">Doesn't match the package? <b>📷 Scan label to fix</b></button>`);$('#fixlab').onclick=()=>labelScan(mid,{name:sv.name,brand:sv.brand,barcode:code})}return}
  const [p,u]=await Promise.all([bcOFF(V),bcUSDA(V)]);let named=null;
  if(p){const f=offFood(p);if(f.n.kcal){f.barcode=f.barcode||code;bcPut(V,f);pick(f,mid);const sb=$('#sheetBody');if(sb){sb.insertAdjacentHTML('afterbegin',`<button class="fixlab" id="fixlab">Doesn't match the package? <b>📷 Scan label to fix</b></button>`);$('#fixlab').onclick=()=>labelScan(mid,{name:f.name,brand:f.brand,barcode:code})}return}named=f}
  if(u){bcPut(V,u);return pick(u,mid)}window._scanMid=null;

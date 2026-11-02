@@ -1,0 +1,7 @@
+create table if not exists public.food_brand(alias text primary key, brand text not null);
+alter table public.food_brand enable row level security;
+drop policy if exists food_brand_read on public.food_brand; create policy food_brand_read on public.food_brand for select using (true);
+grant select on public.food_brand to anon, authenticated;
+insert into public.food_syn values ('\mwal ?mart\M','great value') on conflict (pat) do update set repl=excluded.repl;
+insert into public.food_brand(alias,brand) select public.food_norm(a),a from unnest(array['kroger','great value','del monte','green giant','bush''s','bushs','hunt''s','hunts','campbell''s','campbells','libby''s','libbys','dole','goya','progresso','s&w','allens','la sierra','old el paso','chef boyardee','amy''s','hormel','van camp''s','ro-tel','rotel','muir glen','le sueur','seneca','simple truth','private selection','food club','clover valley','good & gather','market pantry','member''s mark','kirkland','happy harvest','signature select','fairlife','seeq','myprotein','premier protein','quest','chobani','oikos','yoplait','kraft','heinz','starkist','bumble bee','chicken of the sea']) a on conflict do nothing;
+insert into public.food_staple select public.food_norm(t) from unnest(string_to_array('green bean,diced tomato,tomato sauce,pea,kidney bean,pinto bean,refried bean,corn,sweet corn,peach,pear,fruit cocktail,pineapple,mandarin orange,chicken noodle soup,tomato soup,tuna',',')) t on conflict do nothing;
