@@ -68,8 +68,8 @@ function google(){localStorage.setItem('mhh-oauth','google');location.href=SB+'/
 const bindG=()=>document.querySelectorAll('.gbtn').forEach(b=>b.onclick=google);
 const nice=x=>!navigator.onLine||/fetch|network/i.test(x.message)?'You seem to be offline. Check your connection and try again.':/invalid login/i.test(x.message)?'That email or password doesn\'t match. Try again or tap Forgot password.':/not confirmed/i.test(x.message)?'Please confirm your email first (check your inbox).':x.message;
 /* ---- UI hooks ---- */
-window.acctCard=()=>{const V=document.getElementById('view');if(!V||document.getElementById('acct'))return;const c=document.createElement('div');c.className='card sgrp';c.id='acct';
- c.innerHTML=`<div class="srow tap" id="ac_row"><span class="sic">${ses?'☁️':'👤'}</span><div>${ses?es(ses.email||'Signed in'):'Guest mode'}<small id="acct_st">${ses?es(stTxt||'Synced'):'Back up and sync across devices'}</small></div><b style="color:var(--pri)">${ses?'Account ›':'Sign in ›'}</b></div>`;
+window.acctCard=()=>{const V=document.getElementById('view');if(!V||document.getElementById('acct'))return;const c=document.createElement('div');c.className='card sgrp acctc';c.id='acct';
+ c.innerHTML=`<div class="srow tap" id="ac_row"><span class="sic">${ses?'☁️':'👤'}</span><div>${ses?es(ses.email||'Signed in'):'Guest mode'}<small id="acct_st">${ses?es(stTxt||'Synced'):'Back up and sync across devices'}</small></div>${ses?'<b>›</b>':'<span class="sinb">Sign in</span>'}</div>`;
  const slot=document.getElementById('acctSlot');slot?slot.replaceWith(c):V.prepend(c);
  $$('#ac_row').onclick=()=>{if(typeof sheet!=='function')return;
   if(ses){sheet(`<h2>Account</h2><p class="mut">${es(ses.email||'Signed in')}<br><small>${es(stTxt||'Synced')}</small></p><button class="btn" id="ac_sync">Sync now</button><button class="btn alt" id="ac_out">Sign out</button><button class="btn alt" id="ac_del" style="color:#ff453a">Delete account</button>`);$$('#ac_sync').onclick=()=>sync();$$('#ac_out').onclick=async()=>{await signOut();close();toast('Signed out · data stays on this device');render()};$$('#ac_del').onclick=delSheet}
