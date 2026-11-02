@@ -63,16 +63,14 @@ async function recapGen(manual){const t=logicalToday(),R=D.aiRecap||{};if(manual
  if(r&&r.ok&&j.headline){D.aiRecap={wk:aiWk(t),day:t,data:{headline:j.headline,wins:(j.wins||[]).slice(0,3),tips:(j.tips||[]).slice(0,2),streak:j.streak||''}};save()}
  else{window._rcErr=aiErr(r,j,'Weekly recap');if(!manual)D.aiRecapTry=t,save()}paintRecap()}
 function recapCard(){const t=logicalToday(),R=D.aiRecap,d=R&&R.data,busy=window._rcBusy;
- let body=busy?'<div class="ai-wait">🧑‍🏫 Writing your week…</div>':d?`<p class="rc-h">${esc(d.headline)}</p><div class="rc-sec"><b>🏆 Wins</b>${d.wins.map(w=>`<p>${esc(w)}</p>`).join('')}</div><div class="rc-sec"><b>💡 Try this</b>${d.tips.map(w=>`<p>${esc(w)}</p>`).join('')}</div>${d.streak?`<div class="rc-st">🔥 ${esc(d.streak)}</div>`:''}`
+ let body=busy?'<div class="ai-wait">🧑‍🏫 Writing your week…</div>':d?`<p class="rc-h">${esc(d.headline)}</p><div class="rc-sec"><b>🏆 Wins</b>${d.wins.slice(0,2).map(w=>`<p>${esc(w)}</p>`).join('')}</div><div class="rc-sec"><b>💡 Try this</b>${d.tips.slice(0,1).map(w=>`<p>${esc(w)}</p>`).join('')}</div><button class="rc-more" id="rc_full">See full recap ›</button>`
   :`<p class="mut">Log a couple of days and your coach will write a weekly recap here.</p>`;
  if(window._rcErr&&!busy)body+=`<div class="ai-msg">${esc(window._rcErr)}</div>`;
  const can=d&&R.day!==t&&!busy;
  return`<div class="card rcap" id="rcap"><div class="rc-top"><h2>🧑‍🏫 Weekly coach</h2>${d?`<button class="pill" id="rc_ref" ${can?'':'disabled'}>${R.day===t?'✓ Fresh today':'↻ Refresh'}</button>`:''}</div>${body}<small class="mut">AI-written from your logs · ${d&&R.wk===aiWk(t)?'this week':'updates weekly'}</small></div>`}
-function paintRecap(){const c=document.getElementById('rcap');if(!c)return;c.outerHTML=recapCard();const b=document.getElementById('rc_ref');if(b)b.onclick=()=>{window._rcErr='';recapGen(1)}}
+function paintRecap(){const c=document.getElementById('rcap');if(!c)return;c.outerHTML=recapCard();const b=document.getElementById('rc_ref');if(b)b.onclick=()=>{window._rcErr='';recapGen(1)};const f=document.getElementById('rc_full'),d=D.aiRecap&&D.aiRecap.data;if(f&&d)f.onclick=()=>sheet(`<h2>🧑‍🏫 Weekly coach</h2><p class="rc-h">${esc(d.headline)}</p><div class="rc-sec"><b>🏆 Wins</b>${d.wins.map(w=>`<p>${esc(w)}</p>`).join('')}</div><div class="rc-sec"><b>💡 Try this</b>${d.tips.map(w=>`<p>${esc(w)}</p>`).join('')}</div>${d.streak?`<div class="rc-st">🔥 ${esc(d.streak)}</div>`:''}<button class="btn alt" data-close="1">Done</button>`)}
 function recapMaybe(){const t=logicalToday(),R=D.aiRecap;if(window._rcBusy||(R&&R.wk===aiWk(t))||D.aiRecapTry===t)return;if(recapData().daysLogged<2)return;recapGen(0)}
 /* ---- hooks ---- */
-function aiHook(){if(typeof tab==='undefined'||typeof V==='undefined')return;if(tab==='today'&&!document.querySelector('.aibar')){const h=V.querySelector('.rhero');if(h)h.insertAdjacentHTML('afterend',`<div class="aibar"><button id="ai_eat"><span>🍽️</span><b>What should I eat?</b><small>3 ideas that fit your day</small></button><button id="ai_talk"><span>🎙️</span><b>Talk or type to log</b><small>“2 eggs and toast”</small></button></div>`);
-  const e=$('#ai_eat'),k=$('#ai_talk');if(e)e.onclick=()=>ideasSheet();if(k)k.onclick=()=>talkSheet()}
- if(tab==='progress'&&!document.getElementById('rcap')){V.insertAdjacentHTML('afterbegin',recapCard());paintRecap();recapMaybe()}
+function aiHook(){if(typeof tab==='undefined'||typeof V==='undefined')return; if(tab==='progress'&&!document.getElementById('rcap')){const sl=document.getElementById('rcSlot');sl?sl.insertAdjacentHTML('beforeend',recapCard()):V.insertAdjacentHTML('afterbegin',recapCard());paintRecap();recapMaybe()}
 }
 (function(){const prev=window.afterRender;window.afterRender=function(){aiHook();return prev&&prev.apply(this,arguments)};aiHook()})();
