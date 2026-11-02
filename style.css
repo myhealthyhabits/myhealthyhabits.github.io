@@ -651,3 +651,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 #v_ms{margin:2px 0 12px}
 .sheet-body{transition:transform .15s}
 .empt{text-align:center;padding:18px 8px 10px;color:var(--tx);font-weight:600}.empt span{display:block;font-size:34px;margin-bottom:4px}.empt small{display:block;color:var(--mut);font-weight:400;margin-top:3px;font-size:13px}
+/* v72 tracking */
+.mplus{width:44px;height:44px}
+.qchip button{min-height:44px}.qcs{display:block;font-size:11px;font-weight:500;color:var(--mut);margin-left:4px}
+.lagain{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#ff9f0a;margin:10px 2px -2px}
+.stchip.last{background:rgba(48,209,88,.15);color:#30d158}
+.tkbars{background:var(--card2);border-radius:16px;padding:10px 12px;margin:8px 0}.mbh{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.mbr{display:flex;align-items:center;gap:8px;margin:5px 0}.mbl{width:86px;font-size:13px;font-weight:600}.mbt{flex:1;height:10px;border-radius:9px;background:rgba(255,255,255,.08);display:flex;overflow:hidden}.mbt i{display:block;height:100%;transition:width .25s}.mbt .mba{opacity:.5;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)!important}
+.mbv{width:64px;text-align:right;font-size:13px;font-weight:700}.mbv small{color:var(--mut);font-weight:500}.mbv.over{color:#ff6b6b}
+.scok{text-align:center}.scok>span{font-size:44px;display:block}.scok h2{margin:4px 0}
+.fabmeals .pill{min-height:44px}.mvdt{min-height:44px;border-radius:99px;padding:0 12px;max-width:160px}
+[data-theme=light] .mbt{background:rgba(0,0,0,.08)}
