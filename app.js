@@ -404,7 +404,7 @@ function openAdd(mid){window.curMid=mid;sheet(`<h2>Add to ${esc(D.meals.find(m=>
 function instant(q,mid){const R=$('#s_res'),ws=qWords(q);if(!ws.length)return;const pool=[...STORELIB,...CONDLIB,...(typeof DISHLIB!=="undefined"?DISHLIB:[]),...(typeof FOODLIB!=="undefined"?FOODLIB:[]),...D.custom,...recFoods(),...Object.values(D.stats).map(s=>s.food).filter(f=>f&&f.src!=='recipe'),...Object.values(SC).flat()],seen=new Set();
  const L=pool.filter(f=>{const k=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k))return false;seen.add(k);return(!storeSel||storeOf(f)===storeSel)&&fMatch(f,ws)}).map(f=>[f,relScore(f,ws,storeSel)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);L.splice(0,L.length,...dishFirst(L).slice(0,12));
  $('#s_tabs').querySelectorAll('button').forEach(b=>b.classList.remove('on'));if(!L.length){if(!R.querySelector('.res'))R.innerHTML='<p class="mut">Searching…</p>';return}R.innerHTML=L.map(f=>resRow(f)).join('')+'<p class="mut" style="font-size:13px" id="s_more">Searching online…</p>';bindRes(L,mid,f=>pick(f,mid))}
-const resRow=(f,extra='',mid=window.curMid)=>{const st=storeOf(f),u0=(f.dish&&unitsFor(f).find(u=>u.label==='regular'))||unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res qpr" data-i><span class="emo remo">${emoOf(f)}</span><div class="rtx"><b class="rnm">${esc(f.name)}</b> ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}${f.dish?`<span class="stchip dish">🍽️ Dish${f.dv==='r'?' · restaurant':''}</span>`:''}${f.src==='ai'?'<span class="stchip dish">✨ AI estimate</span>':''}<div class="rsub">${(()=>{const k=f.n.kcal*u0.mult;return`<span class="kchip ${k<150?'lo':k<400?'md':'hi'}">${fE(k)}</span>`})()}<small>${f.brand?esc(f.brand)+' · ':''}per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div></div><span class="qp">${qpHtml(mid,f)}</span></div>`};
+const resRow=(f,extra='',mid=window.curMid)=>{const st=storeOf(f),u0=(f.dish&&unitsFor(f).find(u=>u.label==='regular'))||unitsFor(f)[0]||{label:'serving',mult:1};return`<div class="res qpr" data-i><span class="emo remo">${emoOf(f)}</span><div class="rtx"><b class="rnm">${esc(f.name)}</b> ${extra}${st?`<span class="stchip">${esc(st.lbl)}</span>`:''}${f.cond?'<span class="stchip cond">Condiment</span>':''}${f.dish?`<span class="stchip dish">🍽️ Dish${f.dv==='r'?' · restaurant':''}</span>`:''}${f.src==='ai'?'<span class="stchip dish">✨ AI estimate</span>':''}<div class="rsub">${(()=>{const k=f.n.kcal*u0.mult;return`<span class="kchip ${k<150?'lo':k<400?'md':'hi'}">${fE(k)}</span>`})()}<small>${f.brand?'<b class="rbr">'+esc(f.brand)+'</b> · ':''}per ${u0.label==='serving'&&u0.note?esc(u0.note):'1 '+esc(u0.label)}</small></div></div><span class="qp">${qpHtml(mid,f)}</span></div>`};
 function bindRes(list,mid,onpick){if(!$('#s_res'))return;$('#s_res').querySelectorAll('[data-i]').forEach((el,i)=>el.onclick=ev=>{const b=ev.target.closest('[data-qd]');if(b){ev.stopPropagation();const it=list[i],f=it.food||it;qpTap(mid,f,+b.dataset.qd,it.food?it.ui:0,el.querySelector('.qp'));return}onpick(list[i])})}
 /* + stepper: merge taps into one entry per food per meal */
 const qpEntry=(mid,f)=>(dayLog(cur)[mid]||[]).find(x=>fkey(x.food)===fkey(f));
@@ -422,7 +422,7 @@ function listLocal(mid){let html='',list=[];const S=Object.values(D.stats);
  else if(addTab==='cond'){list=CONDLIB;$('#s_res').innerHTML=list.map(f=>resRow(f)).join('');bindRes(list,mid,f=>pick(f,mid))}
  else{list=D.saved;$('#s_res').innerHTML=list.map(m=>{const s=sumEntries(m.items);return`<div class="res" data-i>${esc(m.name)}<br><small>${m.items.length} items · ${r0(s.kcal)} cal</small></div>`}).join('')||'<p class="mut">Save a meal from the ⋯ menu on any meal, or build one in Settings.</p>';
   bindRes(list,mid,m=>{m.items.forEach(e=>addEntry(mid,{...e,id:uid()}));close();render();toast('Added '+m.name)})}}
-const pick=(f,mid,ui=0,qty=1)=>servingSheet(f,ui,qty,mid,(e,m)=>{addEntry(m,e);render();toast('Added '+f.name)});
+const pick=(f,mid,ui=0,qty=1)=>{if(window.bcLink&&f){f={...f,barcode:window.bcLink};window.bcLink=null}return servingSheet(f,ui,qty,mid,(e,m)=>{addEntry(m,e);render();toast('Added '+f.name)})};
 
 const UCODE=s=>String(s||'').replace(/(\d)\s*(oza)\b/gi,'$1 fl oz').replace(/\boza\b/gi,'fl oz').replace(/\bonz\b/gi,'oz').replace(/(\d)\s*grm\b/gi,'$1g').replace(/\bgrm\b/gi,'g').replace(/(\d)\s*mlt\b/gi,'$1ml').replace(/\bmlt\b/gi,'ml');
 function usdaFood(x){const g=id=>{const n=(x.foodNutrients||[]).find(n=>n.nutrientId===id||n.nutrientNumber===String(id));return n?n.value:0};
@@ -432,7 +432,7 @@ function usdaFood(x){const g=id=>{const n=(x.foodNutrients||[]).find(n=>n.nutrie
  units.push({label:'100 g',mult:1},{label:'1 oz',mult:.2835},{label:'1 g',mult:.01});
  const nm=x.description.charAt(0)+x.description.slice(1).toLowerCase();
  return{src:'usda',ref:x.fdcId,dt:x.dataType,branded:x.dataType==='Branded',owner:x.brandOwner||'',name:x.dataType==='Branded'?nm.replace(/\b\w/g,c=>c.toUpperCase()):x.description,brand:(x.brandName||x.brandOwner||'').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()).replace(/'S\b/g,"'s"),n,units}}
-function offFood(p){const N=p.nutriments||{};const kcal=N['energy-kcal_100g']??(N.energy_100g?N.energy_100g/4.184:0);
+function offFood(p){const N={...(p.nutriments||{})},sq0=parseFloat(p.serving_quantity);if(sq0>0&&N['energy-kcal_100g']==null&&!N.energy_100g&&(N['energy-kcal_serving']||N.energy_serving)){const k=100/sq0;N['energy-kcal_100g']=N['energy-kcal_serving']?N['energy-kcal_serving']*k:N.energy_serving/4.184*k;['proteins','carbohydrates','fat','fiber'].forEach(x=>{if(N[x+'_100g']==null&&N[x+'_serving']!=null)N[x+'_100g']=N[x+'_serving']*k})}const kcal=N['energy-kcal_100g']??(N.energy_100g?N.energy_100g/4.184:0);
  const n={kcal:+kcal||0,p:+N.proteins_100g||0,c:+N.carbohydrates_100g||0,f:+N.fat_100g||0,fb:+N.fiber_100g||0};const units=[];
  const sq=parseFloat(p.serving_quantity)||(N['energy-kcal_serving']&&N['energy-kcal_100g']?Math.round(N['energy-kcal_serving']/N['energy-kcal_100g']*1000)/10:0);const ss=String(p.serving_size||''),lg=parseFloat((ss.match(/(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i)||[])[1]?.replace(',','.'));let chk='';
  if(sq&&sq<10&&!/tsp|tbsp|teaspoon|tablespoon|drop|spray|gum|mint|packet|sachet|stick/i.test(ss+' '+(p.product_name||''))&&(N['energy-kcal_100g']||0)>150)chk='The label data says one serving is '+(ss||sq+' g')+', which looks too small.';
@@ -461,7 +461,7 @@ const EMO=[[/taco/,'🌮'],[/burrito|enchilada|wrap\b/,'🌯'],[/sushi|californi
 const emoOf=f=>{if(f.emo)return f.emo;const t=norm(f.name+' '+(f.brand||''));return(EMO.find(([r])=>r.test(t))||[0,'🍽️'])[1]};
 const qWords=q=>norm(q).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1&&!/^(and|with|the|of)$/.test(w));
 const stem=w=>w.replace(/(ies)$/,'y').replace(/(es|s)$/,'');
-function relScore(f,ws,store){const nm=(f.name||'').toLowerCase(),seg=nm.split(',')[0].trim(),toks=nm.replace(/[^a-z0-9 ]/g,' ').split(/\s+/).map(stem);let s=0;
+function relScore(f,ws,store){const nm=(f.name||'').toLowerCase(),seg=nm.split(',')[0].trim(),toks=nm.replace(/[^a-z0-9 ]/g,' ').split(/\s+/).map(stem);let s=0;const hs=D.stats[fkey(f)];if(hs&&hs.food)s+=14+Math.min(hs.count||1,15)*1.5+(hs.last&&Date.now()-hs.last<12096e5?6:0);if(D.fav.includes(fkey(f)))s+=8;if(D.custom.includes(f))s+=6;
  const tk=ftoks(f),bt=norm(f.brand||'').split(/[^a-z0-9]+/).map(stem);let hitAll=ws.length>0,bq=0;ws.forEach((w,i)=>{const h=wHit(w,tk,i===ws.length-1);if(h===3)s+=10;else if(h===2)s+=7;else if(h===1)s+=5;else{s-=6;hitAll=false}if(bt.includes(stem(w)))bq=1});if(hitAll)s+=15;
  if(ws.length&&stem(seg)===stem(ws.join(' ')))s+=8;if(/\braw\b/.test(nm))s+=3;if(/dehydrated|powder|babyfood|chips|candied|canned in heavy|frozen dessert/.test(nm))s-=4;
  if(f.cond)s+=6;if(f.dt==='SR Legacy')s+=2;if(f.src==='custom')s+=6;
@@ -469,9 +469,14 @@ function relScore(f,ws,store){const nm=(f.name||'').toLowerCase(),seg=nm.split('
  return s-Math.min(nm.length,120)/40}
 async function usdaQ(q,types){const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&pageSize=30&dataType='+encodeURIComponent(types)+'&query='+encodeURIComponent(q),8000,SIG?.signal);
  if(!r.ok)throw new Error(r.status===429?'limit':'usda');const j=await r.json();return(j.foods||[]).map(usdaFood).filter(f=>f.n.kcal||f.n.p)}
+const OFFH=['https://world.openfoodfacts.org','https://us.openfoodfacts.org'],slugT=x=>String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 async function offQ(q,tag){const F='code,product_name,brands,stores,nutriments,serving_size,serving_quantity',map=j=>(j.products||j.hits||[]).filter(p=>p.product_name).map(offFood).filter(f=>f.n.kcal);
- const us=['https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=24&fields='+F+'&search_terms='+encodeURIComponent(q)+(tag?'&tagtype_0='+tag[0]+'&tag_contains_0=contains&tag_0='+encodeURIComponent(tag[1]):'')];
- for(const u of us){try{const r=await tfetch(u,7000,SIG?.signal);if(!r.ok)continue;return map(await r.json())}catch(e){}}return null}
+ const get=async u=>{try{const r=await tfetch(u,6000,SIG?.signal);if(!r.ok||!/json/.test(r.headers.get('content-type')||''))return null;return map(await r.json())}catch(e){return null}};
+ const legacy=(async()=>{for(const h of OFFH){const r=await get(h+'/cgi/search.pl?json=1&page_size=24&sort_by=unique_scans_n&fields='+F+'&search_terms='+encodeURIComponent(q)+(tag?'&tagtype_0='+tag[0]+'&tag_contains_0=contains&tag_0='+encodeURIComponent(tag[1]):''));if(r)return r}return null})();
+ /* the legacy full-text search is often down; the v2 API reliably finds brand queries (Seeq, Myprotein, Fairlife…) */
+ const ws=q.split(/\s+/).filter(w=>w.length>2),bs=tag?[]:[...new Set([slugT(q),...ws.slice(0,3).map(slugT)])].filter(Boolean),qw=qWords(q);
+ const v2=Promise.all(bs.map(b=>get(OFFH[0]+'/api/v2/search?page_size=30&sort_by=unique_scans_n&fields='+F+'&brands_tags='+encodeURIComponent(b)).then(r=>(r||[]).filter(f=>slugT(f.brand||'')===b&&fMatch(f,qw))))).then(a=>a.flat());
+ const[a,b]=await Promise.all([legacy,v2]);const out=[...(a||[]),...(b||[])];return out.length||a?out:null}
 const SC={};let SIG=null;const expQ=q=>{const n=norm(q);if(!/maccheese/.test(n))return[];return['shells cheese','macaroni cheese'].map(x=>n.replace(/maccheese/,x).replace(/\s+/g,' ').trim())};
 async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STORES.find(s=>s.re.test(q))||storeSel;if(!q&&!st0)return;
  const rest=q.replace(st0?new RegExp(st0.re.source,'gi'):/$^/,' ').replace(/\s+/g,' ').trim(),ws=qWords(rest);
@@ -483,8 +488,9 @@ async function search(q,mid){const R=$('#s_res');q=(q||'').trim();const st0=STOR
   const jobs=[];
   if(st0){const req=ws.map(w=>'+'+w).join(' ');st0.usda.forEach(b=>jobs.push(usdaQ(b+' '+req,'Branded').then(r=>r.length||!ws.length?r:usdaQ(b+' '+rest,'Branded')).catch(e=>{err+=e.message;return[]})));
    0}
-  else{jobs.push(usdaQ(rest,'Foundation,SR Legacy').catch(e=>{err+=e.message;return[]}),usdaQ(rest,'Branded').catch(e=>{err+=e.message;return[]}),...expQ(rest).map(x=>usdaQ(x,'Branded').catch(()=>[])))}
-  list=(await Promise.all(jobs)).flat();if(list.filter(f=>!st0||storeOf(f)===st0).length<8){const oj=st0?[...st0.ob.slice(0,2).map(b=>offQ(rest,['brands',b])),offQ(rest,['stores',st0.os])]:[offQ(rest)];list=list.concat(...(await Promise.all(oj)).map(x=>x||[]))}if(list.length)SC[ck]=list}
+  else{jobs.push(offQ(rest).then(r=>r||[]),usdaQ(rest,'Foundation,SR Legacy').catch(e=>{err+=e.message;return[]}),usdaQ(rest,'Branded').catch(e=>{err+=e.message;return[]}),...expQ(rest).map(x=>usdaQ(x,'Branded').catch(()=>[])))}
+  const acc=[];jobs.forEach(j=>j.then(r=>{if(!r||!r.length||($('#s_q')?.value.trim()||'')!==q)return;acc.push(...r);SC['~'+ck]=acc;instant(q,mid)},()=>{}));
+  list=(await Promise.all(jobs)).flat();delete SC['~'+ck];if(st0&&list.filter(f=>storeOf(f)===st0).length<8){const oj=st0?[...st0.ob.slice(0,2).map(b=>offQ(rest,['brands',b])),offQ(rest,['stores',st0.os])]:[offQ(rest)];list=list.concat(...(await Promise.all(oj)).map(x=>x||[]))}if(list.length)SC[ck]=list}
  if(($('#s_q')?.value.trim()||'')!==q)return;
  const seen=new Set();let all=[...loc,...list].filter(f=>{const k=fkey(f),k2=(f.name+'|'+(f.brand||'')).toLowerCase();if(seen.has(k)||seen.has(k2))return false;seen.add(k);seen.add(k2);return true});
  const hits=f=>ws.filter((w,i)=>wHit(w,ftoks(f),i===ws.length-1)).length;
@@ -601,11 +607,25 @@ async function scan(mid){sheet(`<h2>Scan a barcode</h2><div class="vf" id="b_vf"
   await zx.decodeFromConstraints({video:{facingMode:'environment'}},'b_v',(res)=>{if(res)found(res.getText())});
  }catch(e){$('#b_s').textContent='Camera not available ('+e.name+'). Type the barcode number instead.'}}
 const loadZX=()=>window.ZXing?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='vendor/zxing.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
-async function lookup(code,mid){if(!code)return;const s=$('#b_s');if(s)s.textContent='Looking up '+code+'…';
- const mine=D.custom.find(f=>f.barcode===code)||Object.values(D.stats).map(s=>s.food).find(f=>f.barcode===code);if(mine)return pick(mine,mid);
- try{const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json?fields=code,product_name,brands,nutriments,serving_size,serving_quantity');
-  const j=await r.json();if(j.status===1&&j.product){const f=offFood(j.product);if(f.n.kcal){pick(f,mid);const sb=$('#sheetBody');if(sb){sb.insertAdjacentHTML('afterbegin',`<button class="fixlab" id="fixlab">Doesn't match the package? <b>📷 Scan label to fix</b></button>`);$('#fixlab').onclick=()=>labelScan(mid,{name:f.name,brand:f.brand,barcode:code})}return}toast('Found “'+f.name+'” but it has no nutrition info — add it below');return customFood(mid,null,{name:f.name,brand:f.brand,barcode:code})}}catch(e){}
- toast('Not found — scan the label or type it in');customFood(mid,null,{barcode:code})}
+const gtinOk=c=>{if(!/^\d{8}$|^\d{12,14}$/.test(c))return false;const d=c.split('').map(Number),k=d.pop();let t=0;d.reverse().forEach((x,i)=>t+=x*(i%2?1:3));return(10-t%10)%10===k};
+const upcE=c=>{if(!/^[01]\d{7}$/.test(c))return null;const b=c.slice(1,7),m=b[5];const x='012'.includes(m)?b.slice(0,2)+m+'0000'+b.slice(2,5):m==='3'?b.slice(0,3)+'00000'+b.slice(3,5):m==='4'?b.slice(0,4)+'00000'+b[4]:b.slice(0,5)+'0000'+m;return c[0]+x+c[7]};
+/* every form one product can be scanned/stored as: UPC-A 12, EAN-13 with leading 0, GTIN-14, and UPC-E expanded */
+const bcVars=c=>{const out=new Set([c]);const e=upcE(c);if(e)out.add(e);[...out].forEach(x=>{const t=x.replace(/^0+/,'');if(t.length>=7){out.add(t.padStart(12,'0'));out.add(t.padStart(13,'0'));out.add(t.padStart(14,'0'))}});return[...out].filter(x=>x.length>=8)};
+const bcSame=(a,V)=>a&&V.includes(String(a).replace(/\D/g,''));
+async function bcOFF(V){const F='?fields=code,product_name,brands,nutriments,serving_size,serving_quantity',cs=V[0].length===8?[V[0],...(upcE(V[0])?[upcE(V[0]).padStart(13,'0')]:[])]:[V.find(x=>x.length===13)||V[0]];
+ for(const h of OFFH)for(const c of cs){try{const r=await tfetch(h+'/api/v2/product/'+c+'.json'+F,6000);if(!r.ok&&r.status!==404)continue;const j=await r.json();if(j.status===1&&j.product)return j.product;if(r.status===404||j.status===0)break}catch(e){}}return null}
+async function bcUSDA(V){try{const r=await tfetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+(D.usdaKey||APP_USDA_KEY||'DEMO_KEY')+'&dataType=Branded&pageSize=10&query='+encodeURIComponent(V.join(' ')),7000);if(!r.ok)return null;const j=await r.json();const x=(j.foods||[]).find(f=>bcSame(f.gtinUpc,V));if(!x)return null;const f=usdaFood(x);f.barcode=V.find(v=>v.length===12)||V[0];return f.n.kcal||f.n.p?f:null}catch(e){return null}}
+async function lookup(code,mid){code=String(code||'').replace(/\D/g,'');if(!code)return;const s=$('#b_s');if(s)s.textContent='Looking up '+code+'…';const V=bcVars(code);
+ const mine=D.custom.find(f=>bcSame(f.barcode,V))||Object.values(D.stats).map(s=>s.food).find(f=>f&&bcSame(f.barcode||(f.src==='off'&&f.ref),V));if(mine)return pick(mine,mid);
+ const [p,u]=await Promise.all([bcOFF(V),bcUSDA(V)]);let named=null;
+ if(p){const f=offFood(p);if(f.n.kcal){pick(f,mid);const sb=$('#sheetBody');if(sb){sb.insertAdjacentHTML('afterbegin',`<button class="fixlab" id="fixlab">Doesn't match the package? <b>📷 Scan label to fix</b></button>`);$('#fixlab').onclick=()=>labelScan(mid,{name:f.name,brand:f.brand,barcode:code})}return}named=f}
+ if(u)return pick(u,mid);
+ bcMiss(code,mid,named)}
+function bcMiss(code,mid,named){const bad=!gtinOk(code)&&!upcE(code);
+ sheet(`<h2>🔍 Barcode not found</h2><p class="mut" style="margin-top:0">${named?`We know <b>${esc(named.name)}</b> but not its nutrition yet.`:bad?`<b>${esc(code)}</b> didn’t read cleanly. Try scanning again, or:`:`<b>${esc(code)}</b> isn’t in Open Food Facts or USDA yet. Add it once and it’s saved to My Foods, so the next scan finds it instantly.`}</p>
+ <button class="btn" id="bm_snap">📸 Snap the nutrition label</button><button class="btn alt" id="bm_name">🔎 Search by name</button><button class="btn alt" id="bm_man">✏️ Enter it manually</button>${bad?'<button class="btn alt" id="bm_re">📷 Scan again</button>':''}<button class="btn alt" data-close="1">Cancel</button>`);
+ const pre={barcode:code,name:named?.name,brand:named?.brand};$('#bm_snap').onclick=()=>labelScan(mid,pre);$('#bm_man').onclick=()=>customFood(mid,null,pre);if($('#bm_re'))$('#bm_re').onclick=()=>scan(mid);
+ $('#bm_name').onclick=()=>{window.bcLink=code;openAdd(mid);const i=$('#s_q');if(i&&named){i.value=named.name;i.dispatchEvent(new Event('input'))}toast('Pick the match — we’ll remember this barcode')}}
 
 /* ---------- nutrition label OCR (Tesseract.js, lazy-loaded, on-device) ---------- */
 const loadJS=(src,test)=>test()?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
