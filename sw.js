@@ -1,4 +1,4 @@
-const CACHE='mhh-v75';
+const CACHE='mhh-v76';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','index.html','exlib.js','msicons.js','condlib.js','foodlib.js','dishlib.js','dishes.js','storelib.js','labelscan.js','mealscan.js','extras.js','track.js','app.js','sync.js','ai.js','style.css','manifest.webmanifest','icon-192-v2.png','icon-512-v2.png','icon-maskable-192-v2.png','icon-maskable-512-v2.png','apple-touch-icon-v2.png','favicon-32-v2.png','favicon-v2.ico','icon-v2.svg','privacy.html','terms.html'].map(u=>new Request(u,{cache:'reload'}))).catch(()=>{})))});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin)return;
