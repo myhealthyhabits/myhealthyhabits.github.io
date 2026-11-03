@@ -31,7 +31,7 @@ function goalParty(msg){const old=document.getElementById('gbadge');if(old)old.r
 function afterRender(){phFill();fxAfter();snapTab();setTimeout(goalCheck,(window._fxQ&&_fxQ.length)?1300:250);if(typeof chCheck==='function')setTimeout(chCheck,(window._fxQ&&_fxQ.length)?2600:900)}
 
 /* ---------- v45: fun log animations ---------- */
-const fxOn=()=>!D.noFx,fxRM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fxOn=()=>D.fx===true,fxRM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 window._fxQ=[];
 function fxWrap(){if(window._fxW||typeof addEntry!=='function')return;window._fxW=1;const orig=addEntry;
  window.addEntry=addEntry=function(mid,e,date){const d=date||cur;if(d===cur&&fxOn()&&e){if(!_fxQ.length){_fxQ.prev=dayTotal(cur).kcal}_fxQ.push({mid,emo:emoOf(e.food),kcal:e.kcal||0,id:e.id})}return orig.apply(this,arguments)}}

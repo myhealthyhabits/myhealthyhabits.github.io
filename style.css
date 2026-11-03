@@ -672,3 +672,27 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .res .rsub small{color:var(--mut)}
 .rmw.slim .rmp{width:32px;height:32px;font-size:18px;flex:none}
 .sheet-body{overscroll-behavior:contain}.wh,.wheels{touch-action:pan-y}
+/* ===== v80 calm logging (Lose It–style layout, our look) ===== */
+.sheet{animation:fade .15s both}.sheet-body{animation:up .2s cubic-bezier(.2,.8,.2,1) both}
+@keyframes up{from{transform:translateY(16px);opacity:.6}}
+#view .wave,#view .bub,#view [class*="flame"],#view .vfl{animation:none!important}
+.ra{transition:stroke-dashoffset .3s ease-out}
+.lmeal{padding:0;overflow:hidden}.lmeal .mch{padding:12px 14px;border-bottom:1px solid var(--ln);margin:0}
+.lmeal .mlist{margin:0}.lmeal .miw{border-radius:0;border-bottom:1px solid var(--ln)}
+.lmeal .mi{padding:10px 14px;gap:10px;border-radius:0;animation:none!important}
+.lmeal .min{font-size:15px}.lmeal .min small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
+.lmeal .kc{font-weight:600;font-size:15px}
+.madd{display:block;width:100%;text-align:left;background:none;border:0;color:var(--pri);font-weight:600;font-size:15px;padding:12px 14px;cursor:pointer}
+#s_res .res{animation:none!important;padding:11px 4px;border-bottom:1px solid var(--ln);border-radius:0;background:none}
+#s_res .res .rnm{font-weight:600;font-size:15px}#s_res .res .rsub small{color:var(--mut)}
+.tabs3{display:grid;grid-template-columns:repeat(var(--n,2),1fr);gap:0;border-bottom:1px solid var(--ln);margin:10px 0 4px}
+.tabs3 button{border:0!important;border-radius:0!important;background:none!important;padding:10px 0;font-weight:600;color:var(--mut);border-bottom:2px solid transparent!important}
+.tabs3 button.on{color:var(--pri);border-bottom-color:var(--pri)!important}
+.addmore{margin:10px 0 4px}.addmore summary{color:var(--mut);font-size:14px;padding:8px 2px;cursor:pointer}.addmore .btn{margin-top:6px}
+.adddone{position:sticky;bottom:0;margin-top:8px}
+.vcal{text-align:center;margin:6px 0 0}.vcal b{font-size:34px;color:var(--pri)}.vcal span{display:block;color:var(--mut);font-size:13px}
+.vwheels{height:200px}.vwheels .wh{width:110px}.vwheels .whu{width:190px}.vwheels .whu .whi{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
+.vwheels .wcol{display:flex;flex-direction:column;align-items:center}.vwheels .wcol span{display:none}
+.vtype{display:block;margin:4px auto 6px;font-size:13px}
+.vnut{margin:6px 0}.vnut summary{color:var(--mut);font-size:14px;padding:6px 2px;cursor:pointer}
+.whi{transition:none}
