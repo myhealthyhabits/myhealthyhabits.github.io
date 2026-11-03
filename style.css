@@ -696,3 +696,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .vtype{display:block;margin:4px auto 6px;font-size:13px}
 .vnut{margin:6px 0}.vnut summary{color:var(--mut);font-size:14px;padding:6px 2px;cursor:pointer}
 .whi{transition:none}
+/* v81 meals picker */
+.mpi{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid rgba(255,255,255,.07)}
+.mpi input{width:22px;height:22px;accent-color:#ff7a2f;flex:none}
+.mpi span{flex:1;display:flex;flex-direction:column}.mpi small{color:var(--mut,#999)}.mpi em{font-style:normal;font-weight:600}
