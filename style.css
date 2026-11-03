@@ -700,3 +700,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .mpi{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid rgba(255,255,255,.07)}
 .mpi input{width:22px;height:22px;accent-color:#ff7a2f;flex:none}
 .mpi span{flex:1;display:flex;flex-direction:column}.mpi small{color:var(--mut,#999)}.mpi em{font-style:normal;font-weight:600}
+/* v82: day view is still — no entrance animation on re-render */
+#view .card{animation:none}
+.res .mqa{flex:none}
