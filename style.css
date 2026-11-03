@@ -703,3 +703,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 /* v82: day view is still — no entrance animation on re-render */
 #view .card{animation:none}
 .res .mqa{flex:none}
+/* v83 barcode lookup spinner (static ring if reduced motion) */
+.bcspin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:#ff7a2f;border-radius:50%;vertical-align:-2px;margin-right:6px;animation:bcs .8s linear infinite}
+@keyframes bcs{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.bcspin{animation:none}}
