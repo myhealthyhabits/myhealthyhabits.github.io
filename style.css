@@ -707,3 +707,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .bcspin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:#ff7a2f;border-radius:50%;vertical-align:-2px;margin-right:6px;animation:bcs .8s linear infinite}
 @keyframes bcs{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.bcspin{animation:none}}
+/* v84 My Foods */
+.mfbar{display:flex;gap:8px;align-items:center;margin:6px 0 4px}
+.mfbar input{flex:1;min-width:0;height:38px;border-radius:12px;border:1px solid var(--ln);background:rgba(255,255,255,.05);color:var(--tx);padding:0 12px;font-size:15px}
+.mfsort{flex:none;height:38px;padding:0 12px;border-radius:12px;border:1px solid var(--ln);background:none;color:var(--mut,#aaa);font-size:13px;font-weight:600}
+.mfh{margin-top:10px}
+.mfsec{border-bottom:1px solid var(--ln)}
+.mfsec>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;padding:14px 4px;font-weight:700;font-size:15px;cursor:pointer}
+.mfsec>summary::-webkit-details-marker{display:none}
+.mfsec>summary::after{content:'›';color:var(--mut,#999);font-size:20px;margin-left:8px;transition:transform .15s}
+.mfsec[open]>summary::after{transform:rotate(90deg)}
+.mfsec>summary span{margin-left:auto;color:var(--mut,#999);font-weight:500;font-size:13px}
+.mfsec .res:last-child{border-bottom:0}
+.mfw{position:relative;overflow:hidden}
+.mfw.mfdel{background:rgba(255,69,58,.25)}
+.mfw>.res{background:var(--card,#16161a);position:relative}
