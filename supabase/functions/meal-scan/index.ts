@@ -36,6 +36,22 @@ const RECAP = { type: "object", properties: {
 const RECIPE = { type: "object", properties: {
   name: { type: "string" }, servings: { type: "number" }, items: SCHEMA.properties.items,
 }, required: ["name", "servings", "items"] };
+const LABEL = { type: "object", properties: {
+  issue: { type: "string", enum: ["ok", "blurry", "glare", "cut_off", "dark", "not_a_label"] },
+  serving_size: { type: "string" }, serving_g: { type: "number" }, servings_per_container: { type: "number" },
+  kcal: { type: "number" }, fat_g: { type: "number" }, sat_fat_g: { type: "number" }, carbs_g: { type: "number" },
+  fiber_g: { type: "number" }, sugar_g: { type: "number" }, protein_g: { type: "number" }, sodium_mg: { type: "number" },
+  unsure: { type: "array", items: { type: "string" } },
+}, required: ["issue", "serving_size", "serving_g", "servings_per_container", "kcal", "fat_g", "sat_fat_g", "carbs_g", "fiber_g", "sugar_g", "protein_g", "sodium_mg", "unsure"] };
+const LABEL_P = `Read the Nutrition Facts / nutrition information panel in this photo exactly as printed. Do not estimate or guess from the product.
+Rules:
+- Values are PER ONE SERVING. If the label has two columns (per serving and per container/package, or "as packaged" and "as prepared"), use the per-serving, as-packaged column.
+- If the label only gives per 100 g / 100 ml (EU style), return those values and set serving_size to "100 g" (or "100 ml") and serving_g 100, unless a per-portion column exists, then use the portion column.
+- serving_size: the printed serving text, e.g. "1/2 cup (125g)". serving_g: grams (or ml) of one serving, -1 if not printed.
+- "Less than 1g" -> 0.5. "0g" -> 0. Use -1 for any value you cannot read or that is not on the label.
+- issue: "ok" if readable; otherwise "blurry", "glare", "cut_off", "dark" or "not_a_label" for the main problem that stops you reading it.
+- unsure: names of fields you could not read confidently (e.g. ["fiber_g"]).
+Return JSON only.`;
 const RECIPE_P = (t: string) => `Extract the recipe from this web page text. name: the recipe title. servings: how many servings it makes (number; 4 if not stated). items: every ingredient with the amount the recipe uses for the WHOLE recipe, grams estimated for that amount, and typical nutrition for that amount. Use common US food names. Skip water, salt and "to taste" items. Max 25 items. If there is no recipe, return {"name":"","servings":1,"items":[]}.
 PAGE:
 ${t}`;
@@ -73,9 +89,10 @@ Deno.serve(async (req) => {
   if (!KEY) return out(503, { error: "not_configured" });
   let body: { image?: string; text?: string; grams?: number; mode?: string; ctx?: unknown; url?: string };
   try { body = await req.json(); } catch { return out(400, { error: "bad_request" }); }
+  if (String(body.mode) === "ping") return out(200, { ok: true });
   const txt = String(body.text ?? "").trim().slice(0, 80);
   const img = (body.image ?? "").replace(/^data:image\/\w+;base64,/, "");
-  const mode = ["parse", "dish", "ideas", "recap", "recipe"].includes(String(body.mode)) ? String(body.mode) : "";
+  const mode = ["parse", "dish", "ideas", "recap", "recipe", "label"].includes(String(body.mode)) ? String(body.mode) : "";
   const ptxt = String(body.text ?? "").trim().slice(0, 300), ctx = JSON.stringify(body.ctx ?? {}).slice(0, 2500);
   if ((mode === "parse" || mode === "dish") && !ptxt) return out(400, { error: "bad_request" });
   let page = "";
@@ -84,6 +101,7 @@ Deno.serve(async (req) => {
     if (!p || p.trim().length < 80) return out(422, { error: "fetch_failed" });
     page = p;
   }
+  if (mode === "label" && (!img || img.length > 2_000_000)) return out(413, { error: "too_big" });
   if (!mode && !txt && (!img || img.length > 2_000_000)) return out(413, { error: "too_big" });
   // who: signed-in user id if the JWT is a real user, else hashed IP
   let who = "ip:" + await sha((req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim());
@@ -96,7 +114,7 @@ Deno.serve(async (req) => {
   }
   const lim = await fetch(SB + "/rest/v1/rpc/scan_take", {
     method: "POST", headers: { apikey: SR, authorization: "Bearer " + SR, "Content-Type": "application/json" },
-    body: JSON.stringify({ p_who: who, p_user_cap: USER_CAP, p_global_cap: GLOBAL_CAP }),
+    body: JSON.stringify({ p_who: who, p_user_cap: mode === "label" ? USER_CAP + 20 : USER_CAP, p_global_cap: GLOBAL_CAP }),
   });
   if (!lim.ok) return out(503, { error: "limit_check" });
   const st = await lim.json();
@@ -104,10 +122,10 @@ Deno.serve(async (req) => {
   const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
     method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY },
     body: JSON.stringify({
-      contents: [{ parts: mode === "parse" ? [{ text: PARSE(ptxt.replace(/"/g, "'")) }] : mode === "dish" ? [{ text: DISH_P(ptxt.replace(/"/g, "'")) }] : mode === "ideas" ? [{ text: IDEA_P(ctx) }] : mode === "recap" ? [{ text: RECAP_P(ctx) }] : mode === "recipe" ? [{ text: RECIPE_P(page) }] : txt
+      contents: [{ parts: mode === "parse" ? [{ text: PARSE(ptxt.replace(/"/g, "'")) }] : mode === "dish" ? [{ text: DISH_P(ptxt.replace(/"/g, "'")) }] : mode === "ideas" ? [{ text: IDEA_P(ctx) }] : mode === "recap" ? [{ text: RECAP_P(ctx) }] : mode === "recipe" ? [{ text: RECIPE_P(page) }] : mode === "label" ? [{ text: LABEL_P }, { inline_data: { mime_type: "image/jpeg", data: img } }] : txt
         ? [{ text: `Give typical nutrition for one item: "${txt.replace(/"/g, "'")}", portion about ${Math.max(1, Math.min(2000, +(body.grams ?? 100)))} g. Return JSON {"items":[...]} with exactly that one item, grams set to that portion.` }]
         : [{ text: PROMPT }, { inline_data: { mime_type: "image/jpeg", data: img } }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: mode === "recipe" ? RECIPE : mode === "ideas" ? IDEAS : mode === "recap" ? RECAP : SCHEMA, temperature: mode === "ideas" || mode === "recap" ? 0.8 : 0.2 },
+      generationConfig: { responseMimeType: "application/json", responseSchema: mode === "label" ? LABEL : mode === "recipe" ? RECIPE : mode === "ideas" ? IDEAS : mode === "recap" ? RECAP : SCHEMA, temperature: mode === "ideas" || mode === "recap" ? 0.8 : mode === "label" ? 0 : 0.2 },
     }),
   });
   if (g.status === 429) return out(429, { error: "global_limit" });
@@ -118,6 +136,7 @@ Deno.serve(async (req) => {
     const J = JSON.parse(t);
     if (mode === "ideas") return out(200, { ideas: (J.ideas ?? []).slice(0, 3) });
     if (mode === "recap") return out(200, J);
+    if (mode === "label") return out(200, { label: J });
     if (mode === "recipe") return out(200, { name: String(J.name ?? "").slice(0, 80), servings: Math.max(1, Math.min(50, Math.round(+J.servings || 4))), items: (J.items ?? []).slice(0, 25) });
     const items = (J.items ?? []).slice(0, mode === "dish" ? 1 : 8);
     return out(200, { items });

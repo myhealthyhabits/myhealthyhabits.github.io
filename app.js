@@ -760,18 +760,51 @@ async function shareOFF(f){if(!navigator.onLine)return toast('Offline — saved 
  const b=new URLSearchParams({code:f.barcode,product_name:f.name,brands:f.brand||'',serving_size:f.units[0].label,nutrition_data_per:'serving','nutriment_energy-kcal':f.n.kcal,'nutriment_energy-kcal_unit':'kcal',nutriment_proteins:f.n.p,nutriment_proteins_unit:'g',nutriment_carbohydrates:f.n.c,nutriment_carbohydrates_unit:'g',nutriment_fat:f.n.f,nutriment_fat_unit:'g',nutriment_fiber:f.n.fb||0,nutriment_fiber_unit:'g',app_name:'MyHealthyHabits',app_version:'1.1',comment:'Added from My Healthy Habits web app'});
  try{await fetch('https://world.openfoodfacts.org/cgi/product_jqm2.pl',{method:'POST',mode:'no-cors',body:b});toast('Thanks! Shared to Open Food Facts')}catch(e){toast('Could not share right now — saved on this device')}}
 let stream=null,scanLoop=null,zx=null;
-function stopScan(){if(scanLoop)cancelAnimationFrame(scanLoop),scanLoop=null;if(zx){try{zx.reset()}catch(e){}zx=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
-async function scan(mid){srvWarm();sheet(`<h2>Scan a barcode</h2><div class="vf" id="b_vf"><video id="b_v" playsinline muted></video><div class="vf-box"><i class="vf-laser"></i></div></div><p class="mut" id="b_s">Line up the barcode inside the box</p>
- <div class="row"><input id="b_code" inputmode="numeric" placeholder="Or type the barcode number"><button class="btn sm" id="b_go" style="flex:none">Look up</button></div><button class="btn alt" data-close="1">Cancel</button>`);
- $('#b_go').onclick=()=>lookup($('#b_code').value.trim(),mid);
- let got=0;const found=c=>{c=String(c||'').replace(/\D/g,'');if(got||!c)return;if(!gtinOk(c)&&!upcE(c))return;got=1;if(navigator.vibrate)navigator.vibrate(30);$('#b_vf')?.classList.add('ok');setTimeout(()=>{stopScan();lookup(c,mid)},350)};
- try{if('BarcodeDetector' in window){const fm=await BarcodeDetector.getSupportedFormats();
-   if(fm.includes('ean_13')){stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});const v=$('#b_v');v.srcObject=stream;await v.play();
-    const det=new BarcodeDetector({formats:fm.filter(f=>/ean|upc|code_128/.test(f))});
-    const tick=async()=>{if(!stream)return;try{const r=await det.detect(v);if(r[0])return found(r[0].rawValue)}catch(e){}scanLoop=requestAnimationFrame(tick)};return tick()}}
-  await loadZX();zx=new ZXing.BrowserMultiFormatReader();
-  await zx.decodeFromConstraints({video:{facingMode:'environment'}},'b_v',(res)=>{if(res)found(res.getText())});
- }catch(e){$('#b_s').textContent='Camera not available ('+e.name+'). Type the barcode number instead.'}}
+function stopScan(){if(scanLoop)clearTimeout(scanLoop),cancelAnimationFrame(scanLoop),scanLoop=null;if(zx){try{zx.reset()}catch(e){}zx=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+/* v85 scanner: HD camera + continuous focus, native BarcodeDetector or ZXing-C++ (WASM) everywhere else, centre-crop sampling ~8 fps, 2 matching reads before accepting */
+const BC_FMTS=['ean_13','ean_8','upc_a','upc_e'];let bcDet=null;
+async function getDetector(){if(bcDet)return bcDet;
+ try{if('BarcodeDetector' in window){const fm=await BarcodeDetector.getSupportedFormats();const f=BC_FMTS.filter(x=>fm.includes(x));if(f.includes('ean_13')&&f.includes('upc_a'))return bcDet={d:new BarcodeDetector({formats:f}),kind:'native'}}}catch(e){}
+ await loadJS('vendor/bd-ponyfill.js',()=>window.BarcodeDetectionAPI);
+ BarcodeDetectionAPI.prepareZXingModule({overrides:{locateFile:(p,pre)=>p.endsWith('.wasm')?new URL('vendor/zxing_reader.wasm',location.href).href:pre+p},fireImmediately:true});
+ return bcDet={d:new BarcodeDetectionAPI.BarcodeDetector({formats:BC_FMTS}),kind:'wasm'}}
+async function camOpen(){const md=navigator.mediaDevices;if(!md||!md.getUserMedia)throw Object.assign(new Error('nocam'),{name:'NoCamera'});
+ const tries=[{video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},audio:false},{video:{facingMode:{ideal:'environment'}},audio:false},{video:true,audio:false}];let err;
+ for(const c of tries){try{return await md.getUserMedia(c)}catch(e){err=e;if(e.name==='NotAllowedError'||e.name==='SecurityError')break}}throw err}
+function camTune(track){try{const cap=track.getCapabilities?track.getCapabilities():{},adv=[];
+  if(cap.focusMode&&cap.focusMode.includes('continuous'))adv.push({focusMode:'continuous'});
+  if(cap.exposureMode&&cap.exposureMode.includes('continuous'))adv.push({exposureMode:'continuous'});
+  if(cap.zoom&&cap.zoom.max>=1.5)adv.push({zoom:Math.min(cap.zoom.max,1.6)});
+  if(adv.length)track.applyConstraints({advanced:adv}).catch(()=>{});return cap}catch(e){return{}}}
+const camMsg=e=>{const n=e&&e.name;const ios=/iP(hone|ad|od)/.test(navigator.userAgent),pwa=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+ if(n==='NotAllowedError'||n==='SecurityError')return ios?(pwa?'Camera is blocked for this app. Open iPhone Settings › MyHealthyHabits (or Safari › Camera) and allow it, then try again.':'Camera is blocked. Tap “aA” in the address bar › Website Settings › Camera › Allow.'):'Camera is blocked. Allow camera access for this site in your browser settings.';
+ if(n==='NotReadableError'||n==='AbortError')return'The camera is busy in another app. Close it and try again.';
+ if(n==='NotFoundError'||n==='OverconstrainedError'||n==='NoCamera')return'No camera found on this device.';
+ return'Camera not available.'};
+async function scan(mid){srvWarm();stopScan();sheet(`<h2>▦ Scan a barcode</h2><div class="vf" id="b_vf"><video id="b_v" playsinline muted autoplay></video><div class="vf-box"><i class="vf-laser"></i></div><button class="vf-torch" id="b_t" hidden aria-label="Light">🔦</button></div><p class="mut" id="b_s">Starting camera…</p>
+ <div class="row"><input id="b_code" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Or type the barcode number"><button class="btn sm" id="b_go" style="flex:none">Look up</button></div><button class="btn alt" data-close="1">Cancel</button>`);
+ const S=t=>{const e=$('#b_s');if(e)e.textContent=t};
+ $('#b_go').onclick=()=>{const c=$('#b_code').value.replace(/\D/g,'');if(!c)return;if(c.length<8||(!gtinOk(c)&&!upcE(c)&&!gtinOk(c.padStart(12,'0'))&&!gtinOk(c.padStart(13,'0')))){S('That number doesn’t look complete. Check the digits under the barcode.');return}stopScan();lookup(c,mid)};
+ $('#b_code').onkeydown=e=>{if(e.key==='Enter')$('#b_go').click()};
+ let got=0,last='',lastN=0,lastT=0;const found=c=>{c=String(c||'').replace(/\D/g,'');if(got||c.length<8)return;if(!gtinOk(c)&&!upcE(c))return;const now=performance.now();
+  if(c===last&&now-lastT<2500)lastN++;else{last=c;lastN=1}lastT=now;if(lastN<2)return;
+  got=1;if(navigator.vibrate)navigator.vibrate(30);$('#b_vf')?.classList.add('ok');setTimeout(()=>{stopScan();lookup(c,mid)},250)};
+ let det;try{[stream,det]=await Promise.all([camOpen(),getDetector()])}catch(e){if(stream){stopScan()}if(!$('#b_s'))return;S(camMsg(e)+' You can type the barcode number below.');$('#b_code')?.focus();return}
+ const v=$('#b_v');if(!v){stopScan();return}v.srcObject=stream;try{await v.play()}catch(e){}
+ const track=stream.getVideoTracks()[0],cap=camTune(track);
+ if(cap.torch){const tb=$('#b_t');tb.hidden=false;let on=false;tb.onclick=()=>{on=!on;track.applyConstraints({advanced:[{torch:on}]}).catch(()=>{});tb.classList.toggle('on',on)}}
+ S('Line up the barcode inside the box');
+ const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});let n=0,busy=false,t0=performance.now(),dark=0;
+ const tick=async()=>{if(!stream||got||!document.body.contains(v)){return}scanLoop=null;
+  if(!busy&&v.readyState>=2&&v.videoWidth){busy=true;n++;try{const W=v.videoWidth,H=v.videoHeight,full=n%4===0,cw=full?W:Math.round(W*.86),ch=full?H:Math.round(H*.56),sx=(W-cw)/2,sy=(H-ch)/2,k=Math.min(1,1280/cw);
+    cv.width=Math.round(cw*k);cv.height=Math.round(ch*k);cx.drawImage(v,sx,sy,cw,ch,0,0,cv.width,cv.height);
+    const r=await det.d.detect(det.kind==='native'&&full?v:cv);if(r&&r.length)r.forEach(x=>found(x.rawValue));
+    if(n%10===0){const px=cx.getImageData(cv.width/2-40|0,cv.height/2-40|0,80,80).data;let L=0;for(let i=0;i<px.length;i+=4)L+=px[i]*.3+px[i+1]*.59+px[i+2]*.11;dark=L/(px.length/4)<55?dark+1:0}
+    const el=performance.now()-t0;if(!got&&$('#b_s')){if(dark>=2)S(cap.torch?'It’s dark here. Tap 🔦 for light.':'It’s dark here. Move to brighter light.');else if(el>9000)S('Still looking… hold the phone steady about 15 cm (6 in) away, or type the number below.');else S('Line up the barcode inside the box')}
+   }catch(e){}busy=false}
+  scanLoop=setTimeout(tick,110)};
+ tick();
+ const vis=()=>{if(document.hidden&&stream){stopScan();document.removeEventListener('visibilitychange',vis);if($('#b_s')){S('Camera paused.');const b=document.createElement('button');b.className='btn';b.textContent='📷 Resume camera';b.onclick=()=>scan(mid);$('#b_s').after(b)}}};document.addEventListener('visibilitychange',vis)}
 const loadZX=()=>window.ZXing?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='vendor/zxing.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
 const gtinOk=c=>{if(!/^\d{8}$|^\d{12,14}$/.test(c))return false;const d=c.split('').map(Number),k=d.pop();let t=0;d.reverse().forEach((x,i)=>t+=x*(i%2?1:3));return(10-t%10)%10===k};
 const upcE=c=>{if(!/^[01]\d{7}$/.test(c))return null;const b=c.slice(1,7),m=b[5];const x='012'.includes(m)?b.slice(0,2)+m+'0000'+b.slice(2,5):m==='3'?b.slice(0,3)+'00000'+b.slice(3,5):m==='4'?b.slice(0,4)+'00000'+b[4]:b.slice(0,5)+'0000'+m;return c[0]+x+c[7]};
@@ -797,20 +830,35 @@ function bcMiss(code,mid,named){const bad=!gtinOk(code)&&!upcE(code);
 /* ---------- nutrition label OCR (Tesseract.js, lazy-loaded, on-device) ---------- */
 const loadJS=(src,test)=>test()?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
 let ocrW=null;
-function labelScan(mid,pre={}){stopScan();sheet(`<h2>Scan nutrition label</h2><p class="mut" style="margin-top:0">Take a clear, straight-on photo of the <b>Nutrition Facts</b> panel in good light. It's read on your phone. Nothing is uploaded.</p>
- <label class="btn" style="display:block;text-align:center">📷 Take photo<input type="file" accept="image/*" capture="environment" id="l_cam" hidden></label>
+function labelScan(mid,pre={}){stopScan();if(window.labelWarm)labelWarm();sheet(`<h2>🏷️ Scan nutrition label</h2><p class="mut" style="margin-top:0">Fit the whole <b>Nutrition Facts</b> panel in the photo, straight on, in good light. The photo is only used to read the label and isn’t stored.</p>
+ <div id="l_prev" class="lprev" hidden></div><div id="l_st" class="mut lst" role="status"></div><div class="bar" id="l_bar" style="display:none;margin:6px 0"><i style="width:0;background:var(--p);transition:width .3s"></i></div>
+ <label class="btn" id="l_camb" style="display:block;text-align:center">📷 Take photo<input type="file" accept="image/*" capture="environment" id="l_cam" hidden></label>
  <label class="btn alt" style="display:block;text-align:center">🖼️ Choose photo<input type="file" accept="image/*" id="l_pick" hidden></label>
- <div id="l_st" class="mut" style="text-align:center;min-height:22px"></div><div class="bar" id="l_bar" style="display:none;margin:6px 0"><i style="width:0;background:var(--p);transition:width .3s"></i></div>
+ <button class="btn alt" id="l_any" hidden>Use this photo anyway</button>
  <button class="btn alt" id="l_x">Cancel</button>`);
  $('#l_x').onclick=()=>pre.barcode||pre.edit?customFood(mid,pre.edit||null,pre):close();
- const go=async file=>{if(!file)return;const st=$('#l_st'),bar=$('#l_bar');st.textContent='Preparing photo…';bar.style.display='block';
-  try{const img=await prepImg(file);st.textContent='Loading the label reader (first time only)…';
-   await loadJS('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
-   if(!ocrW)ocrW=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'&&$('#l_bar')){$('#l_bar i').style.width=Math.round(m.progress*100)+'%';$('#l_st').textContent='Reading label… '+Math.round(m.progress*100)+'%'}}});
-   const r=await ocrW.recognize(img);const lab=parseLabel(r.data.text),n=Object.keys(lab.v).length;
-   if(!$('#l_st'))return;if(lab.v.kcal==null&&n<3){st.textContent="Couldn't read that label. Try again closer, flatter and with less glare.";bar.style.display='none';return}
-   customFood(mid,pre.edit||null,{...pre,lab})}catch(e){if($('#l_st')){$('#l_st').textContent=navigator.onLine?'Label reader failed to load. Try again.':'The label reader needs internet the first time.';bar.style.display='none'}}};
- $('#l_cam').onchange=e=>go(e.target.files[0]);$('#l_pick').onchange=e=>go(e.target.files[0])}
+ const st=t=>{const e=$('#l_st');if(e)e.textContent=t},bar=on=>{const e=$('#l_bar');if(e)e.style.display=on?'block':'none'};
+ const TIP={blurry:'The photo looks blurry. Hold the phone still, tap the label to focus, then take it again.',glare:'There’s glare on the label. Tilt the package or turn away from the light, then retake.',dark:'The photo is too dark. Move to brighter light and retake.',cut_off:'Part of the label is cut off. Fit the whole Nutrition Facts panel in the photo.',not_a_label:'I can’t find a Nutrition Facts panel in that photo. Try again with the label filling most of the photo.'};
+ const retake=(iss,img,allowAny)=>{st('');const p=$('#l_prev');if(p&&img){p.hidden=false;p.innerHTML='';const t=document.createElement('canvas'),k=Math.min(1,320/img.width);t.width=img.width*k;t.height=img.height*k;t.getContext('2d').drawImage(img,0,0,t.width,t.height);p.appendChild(t)}
+  st('⚠️ '+(TIP[iss]||TIP.blurry));$('#l_camb').firstChild.textContent='📷 Retake photo';const a=$('#l_any');if(a){a.hidden=!allowAny;a.onclick=()=>{a.hidden=true;read(img,1)}}bar(0)};
+ const ocr=async img=>{st('Reading the label on your phone…');bar(1);await loadJS('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
+  if(!ocrW)ocrW=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'&&$('#l_bar')){$('#l_bar i').style.width=Math.round(m.progress*100)+'%';st('Reading label… '+Math.round(m.progress*100)+'%')}}});
+  const r=await ocrW.recognize(labelPrep(img));const lab=parseLabel(r.data.text);lab.src='ocr';return lab};
+ const done=lab=>{if(!$('#l_st'))return;customFood(mid,pre.edit||null,{...pre,lab})};
+ const read=async(img,forced)=>{const a=$('#l_any');if(a)a.hidden=true;$('#l_prev')&&($('#l_prev').hidden=true);
+  st('🔎 Reading label…');bar(0);let r=navigator.onLine?await labelAI(img):{err:'offline'};if(!$('#l_st'))return;
+  if(r.err==='net'||r.err==='server'){st('🔎 Still reading…');r=await labelAI(img);if(!$('#l_st'))return}
+  if(r.lab&&(r.issue==='blurry'||r.issue==='cut_off')&&r.lab.v.kcal==null&&!labelIssue(labelQuality(img))){st('🔎 Taking a closer look…');const r2=await labelAI(img,1);if(!$('#l_st'))return;if(r2.lab&&r2.lab.v.kcal!=null)r=r2}
+  if(r.lab){const n=Object.keys(r.lab.v).filter(k=>['kcal','f','c','p'].includes(k)).length;
+   if(r.issue&&r.issue!=='ok'&&(r.lab.v.kcal==null||n<3)&&!forced)return retake(r.issue,img,r.issue!=='not_a_label');
+   if(r.lab.v.kcal!=null||n>=3)return done(r.lab)}
+  try{const lab=await ocr(img);if(!$('#l_st'))return;const n=Object.keys(lab.v).length;if(lab.v.kcal==null&&n<3)return retake(r.issue&&r.issue!=='ok'?r.issue:'blurry',img,false);
+   if(r.err==='limit')toast('Daily AI reads used up — read on your phone instead. Please check the numbers.');done(lab)}
+  catch(e){if($('#l_st')){st(navigator.onLine?'The label reader didn’t load. Try again.':'You’re offline. The label reader needs internet the first time.');bar(0)}}};
+ const go=async file=>{if(!file)return;st('Preparing photo…');let img;try{img=await prepImg(file)}catch(e){st('Couldn’t open that photo. Try a JPG or PNG.');return}
+  const iss=labelIssue(labelQuality(img));if(iss)return retake(iss,img,true);read(img)};
+ $('#l_cam').onchange=e=>{go(e.target.files[0]);e.target.value=''};$('#l_pick').onchange=e=>{go(e.target.files[0]);e.target.value=''};
+ window._labelGo=go}
 async function prepImg(file){const bm=await createImageBitmap(file),M=Math.max(bm.width,bm.height),k=M<1200?1400/M:M>2400?2400/M:1,c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
  const x=c.getContext('2d');x.drawImage(bm,0,0,c.width,c.height);return c}
 

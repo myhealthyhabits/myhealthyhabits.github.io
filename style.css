@@ -722,3 +722,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .mfw{position:relative;overflow:hidden}
 .mfw.mfdel{background:rgba(255,69,58,.25)}
 .mfw>.res{background:var(--card,#16161a);position:relative}
+/* v85 scanner */
+.vf video{width:100%;height:100%;object-fit:cover;display:block}
+.vf-torch{position:absolute;right:10px;bottom:10px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:20px}
+.vf-torch.on{background:#ffd60a;color:#000}
+/* v85 label scan */
+.lprev{display:flex;justify-content:center;margin:6px 0 4px}.lprev canvas{max-width:60%;border-radius:10px;border:1px solid var(--ln)}
+.lst{text-align:center;min-height:22px;margin:6px 0;line-height:1.4}
