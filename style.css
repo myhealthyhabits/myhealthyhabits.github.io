@@ -734,3 +734,4 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 #toast .tundo{margin-left:10px;border:0;background:none;color:var(--pri);font-weight:700;padding:4px 6px;pointer-events:auto}
 #toast{pointer-events:auto}
 .ms-fail{padding:10px;border-radius:12px;background:var(--bg);display:flex;flex-direction:column;gap:4px}.ms-fail .row{flex-wrap:wrap;gap:6px}
+.tmpb{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:1px dashed var(--pri);color:var(--tx);font:inherit;cursor:pointer}.tmpb>span{font-size:22px}.tmpb small{display:block;color:var(--mut);margin-top:2px}
