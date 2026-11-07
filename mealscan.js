@@ -2,18 +2,23 @@
 const MS_URL='https://mbmeftdocjazdrgpeftu.supabase.co/functions/v1/meal-scan',MS_AK='sb_publishable__FA1ABf79m6khS0isPDlmQ_2fXh9CKN';
 function msAutoMeal(){const mm=mainMeals().slice(0,D.mealCount||3),n=mm.length,h=new Date().getHours();if(!n)return's';
  const cut={1:[],2:[14],3:[11,16],4:[10,13,17]}[n]||[];let i=cut.filter(c=>h>=c).length;if(h<4)i=n-1;return mm[Math.min(i,n-1)].id}
-function mealScan(mid,pick){if(pick!==undefined)window.msPick=!!pick;stopScan();sheet(`<h2>📷 Snap meal</h2><div class="ms-hero">🍗🍚🥦</div>
+function mealScan(mid,pick){if(pick!==undefined)window.msPick=!!pick;stopScan();sheet(`<h2>📷 Snap meal</h2><small class="ai-left mut" style="display:block;margin:-6px 0 8px"></small><div class="ms-hero">🍗🍚🥦</div>
  <p class="mut" style="margin-top:0">Snap your plate from above in good light. The AI guesses each food and portion, then you fix anything before logging. Numbers are <b>estimates</b>. Your photo isn't saved.</p>
  <input type="file" id="ms_cam" accept="image/*" capture="environment" hidden><input type="file" id="ms_up" accept="image/*" hidden>
  <button class="btn" id="ms_take">📸 Take photo</button><button class="btn alt" id="ms_pick">🖼️ Upload a photo</button><button class="btn alt" id="ms_back">Back</button>`);
  $('#ms_take').onclick=()=>$('#ms_cam').click();$('#ms_pick').onclick=()=>$('#ms_up').click();$('#ms_back').onclick=()=>window.msPick?close():openAdd(mid);
  const go=e=>{const f=e.target.files&&e.target.files[0];if(f)msRun(mid,f)};$('#ms_cam').onchange=go;$('#ms_up').onchange=go}
 function msShrink(file,max=1024,q=.8){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',q))};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};im.src=u})}
-async function msCall(body){return window.aiGuard?aiGuard(msCall0(body)):msCall0(body)}
+async function msCall(body){const res=await(window.aiGuard?aiGuard(msCall0(body)):msCall0(body));try{const[r,j]=res,A=window._aiU;if(r.status===429&&j&&j.error==='user_limit')window._aiU={left:0,cap:j.cap||10,t:Date.now()};else if(r.ok&&A&&body.mode!=='label')A.left=Math.max(0,A.left-1);aiPaint()}catch(e){}return res}
+/* one shared AI allowance (meal scans, ideas, talk-to-log, recaps) */
+window._aiU=null;async function aiUsage(force){const A=window._aiU;if(A&&!force&&Date.now()-A.t<60000)return A;try{const[r,j]=await msCall0({mode:'usage'});if(r.ok&&j&&typeof j.left==='number'){window._aiU={left:j.left,cap:j.cap||10,t:Date.now()};aiPaint()}}catch(e){}return window._aiU}
+const aiTxt=()=>{const A=window._aiU;if(!A)return'';return A.left>0?`${A.left} of ${A.cap} AI uses left today`:`AI uses are used up for today · resets at midnight PT · search, barcode and manual logging still work`};
+function aiPaint(){const t=aiTxt();document.querySelectorAll('.ai-left').forEach(e=>{e.textContent=t;e.classList.toggle('out',!!window._aiU&&window._aiU.left<=0)})}
+window.aiUsage=aiUsage;window.aiPaint=aiPaint;new MutationObserver(()=>{const e=document.querySelector('#sheetBody .ai-left:empty');if(e){aiPaint();aiUsage()}}).observe(document.getElementById('sheetBody'),{childList:true});
 async function msCall0(body){let tok='';try{tok=(JSON.parse(localStorage.getItem('mhh-sb')||'null')||{}).at||''}catch(e){}
  const r=await fetch(window.MS_MOCK||MS_URL,{method:'POST',headers:{'Content-Type':'application/json',apikey:MS_AK,Authorization:'Bearer '+(tok||MS_AK)},body:JSON.stringify(body)});return[r,await r.json().catch(()=>({}))]}
 function msErr(mid,emo,title,msg){sheet(`<h2>${title}</h2><div class="ms-hero">${emo}</div><p class="mut" style="text-align:center">${msg}</p><button class="btn" id="ms_again">Try another photo</button><button class="btn alt" id="ms_srch">Search foods instead</button>`);$('#ms_again').onclick=()=>mealScan(mid);$('#ms_srch').onclick=()=>openAdd(mid)}
-async function msRun(mid,file){sheet(`<h2>📷 Snap meal</h2><div class="ms-hero">🔎</div><p class="mut" style="text-align:center">Looking at your meal… this takes a few seconds.</p>`);
+async function msRun(mid,file){sheet(`<h2>📷 Snap meal</h2><small class="ai-left mut" style="display:block;margin:-6px 0 8px"></small><div class="ms-hero">🔎</div><p class="mut" style="text-align:center">Looking at your meal… this takes a few seconds.</p>`);
  let img;window.msThumb=null;try{img=await msShrink(file);if(!D.noThumbs)window.msThumb=await msShrink(file,200,.7).catch(()=>null)}catch(e){return msErr(mid,'🖼️','Couldn’t open that photo','Try a different photo (JPG or PNG).')}
  let r,j={};try{[r,j]=await msCall({image:img})}
  catch(e){return msErr(mid,'📶','No connection','Meal scan needs internet. Check your signal and try again, or search foods instead.')}

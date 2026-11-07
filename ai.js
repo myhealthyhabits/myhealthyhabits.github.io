@@ -1,6 +1,6 @@
 /* v47: AI helpers (Gemini via meal-scan Edge Function): What should I eat?, Talk or type to log, Weekly coach recap. All share the daily AI limit. */
 function aiErr(r,j,what){if(!r)return'No connection. Check your signal and try again.';
- if(r.status===429)return j.error==='user_limit'?`You've used all ${j.cap||10} AI uses for today (meal scans, ideas, talk-to-log and recaps share them). They reset at midnight Pacific. 🌙`:'The AI helper is extra busy today and hit its daily limit. Please try again tomorrow!';
+ if(r.status===429)return j.error==='user_limit'?`You've used all ${j.cap||10} AI uses for today (meal scans, ideas, talk-to-log and recaps share them). They reset at midnight Pacific. 🌙 Normal search, barcode scans and manual logging still work.`:'The AI helper is extra busy today and hit its daily limit. Please try again tomorrow!';
  return r.status===503?`${what} is still being set up. Check back soon!`:'Something went wrong on our side. Please try again in a moment.'}
 const aiMealPills=(mid,attr)=>`<div class="ai-mp">${visMeals().map(m=>`<button data-${attr}="${m.id}" class="${m.id===mid?'on':''}">${esc(m.name)}</button>`).join('')}</div>`;
 const aiN=it=>{const n=msN(it),m=it.g/100;return{k:n.kcal*m,p:n.p*m,c:n.c*m,f:n.f*m}};
@@ -8,7 +8,7 @@ const aiSum=items=>items.reduce((t,it)=>{const n=aiN(it);t.k+=n.k;t.p+=n.p;t.c+=
 /* ---- What should I eat? ---- */
 let aiIdeas=null;
 function ideasSheet(mid){mid=mid||nextMeal();const t=dayTotal(cur),left=Math.round(budget()-t.kcal),pl=Math.max(0,Math.round(macroGoal().p-t.p));
- sheet(`<h2>🍽️ What should I eat?</h2><div class="ai-left"><span>🔥 <b>${fE(Math.max(0,left))}</b> left</span><span>🥩 <b>${pl} g</b> protein to go</span></div>
+ sheet(`<h2>🍽️ What should I eat?</h2><small class="ai-left mut" style="display:block;margin:-6px 0 8px"></small><div class="ai-left"><span>🔥 <b>${fE(Math.max(0,left))}</b> left</span><span>🥩 <b>${pl} g</b> protein to go</span></div>
  <label>Ideas for</label>${aiMealPills(mid,'im')}
  <details class="ai-pref"${D.aiSched||D.dislikes?'':' open'}><summary>⚙️ My schedule & foods I skip</summary>
  <label>My eating schedule</label><input id="ai_sch" placeholder="e.g. Dinner 6pm first meal, lunch 1am on shift, breakfast 7am" value="${esc(D.aiSched||'')}">
@@ -36,7 +36,7 @@ function ideaCards(list){return list.map((I,i)=>{const s=aiSum(I.items.map(x=>ms
  <small class="mut">${I.items.map(x=>esc(msCap(x.name))).join(' · ')}</small><button class="btn ai-log" data-il="${i}">✅ Log this</button></div>`}).join('')}
 /* ---- Talk or type to log ---- */
 function talkSheet(mid,txt=''){mid=mid||msAutoMeal();const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
- sheet(`<h2>🎙️ Talk or type to log</h2><p class="mut" style="margin-top:0">Say or type what you ate, like “2 eggs and toast with butter”. You can fix anything before it's logged.</p>
+ sheet(`<h2>🎙️ Talk or type to log</h2><small class="ai-left mut" style="display:block;margin:-6px 0 8px"></small><p class="mut" style="margin-top:0">Say or type what you ate, like “2 eggs and toast with butter”. You can fix anything before it's logged.</p>
  <div class="ai-talk"><textarea id="tk_t" rows="3" maxlength="300" placeholder="e.g. a turkey sandwich and an apple">${esc(txt)}</textarea>${SR?'<button id="tk_mic" class="ai-mic" aria-label="Speak">🎤</button>':''}</div>
  <p class="hint" id="tk_h">${SR?'Tap 🎤 and speak, or just type.':'Voice isn’t supported in this browser, so type it instead.'}</p>
  <label>Log to</label>${aiMealPills(mid,'tm')}<button class="btn" id="tk_go">✨ Find my foods</button><div id="tk_msg"></div><p class="hint">Numbers are <b>estimates</b>. Uses 1 of your daily AI uses.</p>`);
@@ -64,12 +64,12 @@ async function recapGen(manual){const t=logicalToday(),R=D.aiRecap||{};if(manual
  else{window._rcErr=aiErr(r,j,'Weekly recap');if(!manual)D.aiRecapTry=t,save()}paintRecap()}
 function recapCard(){const t=logicalToday(),R=D.aiRecap,d=R&&R.data,busy=window._rcBusy;
  let body=busy?'<div class="ai-wait">🧑‍🏫 Writing your week…</div>':d?`<p class="rc-h">${esc(d.headline)}</p><div class="rc-sec"><b>🏆 Wins</b>${d.wins.slice(0,2).map(w=>`<p>${esc(w)}</p>`).join('')}</div><div class="rc-sec"><b>💡 Try this</b>${d.tips.slice(0,1).map(w=>`<p>${esc(w)}</p>`).join('')}</div><button class="rc-more" id="rc_full">See full recap ›</button>`
-  :`<p class="mut">Log a couple of days and your coach will write a weekly recap here.</p>`;
+  :recapData().daysLogged>=2?`<p class="mut">Get a short AI recap of your last 7 days.</p><button class="btn sm" id="rc_gen">✍️ Write my weekly recap</button><small class="ai-left mut" style="display:block;margin-top:4px"></small>`:`<p class="mut">Log a couple of days and you can get a weekly recap here.</p>`;
  if(window._rcErr&&!busy)body+=`<div class="ai-msg">${esc(window._rcErr)}</div>`;
  const can=d&&R.day!==t&&!busy;
- return`<div class="card rcap" id="rcap"><div class="rc-top"><h2>🧑‍🏫 Weekly coach</h2>${d?`<button class="pill" id="rc_ref" ${can?'':'disabled'}>${R.day===t?'✓ Fresh today':'↻ Refresh'}</button>`:''}</div>${body}<small class="mut">AI-written from your logs · ${d&&R.wk===aiWk(t)?'this week':'updates weekly'}</small></div>`}
-function paintRecap(){const c=document.getElementById('rcap');if(!c)return;c.outerHTML=recapCard();const b=document.getElementById('rc_ref');if(b)b.onclick=()=>{window._rcErr='';recapGen(1)};const f=document.getElementById('rc_full'),d=D.aiRecap&&D.aiRecap.data;if(f&&d)f.onclick=()=>sheet(`<h2>🧑‍🏫 Weekly coach</h2><p class="rc-h">${esc(d.headline)}</p><div class="rc-sec"><b>🏆 Wins</b>${d.wins.map(w=>`<p>${esc(w)}</p>`).join('')}</div><div class="rc-sec"><b>💡 Try this</b>${d.tips.map(w=>`<p>${esc(w)}</p>`).join('')}</div>${d.streak?`<div class="rc-st">🔥 ${esc(d.streak)}</div>`:''}<button class="btn alt" data-close="1">Done</button>`)}
-function recapMaybe(){const t=logicalToday(),R=D.aiRecap;if(window._rcBusy||(R&&R.wk===aiWk(t))||D.aiRecapTry===t)return;if(recapData().daysLogged<2)return;recapGen(0)}
+ return`<div class="card rcap" id="rcap"><div class="rc-top"><h2>🧑‍🏫 Weekly coach</h2>${d?`<button class="pill" id="rc_ref" ${can?'':'disabled'}>${R.day===t?'✓ Fresh today':'↻ Refresh · 1 AI use'}</button>`:''}</div>${body}<small class="mut">AI-written from your logs · ${d&&R.wk===aiWk(t)?'this week':'updates weekly'}</small></div>`}
+function paintRecap(){const c=document.getElementById('rcap');if(!c)return;c.outerHTML=recapCard();const b=document.getElementById('rc_ref');if(b)b.onclick=()=>{window._rcErr='';recapGen(1)};const g=document.getElementById('rc_gen');if(g){g.onclick=()=>{window._rcErr='';recapGen(1)};window.aiUsage&&aiUsage().then(()=>aiPaint())}const f=document.getElementById('rc_full'),d=D.aiRecap&&D.aiRecap.data;if(f&&d)f.onclick=()=>sheet(`<h2>🧑‍🏫 Weekly coach</h2><p class="rc-h">${esc(d.headline)}</p><div class="rc-sec"><b>🏆 Wins</b>${d.wins.map(w=>`<p>${esc(w)}</p>`).join('')}</div><div class="rc-sec"><b>💡 Try this</b>${d.tips.map(w=>`<p>${esc(w)}</p>`).join('')}</div>${d.streak?`<div class="rc-st">🔥 ${esc(d.streak)}</div>`:''}<button class="btn alt" data-close="1">Done</button>`)}
+function recapMaybe(){return;const t=logicalToday(),R=D.aiRecap;if(window._rcBusy||(R&&R.wk===aiWk(t))||D.aiRecapTry===t)return;if(recapData().daysLogged<2)return;recapGen(0)}
 /* ---- hooks ---- */
 function aiHook(){if(typeof tab==='undefined'||typeof V==='undefined')return; if(tab==='progress'&&!document.getElementById('rcap')){const sl=document.getElementById('rcSlot');sl?sl.insertAdjacentHTML('beforeend',recapCard()):V.insertAdjacentHTML('afterbegin',recapCard());paintRecap();recapMaybe()}
 }

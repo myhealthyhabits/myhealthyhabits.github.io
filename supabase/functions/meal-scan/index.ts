@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     page = p;
   }
   if (mode === "label" && (!img || img.length > 2_000_000)) return out(413, { error: "too_big" });
-  if (!mode && !txt && (!img || img.length > 2_000_000)) return out(413, { error: "too_big" });
+  if (!mode && !txt && String(body.mode) !== "usage" && (!img || img.length > 2_000_000)) return out(413, { error: "too_big" });
   // who: signed-in user id if the JWT is a real user, else hashed IP
   let who = "ip:" + await sha((req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim());
   const auth = req.headers.get("authorization") ?? "";
@@ -111,6 +111,15 @@ Deno.serve(async (req) => {
       const r = await fetch(SB + "/auth/v1/user", { headers: { apikey: SR, authorization: auth } });
       if (r.ok) { const u = await r.json(); if (u?.id) who = "u:" + u.id; }
     } catch { /* treat as guest */ }
+  }
+  if (String(body.mode) === "usage") {
+    const day = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+    let used = 0;
+    try {
+      const r = await fetch(`${SB}/rest/v1/scan_counts?select=n&day=eq.${day}&who=eq.${encodeURIComponent(who)}`, { headers: { apikey: SR, authorization: "Bearer " + SR } });
+      if (r.ok) { const j = await r.json(); used = +(j?.[0]?.n ?? 0); }
+    } catch { /* report full allowance */ }
+    return out(200, { used, cap: USER_CAP, left: Math.max(0, USER_CAP - used) });
   }
   const lim = await fetch(SB + "/rest/v1/rpc/scan_take", {
     method: "POST", headers: { apikey: SR, authorization: "Bearer " + SR, "Content-Type": "application/json" },
