@@ -26,11 +26,12 @@ function merge(a,b,bNewer){if(isO(a)&&isO(b)){const o={...a};for(const k in b)o[
   return bNewer?b:a}
  if(b===undefined)return a;if(a===undefined)return b;return bNewer?b:a}
 /* ---- status ---- */
+const tm=t=>{const d=new Date(t),td=new Date();return(d.toDateString()===td.toDateString()?'':d.toLocaleDateString([], {month:'short',day:'numeric'})+' ')+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})},okT=()=>'✓ Backed up · '+tm(meta().at||Date.now()),lastT=()=>meta().at?' · last backup '+tm(meta().at):' · not backed up yet';
 let stTxt='';function stat(t){stTxt=t;const e=document.getElementById('acct_st');if(e&&e.textContent!==t)e.textContent=t}
 let busy=false,again=false,pt=null;
 async function sync(mode){if(!ses)return;if(busy){again=true;return}busy=true;
- try{const t=await token();if(!t)return;if(!navigator.onLine){stat('Offline · will sync');return}
-  stat('Syncing…');const m=meta(),loc=D.updatedAt||0;
+ try{const t=await token();if(!t)return;if(!navigator.onLine){stat('Offline · not backed up'+lastT());return}
+  stat('Backing up…');const m=meta(),loc=D.updatedAt||0;
   const rows=await api('/rest/v1/user_data?select=data,updated_at&user_id=eq.'+ses.uid,{tok:t});const R=rows&&rows[0];
   let out=null;
   if(R){const rt=Date.parse(R.updated_at),fresh=!m.uid||m.uid!==ses.uid;let remoteNew=rt>(m.pulled||0),localNew=loc>(m.pushed||0)||fresh,replace=false;
@@ -41,13 +42,13 @@ async function sync(mode){if(!ses)return;if(busy){again=true;return}busy=true;
    else if(remoteNew){out=R.data}
    if(out){const keep={};['usdaKey'].forEach(k=>{if(D[k]&&!out[k])keep[k]=D[k]});Object.assign(out,keep);
     const tx=JSON.stringify(out)!==JSON.stringify(D);if(tx){for(const k of Object.keys(D))if(!(k in out))delete D[k];Object.assign(D,out);localStorage.setItem(KEY,JSON.stringify(D));prevK=keys(D);if(window._fxBusy&&Date.now()-window._fxBusy<9000)setTimeout(()=>{if(!window._fxBusy&&typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()},9000);else if(typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()}
-    setMeta({pulled:rt,uid:ses.uid});localStorage.setItem(OWN,ses.uid);if(!localNew){setMeta({pushed:D.updatedAt||0,at:Date.now()});stat('Synced');return}}
-   else if(!localNew){setMeta({pulled:rt,uid:ses.uid,at:Date.now()});localStorage.setItem(OWN,ses.uid);stat('Synced');return}}
+    setMeta({pulled:rt,uid:ses.uid});localStorage.setItem(OWN,ses.uid);if(!localNew){setMeta({pushed:D.updatedAt||0,at:Date.now()});stat(okT());return}}
+   else if(!localNew){setMeta({pulled:rt,uid:ses.uid,at:Date.now()});localStorage.setItem(OWN,ses.uid);stat(okT());return}}
   if(!R&&(!m.uid||m.uid!==ses.uid)){const ow=localStorage.getItem(OWN);if(ow&&ow!==ses.uid&&hasData(D)){const c=await choose({});if(c==='wait'){stat('Waiting for your choice');return}if(c==='acct'){try{localStorage.setItem('mhh-guest-backup',JSON.stringify(D))}catch(e){}localStorage.removeItem(KEY);localStorage.setItem(OWN,ses.uid);setMeta({pulled:0,pushed:0,uid:null});location.reload();return}}}
   const now=new Date().toISOString();D.updatedAt=D.updatedAt||Date.now();
   await api('/rest/v1/user_data?on_conflict=user_id',{method:'POST',tok:t,headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:ses.uid,data:D,updated_at:now})});
-  setMeta({pushed:D.updatedAt,pulled:Date.parse(now),uid:ses.uid,at:Date.now()});localStorage.setItem(OWN,ses.uid);stat('Synced')}
- catch(e){stat(/relation|does not exist|schema cache|PGRST/i.test(e.message)?'Sync not set up yet':'Sync paused · will retry');console.warn('sync',e.message)}
+  setMeta({pushed:D.updatedAt,pulled:Date.parse(now),uid:ses.uid,at:Date.now()});localStorage.setItem(OWN,ses.uid);stat(okT())}
+ catch(e){stat((/relation|does not exist|schema cache|PGRST/i.test(e.message)?'Backup not set up yet':'Backup failed · will retry')+lastT());console.warn('sync',e.message)}
  finally{busy=false;if(again){again=false;setTimeout(()=>sync(),500)}}}
 try{prevK=keys(D)}catch(e){}const sv=Store.save.bind(Store);Store.save=d=>{try{track(d)}catch(e){}sv(d);if(ses){clearTimeout(pt);pt=setTimeout(()=>sync(),2500)}};
 window.addEventListener('focus',()=>sync());document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();else if(pt){clearTimeout(pt);sync()}});window.addEventListener('online',()=>sync());
@@ -60,7 +61,7 @@ function choose(rd){return new Promise(res=>{if(typeof sheet!=='function')return
  const iv=setInterval(()=>{if(document.getElementById('sheet').classList.contains('hidden'))fin('wait')},400)})}
 function outSheet(){sh(`<h2>Sign out?</h2><p class="mut" style="font-size:14px">Your account copy stays safe in the cloud.</p><label class="row" style="gap:8px;align-items:flex-start"><input type="checkbox" id="so_clr" checked> Also remove my log from this device (recommended on shared devices)</label><p class="mut" id="so_m" style="font-size:13px;min-height:18px"></p><button class="btn" id="so_go">Sign out</button><button class="btn alt au_x">Cancel</button>`);
  $$('#so_go').onclick=async()=>{const clr=$$('#so_clr').checked,b=$$('#so_go');b.disabled=true;$$('#so_m').textContent='Backing up first…';
-  if(clr){await sync();const m=meta();if(stTxt!=='Synced'||(D.updatedAt||0)>(m.pushed||0)){b.disabled=false;$$('#so_m').textContent='Couldn’t back up your latest changes, so nothing was removed. Try again when online, or untick the box.';return}}
+  if(clr){await sync();const m=meta();if(!stTxt.startsWith('✓')||(D.updatedAt||0)>(m.pushed||0)){b.disabled=false;$$('#so_m').textContent='Couldn’t back up your latest changes, so nothing was removed. Try again when online, or untick the box.';return}}
   await signOut();if(clr){localStorage.removeItem(KEY);localStorage.removeItem(OWN);try{localStorage.removeItem('mhh-guest-backup')}catch(e){}location.reload();return}close();toast('Signed out · your log stays on this device');render()}}
 /* ---- auth ---- */
 async function signIn(email,pw){keepSes(await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password:pw})}));setMeta({pulled:0,pushed:0,uid:null});await sync();}
@@ -92,11 +93,11 @@ const bindG=()=>document.querySelectorAll('.gbtn').forEach(b=>b.onclick=google);
 const nice=x=>!navigator.onLine||/fetch|network/i.test(x.message)?'You seem to be offline. Check your connection and try again.':/invalid login/i.test(x.message)?'That email or password doesn\'t match. Try again or tap Forgot password.':/not confirmed/i.test(x.message)?'Please confirm your email first (check your inbox).':x.message;
 /* ---- UI hooks ---- */
 window.acctCard=()=>{const V=document.getElementById('view');if(!V||document.getElementById('acct'))return;const c=document.createElement('div');c.className='card sgrp acctc';c.id='acct';
- c.innerHTML=`<div class="srow tap" id="ac_row"><span class="sic">${ses?'☁️':'👤'}</span><div>${ses?es(ses.email||'Signed in'):'Guest mode'}<small id="acct_st">${ses?es(stTxt||'Synced'):'Back up and sync across devices'}</small></div>${ses?'<b>›</b>':'<span class="sinb">Sign in</span>'}</div>`;
+ c.innerHTML=`<div class="srow tap" id="ac_row"><span class="sic">${ses?'☁️':'👤'}</span><div>${ses?es(ses.email||'Signed in'):'Guest mode'}<small id="acct_st">${ses?es(stTxt||(meta().at?'Last backup '+tm(meta().at):'Checking backup…')):'Guest mode · your log lives only in this browser'}</small></div>${ses?'<b>›</b>':'<span class="sinb">Sign in</span>'}</div>`;
  const slot=document.getElementById('acctSlot');slot?slot.replaceWith(c):V.prepend(c);
  $$('#ac_row').onclick=()=>{if(typeof sheet!=='function')return;
-  if(ses){sheet(`<h2>Account</h2><p class="mut">${es(ses.email||'Signed in')}<br><small>${es(stTxt||'Synced')}</small></p><button class="btn" id="ac_sync">Sync now</button><button class="btn alt" id="ac_out">Sign out</button><button class="btn alt" id="ac_del" style="color:#ff453a">Delete account</button>`);$$('#ac_sync').onclick=()=>sync();$$('#ac_out').onclick=outSheet;$$('#ac_del').onclick=delSheet}
-  else{sheet(`<h2>Account</h2><p class="mut" style="font-size:14px">You're using guest mode. Everything works without an account; sign in to back up and sync across devices.</p><button class="btn" id="ac_up">Create account</button><button class="btn alt" id="ac_in">Sign in</button><div style="margin-top:8px">${gBtn()}</div>`);bindG();$$('#ac_up').onclick=()=>authSheet('up');$$('#ac_in').onclick=()=>authSheet('in')}}};
+  if(ses){sheet(`<h2>Account</h2><p class="mut">${es(ses.email||'Signed in')}<br><small id="ac_st">${es(stTxt||(meta().at?'Last backup '+tm(meta().at):'Not backed up yet'))}</small></p><button class="btn" id="ac_sync">🔁 Back up now</button><button class="btn alt" id="ac_out">Sign out</button><button class="btn alt" id="ac_del" style="color:#ff453a">Delete account</button>`);$$('#ac_sync').onclick=async()=>{const b=$$('#ac_sync');b.disabled=true;b.textContent='Backing up…';await sync();b.disabled=false;b.textContent='🔁 Back up now';const e=$$('#ac_st');if(e)e.textContent=stTxt};$$('#ac_out').onclick=outSheet;$$('#ac_del').onclick=delSheet}
+  else{sheet(`<h2>Account</h2><p class="mut" style="font-size:14px">You're using guest mode. Your log is saved only in this browser on this device. It can be lost if you clear browser data or the browser removes site data. Create a free account to back it up and sync across devices.</p><button class="btn" id="ac_up">Create account</button><button class="btn alt" id="ac_in">Sign in</button><div style="margin-top:8px">${gBtn()}</div>`);bindG();$$('#ac_up').onclick=()=>authSheet('up');$$('#ac_in').onclick=()=>authSheet('in')}}};
 window.acctPrompt=()=>{if(ses||localStorage.getItem('mhh-acct-nudge'))return;const days=Object.keys(D.log||{}).filter(d=>Object.values(D.log[d]||{}).some(a=>a&&a.length)).length;if(days<3)return;
  const V=document.getElementById('view');if(!V||document.getElementById('acct_nudge'))return;const c=document.createElement('div');c.className='card';c.id='acct_nudge';
  c.innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:14px">☁️ <b>Back up your log?</b><br><span class="mut">Optional free account keeps your data safe and synced across devices.</span></div><button class="btn sm alt" id="an_x" aria-label="Dismiss" style="flex:none">✕</button></div><button class="btn sm" id="an_go" style="margin-top:8px">Create account</button>`;
