@@ -10,6 +10,14 @@ async function token(){if(!ses)return null;if(Date.now()<ses.exp-60e3)return ses
  try{keepSes(await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:ses.rt})}));return ses.at}catch(e){if(e.status>=400&&e.status<500){keepSes(null);stat('')}return null}}
 /* ---- merge: objects by key, id-arrays by id, other arrays/scalars from the newer side ---- */
 const isO=x=>x&&typeof x==='object'&&!Array.isArray(x);
+const IDD=x=>x&&typeof x==='object'&&(x.id!=null||x.ref!=null||x.name!=null),KF=x=>x.id!=null?'i'+x.id:x.ref!=null?'r'+(x.src||'')+x.ref:'n'+x.name;
+/* ---- tombstones: remember what was deleted so a merge can't bring it back ---- */
+function keys(o,p='',S=new Set()){if(Array.isArray(o)){const all=o.length&&o.every(IDD);o.forEach((x,i)=>{const k=all?KF(x):i;if(all)S.add(p+'|'+k);if(x&&typeof x==='object')keys(x,p+'|'+k,S)})}else if(isO(o))for(const k in o)if(k!=='dels'&&k!=='updatedAt')keys(o[k],p+'.'+k,S);return S}
+function prune(o,T,p=''){if(Array.isArray(o)){const all=o.length&&o.every(IDD);for(let i=o.length-1;i>=0;i--){const x=o[i],k=all?KF(x):i;if(all&&T[p+'|'+k]>0){o.splice(i,1);continue}if(x&&typeof x==='object')prune(x,T,p+'|'+k)}}else if(isO(o))for(const k in o)if(k!=='dels')prune(o[k],T,p+'.'+k)}
+function mergeDels(a={},b={}){const o={...a};for(const k in b)if(!(k in o)||Math.abs(b[k])>Math.abs(o[k]))o[k]=b[k];const old=Date.now()-90*864e5;for(const k in o)if(Math.abs(o[k])<old)delete o[k];return o}
+let prevK=null;function track(d){const now=keys(d);if(prevK){const T=d.dels=d.dels||{},t=Date.now();prevK.forEach(k=>{if(!now.has(k))T[k]=t});for(const k in T)if(T[k]>0&&now.has(k))T[k]=-t}prevK=now}
+const hasData=d=>!!d&&(Object.values(d.log||{}).some(day=>Object.values(day||{}).some(a=>Array.isArray(a)&&a.length))||(d.custom||[]).length>0||(d.recipes||[]).length>0||(d.saved||[]).length>0||Object.keys(d.weights||{}).length>0);
+const OWN='mhh-owner';
 function merge(a,b,bNewer){if(isO(a)&&isO(b)){const o={...a};for(const k in b)o[k]=k in a?merge(a[k],b[k],bNewer):b[k];return o}
  if(Array.isArray(a)&&Array.isArray(b)){const idd=x=>x&&typeof x==='object'&&(x.id!=null||x.ref!=null||x.name!=null);
   if([...a,...b].length&&[...a,...b].every(idd)){const kf=x=>x.id!=null?'i'+x.id:x.ref!=null?'r'+(x.src||'')+x.ref:'n'+x.name;const m=new Map();
@@ -25,20 +33,35 @@ async function sync(mode){if(!ses)return;if(busy){again=true;return}busy=true;
   stat('Syncing…');const m=meta(),loc=D.updatedAt||0;
   const rows=await api('/rest/v1/user_data?select=data,updated_at&user_id=eq.'+ses.uid,{tok:t});const R=rows&&rows[0];
   let out=null;
-  if(R){const rt=Date.parse(R.updated_at),remoteNew=rt>(m.pulled||0),localNew=loc>(m.pushed||0)||!m.uid||m.uid!==ses.uid;
-   if(remoteNew&&localNew){out=merge(D,R.data,(R.data.updatedAt||0)>loc)}
+  if(R){const rt=Date.parse(R.updated_at),fresh=!m.uid||m.uid!==ses.uid;let remoteNew=rt>(m.pulled||0),localNew=loc>(m.pushed||0)||fresh,replace=false;
+   if(fresh&&localStorage.getItem(OWN)!==ses.uid&&hasData(R.data)){if(!hasData(D))replace=true;else{const c=await choose(R.data);if(c==='wait'){stat('Waiting for your choice');return}
+     if(c==='acct'){try{localStorage.setItem('mhh-guest-backup',JSON.stringify(D))}catch(e){}localStorage.setItem(KEY,JSON.stringify(Object.assign(typeof def==='function'?def():{},R.data)));localStorage.setItem(OWN,ses.uid);setMeta({pulled:rt,pushed:R.data.updatedAt||0,uid:ses.uid,at:Date.now()});location.reload();return}}}
+   if(replace){out=Object.assign(typeof def==='function'?def():{},JSON.parse(JSON.stringify(R.data)));localNew=false;remoteNew=true}
+   else if(remoteNew&&localNew){out=merge(D,R.data,(R.data.updatedAt||0)>loc);out.dels=mergeDels(D.dels,R.data.dels);prune(out,out.dels)}
    else if(remoteNew){out=R.data}
    if(out){const keep={};['usdaKey'].forEach(k=>{if(D[k]&&!out[k])keep[k]=D[k]});Object.assign(out,keep);
-    const tx=JSON.stringify(out)!==JSON.stringify(D);if(tx){for(const k of Object.keys(D))if(!(k in out))delete D[k];Object.assign(D,out);localStorage.setItem(KEY,JSON.stringify(D));if(window._fxBusy&&Date.now()-window._fxBusy<9000)setTimeout(()=>{if(!window._fxBusy&&typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()},9000);else if(typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()}
-    setMeta({pulled:rt,uid:ses.uid});if(!localNew){setMeta({pushed:D.updatedAt||0});stat('Synced');return}}
-   else if(!localNew){setMeta({pulled:rt,uid:ses.uid});stat('Synced');return}}
+    const tx=JSON.stringify(out)!==JSON.stringify(D);if(tx){for(const k of Object.keys(D))if(!(k in out))delete D[k];Object.assign(D,out);localStorage.setItem(KEY,JSON.stringify(D));prevK=keys(D);if(window._fxBusy&&Date.now()-window._fxBusy<9000)setTimeout(()=>{if(!window._fxBusy&&typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()},9000);else if(typeof render==='function'&&!document.querySelector('#sheet:not(.hidden)'))render()}
+    setMeta({pulled:rt,uid:ses.uid});localStorage.setItem(OWN,ses.uid);if(!localNew){setMeta({pushed:D.updatedAt||0,at:Date.now()});stat('Synced');return}}
+   else if(!localNew){setMeta({pulled:rt,uid:ses.uid,at:Date.now()});localStorage.setItem(OWN,ses.uid);stat('Synced');return}}
+  if(!R&&(!m.uid||m.uid!==ses.uid)){const ow=localStorage.getItem(OWN);if(ow&&ow!==ses.uid&&hasData(D)){const c=await choose({});if(c==='wait'){stat('Waiting for your choice');return}if(c==='acct'){try{localStorage.setItem('mhh-guest-backup',JSON.stringify(D))}catch(e){}localStorage.removeItem(KEY);localStorage.setItem(OWN,ses.uid);setMeta({pulled:0,pushed:0,uid:null});location.reload();return}}}
   const now=new Date().toISOString();D.updatedAt=D.updatedAt||Date.now();
   await api('/rest/v1/user_data?on_conflict=user_id',{method:'POST',tok:t,headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:ses.uid,data:D,updated_at:now})});
-  setMeta({pushed:D.updatedAt,pulled:Date.parse(now),uid:ses.uid,at:Date.now()});stat('Synced')}
+  setMeta({pushed:D.updatedAt,pulled:Date.parse(now),uid:ses.uid,at:Date.now()});localStorage.setItem(OWN,ses.uid);stat('Synced')}
  catch(e){stat(/relation|does not exist|schema cache|PGRST/i.test(e.message)?'Sync not set up yet':'Sync paused · will retry');console.warn('sync',e.message)}
  finally{busy=false;if(again){again=false;setTimeout(()=>sync(),500)}}}
-const sv=Store.save.bind(Store);Store.save=d=>{sv(d);if(ses){clearTimeout(pt);pt=setTimeout(()=>sync(),2500)}};
+try{prevK=keys(D)}catch(e){}const sv=Store.save.bind(Store);Store.save=d=>{try{track(d)}catch(e){}sv(d);if(ses){clearTimeout(pt);pt=setTimeout(()=>sync(),2500)}};
 window.addEventListener('focus',()=>sync());document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();else if(pt){clearTimeout(pt);sync()}});window.addEventListener('online',()=>sync());
+/* ---- first sign-in on a device that already has a guest log ---- */
+function choose(rd){return new Promise(res=>{if(typeof sheet!=='function')return res('wait');const n=d=>Object.values(d.log||{}).reduce((s,day)=>s+Object.values(day||{}).reduce((a,x)=>a+(Array.isArray(x)?x.length:0),0),0);
+ sheet(`<h2>☁️ Which log do you want?</h2><p class="mut" style="font-size:14px">This device has a guest log (${n(D)} foods logged). ${rd.log?`Your account already has its own records (${n(rd)} foods logged).`:'This account is new and empty.'}</p>
+ <button class="choice" id="ch_acct"><b>☁️ Use my account's records</b><span>Show only what's saved in your account. The guest log is set aside on this device, not added.</span></button>
+ <button class="choice" id="ch_imp"><b>📥 Add this guest log to my account</b><span>Combine both. Do this only if the guest log is yours.</span></button>`);let done=0;
+ const fin=v=>{if(done)return;done=1;clearInterval(iv);close();res(v)};$$('#ch_acct').onclick=()=>fin('acct');$$('#ch_imp').onclick=()=>fin('import');
+ const iv=setInterval(()=>{if(document.getElementById('sheet').classList.contains('hidden'))fin('wait')},400)})}
+function outSheet(){sh(`<h2>Sign out?</h2><p class="mut" style="font-size:14px">Your account copy stays safe in the cloud.</p><label class="row" style="gap:8px;align-items:flex-start"><input type="checkbox" id="so_clr" checked> Also remove my log from this device (recommended on shared devices)</label><p class="mut" id="so_m" style="font-size:13px;min-height:18px"></p><button class="btn" id="so_go">Sign out</button><button class="btn alt au_x">Cancel</button>`);
+ $$('#so_go').onclick=async()=>{const clr=$$('#so_clr').checked,b=$$('#so_go');b.disabled=true;$$('#so_m').textContent='Backing up first…';
+  if(clr){await sync();const m=meta();if(stTxt!=='Synced'||(D.updatedAt||0)>(m.pushed||0)){b.disabled=false;$$('#so_m').textContent='Couldn’t back up your latest changes, so nothing was removed. Try again when online, or untick the box.';return}}
+  await signOut();if(clr){localStorage.removeItem(KEY);localStorage.removeItem(OWN);try{localStorage.removeItem('mhh-guest-backup')}catch(e){}location.reload();return}close();toast('Signed out · your log stays on this device');render()}}
 /* ---- auth ---- */
 async function signIn(email,pw){keepSes(await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password:pw})}));setMeta({pulled:0,pushed:0,uid:null});await sync();}
 async function signUp(email,pw){const r=await api('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password:pw,options:{emailRedirectTo:location.origin}})});
@@ -72,7 +95,7 @@ window.acctCard=()=>{const V=document.getElementById('view');if(!V||document.get
  c.innerHTML=`<div class="srow tap" id="ac_row"><span class="sic">${ses?'☁️':'👤'}</span><div>${ses?es(ses.email||'Signed in'):'Guest mode'}<small id="acct_st">${ses?es(stTxt||'Synced'):'Back up and sync across devices'}</small></div>${ses?'<b>›</b>':'<span class="sinb">Sign in</span>'}</div>`;
  const slot=document.getElementById('acctSlot');slot?slot.replaceWith(c):V.prepend(c);
  $$('#ac_row').onclick=()=>{if(typeof sheet!=='function')return;
-  if(ses){sheet(`<h2>Account</h2><p class="mut">${es(ses.email||'Signed in')}<br><small>${es(stTxt||'Synced')}</small></p><button class="btn" id="ac_sync">Sync now</button><button class="btn alt" id="ac_out">Sign out</button><button class="btn alt" id="ac_del" style="color:#ff453a">Delete account</button>`);$$('#ac_sync').onclick=()=>sync();$$('#ac_out').onclick=async()=>{await signOut();close();toast('Signed out · data stays on this device');render()};$$('#ac_del').onclick=delSheet}
+  if(ses){sheet(`<h2>Account</h2><p class="mut">${es(ses.email||'Signed in')}<br><small>${es(stTxt||'Synced')}</small></p><button class="btn" id="ac_sync">Sync now</button><button class="btn alt" id="ac_out">Sign out</button><button class="btn alt" id="ac_del" style="color:#ff453a">Delete account</button>`);$$('#ac_sync').onclick=()=>sync();$$('#ac_out').onclick=outSheet;$$('#ac_del').onclick=delSheet}
   else{sheet(`<h2>Account</h2><p class="mut" style="font-size:14px">You're using guest mode. Everything works without an account; sign in to back up and sync across devices.</p><button class="btn" id="ac_up">Create account</button><button class="btn alt" id="ac_in">Sign in</button><div style="margin-top:8px">${gBtn()}</div>`);bindG();$$('#ac_up').onclick=()=>authSheet('up');$$('#ac_in').onclick=()=>authSheet('in')}}};
 window.acctPrompt=()=>{if(ses||localStorage.getItem('mhh-acct-nudge'))return;const days=Object.keys(D.log||{}).filter(d=>Object.values(D.log[d]||{}).some(a=>a&&a.length)).length;if(days<3)return;
  const V=document.getElementById('view');if(!V||document.getElementById('acct_nudge'))return;const c=document.createElement('div');c.className='card';c.id='acct_nudge';
@@ -85,5 +108,5 @@ if(hp.get('access_token')){const s={access_token:hp.get('access_token'),refresh_
  api('/auth/v1/user',{tok:s.access_token}).then(u=>{const fresh=!ses||ses.uid!==u.id;keepSes({...s,user:u});if(hp.get('type')==='recovery')resetSheet(s.access_token);else{if(fresh)setMeta({pulled:0,pushed:0,uid:null});toast(oa?'Signed in with Google · your data is synced':'Email confirmed · signed in');sync().then(()=>typeof render==='function'&&render())}}).catch(()=>{})}
 else if(hp.get('error_description')){localStorage.removeItem('mhh-oauth');history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>toast(hp.get('error_description')),500)}
 else if(ses)sync();
-window.MHHSync={sync,merge,auth:m=>authSheet(m),get signedIn(){return!!ses}};
+window.MHHSync={sync,merge,_t:{keys,prune,mergeDels,hasData},auth:m=>authSheet(m),get signedIn(){return!!ses}};
 })();

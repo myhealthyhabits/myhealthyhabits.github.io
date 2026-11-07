@@ -15,7 +15,7 @@ main{max-width:640px;margin:0 auto;padding:12px}
 .meal h3{margin:0;font-size:16px;display:flex;justify-content:space-between;align-items:center}
 .item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--ln)}.item small{color:var(--mut);display:block}
 .add{background:none;border:1px dashed var(--pri);color:var(--pri);border-radius:10px;padding:8px;width:100%;margin-top:8px;font-weight:600}
-.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom)}
+.tabs{position:fixed;z-index:5;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom)}
 .tabs button{flex:1;padding:14px 0;border:0;background:none;color:var(--mut);font-weight:600}.tabs .on{color:var(--pri)}
 .sheet{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-end;z-index:10}.hidden{display:none!important}
 .sheet-body{background:var(--bg);width:100%;max-width:640px;margin:0 auto;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px}
@@ -729,3 +729,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 /* v85 label scan */
 .lprev{display:flex;justify-content:center;margin:6px 0 4px}.lprev canvas{max-width:60%;border-radius:10px;border:1px solid var(--ln)}
 .lst{text-align:center;min-height:22px;margin:6px 0;line-height:1.4}
+
+/* v86 */
+#toast .tundo{margin-left:10px;border:0;background:none;color:var(--pri);font-weight:700;padding:4px 6px;pointer-events:auto}
+#toast{pointer-events:auto}
+.ms-fail{padding:10px;border-radius:12px;background:var(--bg);display:flex;flex-direction:column;gap:4px}.ms-fail .row{flex-wrap:wrap;gap:6px}

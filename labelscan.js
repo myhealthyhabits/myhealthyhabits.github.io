@@ -42,7 +42,8 @@ function labelQuality(c){const W=480,k=W/c.width,w=W,h=Math.max(1,Math.round(c.h
  const lv=m2/n-(m/n)**2;return{blur:lv,glare:hot/cn,mean:sum/(w*h),edges:edge/cn}}
 const labelIssue=q=>q.mean<60?'dark':q.blur<150&&q.edges<0.04?'blurry':'';  // glare is judged by the AI reader (paper-white labels look like glare to simple pixel counts)
 /* v85: AI label reader (server-side Gemini) -> same {v,conf} shape the review screen uses */
-async function labelAI(c,big){const k=Math.min(1,(big?2200:1600)/Math.max(c.width,c.height)),t=document.createElement('canvas');t.width=Math.round(c.width*k);t.height=Math.round(c.height*k);t.getContext('2d').drawImage(c,0,0,t.width,t.height);
+function labelAI(c,big){return window.aiGuard?aiGuard(labelAI0(c,big)):labelAI0(c,big)}
+async function labelAI0(c,big){const k=Math.min(1,(big?2200:1600)/Math.max(c.width,c.height)),t=document.createElement('canvas');t.width=Math.round(c.width*k);t.height=Math.round(c.height*k);t.getContext('2d').drawImage(c,0,0,t.width,t.height);
  const img=t.toDataURL('image/jpeg',.85);const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),20000);
  try{let tok='';try{tok=(JSON.parse(localStorage.getItem('mhh-sb')||'null')||{}).at||''}catch(e){}
   const r=await fetch(window.MS_MOCK||MS_URL,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json',apikey:MS_AK,Authorization:'Bearer '+(tok||MS_AK)},body:JSON.stringify({mode:'label',image:img})});

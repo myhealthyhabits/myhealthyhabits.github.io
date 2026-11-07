@@ -9,7 +9,8 @@ function mealScan(mid,pick){if(pick!==undefined)window.msPick=!!pick;stopScan();
  $('#ms_take').onclick=()=>$('#ms_cam').click();$('#ms_pick').onclick=()=>$('#ms_up').click();$('#ms_back').onclick=()=>window.msPick?close():openAdd(mid);
  const go=e=>{const f=e.target.files&&e.target.files[0];if(f)msRun(mid,f)};$('#ms_cam').onchange=go;$('#ms_up').onchange=go}
 function msShrink(file,max=1024,q=.8){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',q))};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};im.src=u})}
-async function msCall(body){let tok='';try{tok=(JSON.parse(localStorage.getItem('mhh-sb')||'null')||{}).at||''}catch(e){}
+async function msCall(body){return window.aiGuard?aiGuard(msCall0(body)):msCall0(body)}
+async function msCall0(body){let tok='';try{tok=(JSON.parse(localStorage.getItem('mhh-sb')||'null')||{}).at||''}catch(e){}
  const r=await fetch(window.MS_MOCK||MS_URL,{method:'POST',headers:{'Content-Type':'application/json',apikey:MS_AK,Authorization:'Bearer '+(tok||MS_AK)},body:JSON.stringify(body)});return[r,await r.json().catch(()=>({}))]}
 function msErr(mid,emo,title,msg){sheet(`<h2>${title}</h2><div class="ms-hero">${emo}</div><p class="mut" style="text-align:center">${msg}</p><button class="btn" id="ms_again">Try another photo</button><button class="btn alt" id="ms_srch">Search foods instead</button>`);$('#ms_again').onclick=()=>mealScan(mid);$('#ms_srch').onclick=()=>openAdd(mid)}
 async function msRun(mid,file){sheet(`<h2>📷 Snap meal</h2><div class="ms-hero">🔎</div><p class="mut" style="text-align:center">Looking at your meal… this takes a few seconds.</p>`);
@@ -49,18 +50,22 @@ function msReview(mid,items,o={}){const pick=!!window.msPick,mn=()=>(D.meals.fin
  const swH=(it,i)=>`<div class="ms-sw"><label class="ms-swl">Change food</label><input id="ms_swq" type="search" enterkeyhint="search" placeholder="Type a food, e.g. cucumber" value="${esc(swq)}"><div class="ms-sr" id="ms_sr">${swList(it)}</div><button class="ms-done" data-swx="1">Cancel</button></div>`;
  const swList=it=>{const q=swq.trim();let h=swR.map((f,j)=>`<button data-j="${j}"><span>${emoOf(f)}</span><b>${esc(f.name)}</b><small>${f.src==='usda'?'USDA':'Library'} · ${r0(f.n.kcal)} cal/100 g</small></button>`).join('');
   if(swBusy)h+='<small class="mut">Searching more foods…</small>';
-  if(q){h+=`<button data-use="1" class="ms-use">✏️ Use “${esc(q)}”<small>${swR.length?'Name as typed, nutrition by AI estimate':'No match found · nutrition by AI estimate'}</small></button>`;if(q!==(it.lib?it.lib.name:it.name))h+=`<button data-ren="1" class="ms-use">🏷️ Just rename to “${esc(q)}”<small>Keep the current nutrition</small></button>`}
+  if(q){h+=`<button data-use="1" class="ms-use">✏️ Use “${esc(q)}”<small>${swR.length?'Name as typed, nutrition by AI estimate':'No match found · nutrition by AI estimate'}</small></button>`;}
   if(it.lib)h+=`<button data-j="ai"><span>🤖</span><b>Use AI estimate for “${esc(it.name)}”</b></button>`;return h};
- const swPaint=()=>{const it=items[sw],b=$('#ms_sr');if(it&&b)b.innerHTML=swList(it)};
- const swFind=()=>{const ws=qWords(swq),seen=new Set();swR=ws.length?FOODLIB.filter(f=>fMatch(f,ws)).slice(0,5):[];swR.forEach(f=>seen.add(f.name.toLowerCase()));clearTimeout(swT);swBusy=0;
+ const swPaint=()=>{const it=items[sw],b=$('#ms_sr');if(swUse.on)return;if(it&&b)b.innerHTML=swList(it)};
+ const swFind=()=>{swUse.on=0;swUse.t=(swUse.t||0)+1;const ws=qWords(swq),seen=new Set();swR=ws.length?FOODLIB.filter(f=>fMatch(f,ws)).slice(0,5):[];swR.forEach(f=>seen.add(f.name.toLowerCase()));clearTimeout(swT);swBusy=0;
   if(ws.length&&typeof usdaQ==='function'){swBusy=1;const q0=swq;swT=setTimeout(async()=>{let L=[];try{L=await usdaQ(q0,'Foundation,SR Legacy')}catch(e){}if(q0!==swq)return;swBusy=0;
    const hits=f=>ws.filter(w=>norm(f.name).includes(w)).length;L.sort((a,b)=>hits(b)-hits(a)||a.name.length-b.name.length).forEach(f=>{const k=f.name.toLowerCase();if(!seen.has(k)&&swR.length<10){seen.add(k);swR.push(f)}});swPaint()},350)}
   swPaint()};
  const swOpen=i=>{sw=i;menu=-1;open=-1;swq=items[i].lib?items[i].lib.name:items[i].name;swq=swq.split(',')[0];swR=[];draw();const q=$('#ms_swq');q.focus();q.select();swFind()};
- const swUse=async it=>{const q=msCap(swq.trim());const b=$('#ms_sr');if(b)b.innerHTML='<small class="mut">Estimating nutrition for “'+esc(q)+'”…</small>';
-  let n=null;try{const[r,j]=await msCall({text:q,grams:Math.round(it.g)});const x=r.ok&&(j.items||[])[0];if(x&&+x.grams>0){const g=+x.grams,per=k=>(+x[k]||0)*100/g;n={kcal:per('kcal'),p:per('protein_g'),c:per('carbs_g'),f:per('fat_g'),fb:per('fiber_g')}}else if(r.status===429)toast('Daily AI limit reached · used the closest match')}catch(e){}
-  if(!n){const near=swR[0]||msMatch(q);if(near)n={...near.n};else{toast('Couldn’t estimate that · kept the current numbers');n={...msN(it)}}}
-  it.name=q;it.lib=null;it.ai=n;it.conf=0;it.u=msUnits(it).findIndex(u=>u.l==='g');sw=-1;draw()};
+ const swUse=async it=>{const q=msCap(swq.trim()),me=sw,tok=(swUse.t=(swUse.t||0)+1);swUse.on=1;clearTimeout(swT);const b=$('#ms_sr');if(b)b.innerHTML='<small class="mut"><span class="bcspin"></span> Estimating nutrition for “'+esc(q)+'”…</small>';
+  let n=null,why='';try{const[r,j]=await msCall({text:q,grams:Math.round(it.g)});const x=r.ok&&(j.items||[])[0];if(x&&+x.grams>0){const g=+x.grams,per=k=>(+x[k]||0)*100/g;n={kcal:per('kcal'),p:per('protein_g'),c:per('carbs_g'),f:per('fat_g'),fb:per('fiber_g')}}else why=r.status===429?'Your AI uses for today are used up.':'The estimate didn’t come back.'}catch(e){why=navigator.onLine?'The estimate didn’t come back.':'You’re offline.'}
+  if(tok!==swUse.t||sw!==me||!$('#ms_sr'))return;
+  if(n&&n.kcal>0){swUse.on=0;it.name=q;it.lib=null;it.ai=n;it.conf=0;it.u=msUnits(it).findIndex(u=>u.l==='g');sw=-1;return draw()}
+  const g=Math.round(it.g)||100;$('#ms_sr').innerHTML=`<div class="ms-fail"><b>Couldn’t get nutrition for “${esc(q)}”.</b><small class="mut">${why} Nothing was changed.</small><div class="row" style="margin-top:8px"><button class="btn sm" id="msf_r">🔁 Retry</button><button class="btn sm alt" id="msf_m">✍️ Enter it myself</button><button class="btn sm alt" id="msf_k">Keep original</button></div><div id="msf_f" hidden><div class="row"><div><small>Calories (${g} g)</small><input id="msf_c" type="number" inputmode="decimal"></div><div><small>Protein g</small><input id="msf_p" type="number" inputmode="decimal"></div></div><div class="row"><div><small>Carbs g</small><input id="msf_cb" type="number" inputmode="decimal"></div><div><small>Fat g</small><input id="msf_ft" type="number" inputmode="decimal"></div></div><button class="btn sm" id="msf_s">Save “${esc(q)}”</button></div></div>`;
+  $('#msf_r').onclick=e=>{e.stopPropagation();swUse(it)};$('#msf_k').onclick=e=>{e.stopPropagation();swUse.on=0;sw=-1;draw()};$('#msf_m').onclick=e=>{e.stopPropagation();$('#msf_f').hidden=false;$('#msf_c').focus()};
+  $('#msf_s').onclick=e=>{e.stopPropagation();const v=id=>+($('#'+id).value||0),k=v('msf_c');if(!(k>0))return toast('Enter the calories');const per=x=>x*100/g;it.name=q;it.lib=null;swUse.on=0;it.ai={kcal:per(k),p:per(v('msf_p')),c:per(v('msf_cb')),f:per(v('msf_ft')),fb:0};it.conf=0;it.u=msUnits(it).findIndex(u=>u.l==='g');sw=-1;draw()};
+  ['msf_f'].forEach(id=>$('#'+id).onclick=e=>e.stopPropagation())};
  const draw=()=>{const sc=$('#sheetBody').scrollTop;
   sheet(`<div class="ms-head"><h2>${o.title||"📷 Here's what we see"}</h2><div id="ms_tot" class="ms-tot">${totH()}</div></div>
   <p class="ms-hint">Tap a food to fix its portion.</p>
@@ -74,7 +79,7 @@ function msReview(mid,items,o={}){const pick=!!window.msPick,mn=()=>(D.meals.fin
   const L=$('.ms-list');L.onclick=e=>{const t=e.target;
    if(t.closest('.ms-sw')){const it=items[sw];const j=t.closest('[data-j]');if(j){it.lib=j.dataset.j==='ai'?null:swR[+j.dataset.j];if(it.lib&&it.lib.src==='usda')it.lib={...it.lib,name:it.lib.name.split(',').slice(0,2).join(',')};it.conf=0;it.u=msUnits(it).findIndex(u=>u.l==='g');sw=-1;return draw()}
     if(t.closest('[data-use]'))return swUse(it);if(t.closest('[data-ren]')){const q=msCap(swq.trim());if(it.lib){it.ai={...it.lib.n};it.lib=null}it.name=q;sw=-1;return draw()}
-    if(t.closest('[data-swx]')){sw=-1;return draw()}return}
+    if(t.closest('[data-swx]')){swUse.on=0;swUse.t++;sw=-1;return draw()}return}
    const nb=t.closest('[data-n]');if(nb&&!t.closest('[data-m]')){return swOpen(+nb.dataset.n)}
    const m=t.closest('[data-m]');if(m){const i=+m.dataset.m;menu=menu===i?-1:i;return draw()}
    const a=t.closest('[data-a]');if(a){const i=+a.dataset.i,it=items[i];menu=-1;
